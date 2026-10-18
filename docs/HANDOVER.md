@@ -23,7 +23,7 @@ the thing being removed: if that person leaves, the store cannot recover the acc
 
 | Service | What is there | Plan | Who holds it | Risk |
 |---|---|---|---|---|
-| **Vianet** | Domain robinsonsgeneralstore.ca, 5 of 10 mailboxes, store internet | About $10 a month | **The store** (1000476363 ONTARIO INC.) | Domain was due to renew 2026-10-16. Auto-renew was confirmed on; the renewal itself is not verified, see Step 1 |
+| **Vianet** | Domain robinsonsgeneralstore.ca, 6 of 10 mailboxes (admin@ added 2026-10-18), store internet | About $10 a month | **The store** (1000476363 ONTARIO INC.) | Domain was due to renew 2026-10-16. Auto-renew was confirmed on; the renewal itself is not verified, see Step 1 |
 | **Vercel** | Project `robinsons-store`, serving app.robinsonsgeneralstore.ca and robinsons-store.vercel.app. Last production deploy 2026-09-01, Ready. Vercel login protection on every address except the custom domain | **Hobby** | The developer's personal Hobby team | **Hobby does not license commercial use** (PLATFORM.md risk 1) |
 | **Supabase** | Organization `robinsons-store`, one project `robinsons-store`, Canada Central (Toronto), Postgres 17, healthy | **Free, confirmed 2026-10-18** | Opened by the developer | **No backups of any kind** (PLATFORM.md risk 2) |
 | **GitHub** | The repository, eleven Actions workflows, every deploy and migration secret | Free | The developer's personal account | Secrets are only readable by the account that holds the repo |
@@ -62,8 +62,8 @@ becomes one more thing to transfer.
 
 ### Step 0. Foundations (owner, about 30 minutes)
 
-1. **Create a store admin mailbox** on Vianet, for example `admin@robinsonsgeneralstore.ca`.
-   Five of the ten mailboxes are free. Every account below signs up with this address, never
+1. DONE 2026-10-18: **`admin@robinsonsgeneralstore.ca`** exists on Vianet ("Robinson's General Store Admin", 1000MB).
+   Four of the ten mailboxes are still free. Every account below signs up with this address, never
    with a person's own email.
 2. **Pick one password manager the store owns** and put every login, recovery code and API
    key from this file in it. The developer never needs to see the store's passwords after
