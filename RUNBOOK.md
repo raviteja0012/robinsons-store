@@ -41,7 +41,8 @@ The daily payment alert emails a summary of invoices overdue or due within 7 day
 
 ## Step 4, Vercel (about 5 minutes)
 1. vercel.com/new, connect GitHub, import `raviteja0012/Lakeside_Store_Application`.
-2. Pick the branch `claude/great-johnson-CFSbi` (or `main` after the PR is merged).
+2. Production branch: `main`. (Moving the existing project to the store's own account, rather
+   than importing a new one, is in docs/HANDOVER.md.)
 3. Environment Variables, add:
    - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase Project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key

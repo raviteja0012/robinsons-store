@@ -18,6 +18,7 @@ written for, and how current it is. Start here.
 
 | File | What it answers |
 |---|---|
+| [HANDOVER.md](HANDOVER.md) | **Who holds each account today, and the order to move every one to the store.** Includes the register of every secret and variable, and the checks that prove the move worked |
 | [ENVIRONMENTS.md](ENVIRONMENTS.md) | The practice site and the live site, and how a change crosses from one to the other |
 | [SUPABASE_SETUP.md](SUPABASE_SETUP.md) | Every SQL script and the exact order to run it, fresh install and live upgrade |
 | [../RUNBOOK.md](../RUNBOOK.md) | Go live, and the five-minute "turn on login" cutover |
