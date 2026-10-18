@@ -40,7 +40,7 @@ The daily payment alert emails a summary of invoices overdue or due within 7 day
 4. Make up a long random string for `CRON_SECRET`. The daily cron sends it as the `x-cron-secret` header so only the cron can trigger the email.
 
 ## Step 4, Vercel (about 5 minutes)
-1. vercel.com/new, connect GitHub, import `raviteja0012/Lakeside_Store_Application`.
+1. vercel.com/new, connect GitHub, import the `robinsons-store` repository (it moves to the store's GitHub organization at handover; docs/HANDOVER.md Step 4).
 2. Production branch: `main`. (Moving the existing project to the store's own account, rather
    than importing a new one, is in docs/HANDOVER.md.)
 3. Environment Variables, add:

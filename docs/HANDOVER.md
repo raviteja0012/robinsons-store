@@ -19,6 +19,24 @@ developer is then a member with the smallest role that still lets the work happe
 removed without anything breaking. A person's own email as the login for a store service is
 the thing being removed: if that person leaves, the store cannot recover the account.
 
+## Progress
+
+The store's identity for every account is **`admin@robinsonsgeneralstore.ca`**. Update this
+table as each step lands; a step is done when its check passes, not when the button is
+clicked.
+
+| Step | State | Check |
+|---|---|---|
+| 0. Store admin mailbox | **Done 2026-10-18** | Listed on Vianet, 1000MB quota |
+| 0. Password manager and two-factor sign-in | Not started | Every login and recovery code is in the store's vault |
+| 1. Domain renewal confirmed | **Not seen yet** | New expiry date written in docs/DOMAIN_EMAIL.md |
+| 1. `PRODUCTION_URL` points at the domain | Not started | Post-deploy watch checks app.robinsonsgeneralstore.ca |
+| 2. Supabase owned by admin@, on Pro | Not started | Organization plan reads `pro`; a backup is listed the next day |
+| 3. Vercel project on a store team, on Pro | Not started | Project `accountId` is the store's team; a deploy is Ready there |
+| 4. Repository in a store GitHub organization | Not started | Repository URL is under the store's organization; Vercel builds from it |
+| 5. Keys reissued under the store | Not started | Old Anthropic key and old `VERCEL_TOKEN` revoked |
+| 6. Dev environment on the store's accounts | Not started | `develop` branch exists; dev migration gate prints a non-zero length |
+
 ## What exists today, read 2026-10-18
 
 | Service | What is there | Plan | Who holds it | Risk |
