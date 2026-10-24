@@ -4,6 +4,18 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
+- `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
+  and `debugging` tool groups: documentation search, logs and advisors.
+- CI checks it: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails if
+  a hosted Supabase URL drops `read_only=true`, has no `features` list, or gives production
+  any group beyond those two. Fourteen new cases, plus the committed file.
+- Pull requests required on `main`: one branch ruleset (pull request with no required
+  approvals or status checks, no force pushes, no deletion) is prepared, waiting on approval.
+  It is a repository setting, applied outside this pull request.
+- docs/LOOP_ENGINEERING.md, CAPABILITIES item 9 and its Supabase MCP row, and the Kiro coding
+  conventions (model failures return a non-2xx status) now match.
+
 The handover written to the standard, 2026-10-24:
 - docs/HANDOVER.md now names exactly what the store will own and under which names (team,
   organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
