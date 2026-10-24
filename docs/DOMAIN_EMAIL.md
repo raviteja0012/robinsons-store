@@ -8,11 +8,11 @@ and its email costs.
 
 | Thing | State |
 |---|---|
-| Domain robinsonsgeneralstore.ca | Owned. Auto-renew CONFIRMED ON by the owner. Expires 2026-10-16 |
+| Domain robinsonsgeneralstore.ca | Owned. Auto-renew CONFIRMED ON by the owner. Was due 2026-10-16; **renewal not yet seen** as of 2026-10-18, see below |
 | app.robinsonsgeneralstore.ca | RESOLVED 2026-08-11. Live, valid certificate, serving the app |
 | That DNS record | DONE. The CNAME to cname.vercel-dns.com exists and resolves |
 | robinsons-store.vercel.app | Live and working. Keeps working alongside the custom domain |
-| Mailboxes | 5 of 10 used, none full (1000MB each), plan decided below |
+| Mailboxes | 6 of 10 used, none full (1000MB each), plan decided below. admin@ created 2026-10-18 as the store's login for every service (docs/HANDOVER.md) |
 | stories@ alias | STILL forwarding store mail to the previous owners' personal Hotmail |
 | invoices@ | Not created yet. This is what blocks the email-intake feature |
 | Slack | Workspace being set up as robinsonsgeneralstore.slack.com, Vercel integration to a #deploys channel |
@@ -55,7 +55,14 @@ meantime.
 Confirm auto-renew is on, or renew it manually. This is the single highest-value
 five-minute job on the whole list.
 
-## Mailboxes: 5 of 10 used
+**2026-10-18:** the date has passed. Auto-renew was confirmed on, so it most likely renewed,
+but nobody has seen the renewal, and nothing automated would notice a lapse: the post-deploy
+watchdog checks `PRODUCTION_URL`, which falls back to robinsons-store.vercel.app when unset.
+Check the Vianet panel, write the new expiry date here, and set `PRODUCTION_URL` to
+https://app.robinsonsgeneralstore.ca so the next lapse fails a check (docs/HANDOVER.md
+Step 1).
+
+## Mailboxes: 6 of 10 used (admin@ added 2026-10-18)
 
 Read from the Vianet panel on 2026-07-31. **The quota is 1000MB per box, not 250MB.**
 
