@@ -11,7 +11,7 @@
 // No temperature or other sampling parameter is sent: current Claude models reject
 // non-default sampling params, and one rejected parameter would fail every call.
 
-import { overDailyCap, recordAiCall, type AiUsageScope } from "./aiUsage";
+import { finishAiCall, reserveAiCall, type AiUsageScope } from "./aiUsage";
 
 export type ClaudeFailure =
   | "no_key"
@@ -66,10 +66,10 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
   const started = Date.now();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, kind: "no_key", detail: "ANTHROPIC_API_KEY is not set", model, ms: 0 };
-  if (await overDailyCap(opts.scope, opts.route)) {
+  const slot = await reserveAiCall(opts.scope, opts.route, model);
+  if (slot.capped) {
     const capped: ClaudeResult = { ok: false, kind: "capped", detail: "daily cap reached", model, ms: 0 };
     logCall(opts.route, capped);
-    await recordAiCall(opts.scope, opts.route, capped, null);
     return capped;
   }
 
@@ -134,13 +134,13 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
             usage: data.usage || null
           };
     logCall(opts.route, result);
-    await recordAiCall(opts.scope, opts.route, result, data.usage);
+    await finishAiCall(opts.scope, slot.id, opts.route, result, data.usage);
     return result;
   }
 
   const failed: ClaudeResult = { ok: false, ...last, model, ms: Date.now() - started };
   logCall(opts.route, failed);
-  await recordAiCall(opts.scope, opts.route, failed, null);
+  await finishAiCall(opts.scope, slot.id, opts.route, failed, null);
   return failed;
 }
 

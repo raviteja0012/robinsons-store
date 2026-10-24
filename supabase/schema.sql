@@ -246,14 +246,14 @@ create index feedback_status_idx on feedback(status);
 
 -- One row per AI model call, for the daily per-store cap (src/lib/aiUsage.ts). Metadata
 -- only: never the prompt, the store data sent with it, or the answer. Fresh installs get
--- this here; existing databases get the identical table and function from
--- supabase/ai_call.sql, which explains each column.
+-- this here; existing databases get the identical table and functions from
+-- supabase/ai_call.sql, which explains each column and why the functions are definer.
 create table ai_call (
   id uuid primary key default gen_random_uuid(),
   store_id uuid not null references store(id),   -- multi-store
   route text not null,          -- extract, ask, reorder, feedback-triage
   model text,
-  outcome text not null check (outcome in ('ok','refused','cut_off','failed','capped')),
+  outcome text not null check (outcome in ('pending','ok','refused','cut_off','failed','capped')),
   failure_kind text,            -- for failed: timeout, overloaded, bad_request, upstream
   input_tokens integer,
   output_tokens integer,
@@ -264,29 +264,81 @@ create table ai_call (
 );
 create index ai_call_store_day_idx on ai_call(store_id, created_at);
 
--- Today's AI calls for a store (Ontario calendar day), for the cap. Definer so a staff call
--- counts the whole store without reading the owner-only rows; a signed-in caller always gets
+-- Reserve one call under the store's daily cap, or refuse it, counting and inserting under a
+-- per-store lock so parallel requests cannot all fit. Definer: members write only through
+-- this and ai_call_finish, and only the owner reads the rows. A signed-in caller always uses
 -- their own store. plpgsql so the auth_id branch, which this demo schema cannot take, is only
--- planned when it runs. Capped rows never reached the model and do not count.
-create or replace function public.ai_calls_today(p_store_id uuid)
-returns integer
+-- planned when it runs.
+create or replace function public.ai_call_begin(p_store_id uuid, p_route text, p_model text, p_cap integer)
+returns jsonb
 language plpgsql
-stable
 security definer
 set search_path = public
 as $$
 declare
   v_store uuid := p_store_id;
+  v_used integer;
+  v_id uuid;
 begin
   if auth.uid() is not null then
     select u.store_id into v_store from public.app_user u where u.auth_id = auth.uid() limit 1;
   end if;
-  return (
-    select count(*)::int from public.ai_call c
-    where c.store_id = v_store
-      and c.outcome <> 'capped'
-      and c.created_at >= date_trunc('day', now() at time zone 'America/Toronto') at time zone 'America/Toronto'
-  );
+  if v_store is null then
+    return jsonb_build_object('allowed', true, 'id', null);
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('ai_call:' || v_store::text, 0));
+  select count(*) into v_used from public.ai_call c
+  where c.store_id = v_store
+    and c.outcome <> 'capped'
+    and c.created_at >= date_trunc('day', now() at time zone 'America/Toronto') at time zone 'America/Toronto';
+  if v_used >= greatest(coalesce(p_cap, 1), 1) then
+    insert into public.ai_call (store_id, route, model, outcome)
+    values (v_store, left(p_route, 40), left(p_model, 100), 'capped');
+    return jsonb_build_object('allowed', false, 'id', null);
+  end if;
+  insert into public.ai_call (store_id, route, model, outcome)
+  values (v_store, left(p_route, 40), left(p_model, 100), 'pending')
+  returning id into v_id;
+  return jsonb_build_object('allowed', true, 'id', v_id);
+end;
+$$;
+
+-- Say how a reserved call ended: only a pending row of the caller's own store, once, and
+-- never as capped, so finishing cannot take a call out of today's count.
+create or replace function public.ai_call_finish(
+  p_id uuid, p_outcome text, p_model text, p_failure_kind text,
+  p_input_tokens integer, p_output_tokens integer,
+  p_cache_read_tokens integer, p_cache_write_tokens integer, p_duration_ms integer
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_store uuid;
+begin
+  if p_outcome is null or p_outcome not in ('ok','refused','cut_off','failed') then
+    raise exception 'ai_call_finish: outcome % is not allowed', p_outcome;
+  end if;
+  if auth.uid() is not null then
+    select u.store_id into v_store from public.app_user u where u.auth_id = auth.uid() limit 1;
+    if v_store is null then
+      return;
+    end if;
+  end if;
+  update public.ai_call c
+  set outcome = p_outcome,
+      model = coalesce(left(p_model, 100), c.model),
+      failure_kind = left(p_failure_kind, 40),
+      input_tokens = p_input_tokens,
+      output_tokens = p_output_tokens,
+      cache_read_tokens = p_cache_read_tokens,
+      cache_write_tokens = p_cache_write_tokens,
+      duration_ms = p_duration_ms
+  where c.id = p_id
+    and c.outcome = 'pending'
+    and (v_store is null or c.store_id = v_store);
 end;
 $$;
 

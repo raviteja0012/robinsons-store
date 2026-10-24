@@ -120,9 +120,9 @@ Run in this order; skip nothing (each is safe to re-run):
    only; harmless if already applied).
 9. `ai_call.sql`: the AI call log behind the daily per-store cap. One row per AI call
    (store, screen, model, token counts, how it ended), never the question or the answer, and
-   the `ai_calls_today` count the cap reads. Only the owner can read the rows once login is
-   on. With enforced login, rerun `auth_setup.sql` after it: until then the app cannot write
-   rows, logs a warning instead, and AI calls carry on uncapped.
+   the two functions that reserve and finish each call. The cap and the log work as soon as
+   this runs. Only the owner can read the rows once login is on; with enforced login, rerun
+   `auth_setup.sql` after it to give the owner that read.
 10. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 

@@ -397,13 +397,14 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - AI call log and daily cap, 2026-10-24 (branch ai-usage-cap, see VERIFICATION.md): every AI
-  call writes an ai_call row (store, route, model, token counts, outcome, duration; never
-  content) and is refused before reaching the model once the store has made
-  AI_DAILY_CAP_PER_STORE calls today (Ontario day, default 100). Capped calls get 429 and a
-  plain message. Fails open: no table, a slow database or a refused insert logs a warning and
-  the call goes ahead. Owner action: supabase/ai_call.sql applies itself on merge; rerun
-  auth_setup.sql after it, or no rows are written and nothing is capped. Not built: a screen
-  for the owner to read the log (rows are readable in Supabase for now).
+  call reserves an ai_call row before the model is asked and fills it in after (store, route,
+  model, token counts, outcome, duration; never content). Once the store has made
+  AI_DAILY_CAP_PER_STORE calls today (Ontario day, default 100) the call is refused without
+  reaching the model: 429 and a plain message. The reservation counts under a per-store lock,
+  so parallel requests cannot overshoot the cap. Fails open: no table, a slow database or an
+  error logs a warning and the call goes ahead. Owner action: supabase/ai_call.sql applies
+  itself on merge and the cap works from then; rerun auth_setup.sql after it so the owner can
+  read the rows. Not built: a screen for the owner to read the log (Supabase for now).
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.

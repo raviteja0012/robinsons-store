@@ -5,15 +5,20 @@ import type { ClaudeResult } from "./anthropic";
 // One row per model call: store, route, model, token counts, outcome. Never the prompt, the
 // store data sent with it, or the answer.
 //
-// Both halves fail open. A missing table (the migration has not run), a slow database, or an
-// insert the policies refuse logs a warning and lets the call through: the cap protects the
-// monthly bill, not the store's data, and an invoice read at the receiving door matters more
-// than one uncounted call. A route that passes no scope, or no store, skips both, so a blank
-// env never touches a database.
+// A call is reserved before the model is asked (public.ai_call_begin counts and inserts under
+// a per-store lock, so a burst of parallel requests cannot all fit under the cap) and finished
+// after (public.ai_call_finish fills in how it ended). Both fail open: a missing function (the
+// migration has not run), a slow database, or an error logs a warning and lets the call
+// through. The cap protects the monthly bill, not the store's data, and an invoice read at the
+// receiving door matters more than one uncounted call. A route that passes no scope, or no
+// store, skips both, so a blank env never touches a database.
 
 export type AiUsageScope = { db: SupabaseClient; storeId: string | null };
 
 export type AiCallOutcome = "ok" | "refused" | "cut_off" | "failed" | "capped";
+
+// What the reservation said. id is the pending row to finish; null when nothing was reserved.
+export type AiCallSlot = { capped: boolean; id: string | null };
 
 // Sonnet 5 list price is $2 per million input tokens and $10 per million output. The
 // largest call here is about $0.10 (extract at its 8,000-token output ceiling, or Ask with
@@ -43,44 +48,43 @@ function warn(route: string, outcome: string, err: any) {
   console.warn(JSON.stringify({ ai_call: route, outcome, detail: String(err?.message || err).slice(0, 200) }));
 }
 
-// True when the store has already made its allowance of calls today. Counted by
-// public.ai_calls_today, which runs as definer: under enforced login only the owner can read
-// ai_call rows, and a staff capture still has to count against the store.
-export async function overDailyCap(scope: AiUsageScope | undefined, route: string): Promise<boolean> {
-  if (!scope?.storeId) return false;
+// Reserve this call against the store's allowance for today, or learn it is used up. A
+// refused call is recorded as capped by the same database call.
+export async function reserveAiCall(scope: AiUsageScope | undefined, route: string, model: string): Promise<AiCallSlot> {
+  const open: AiCallSlot = { capped: false, id: null };
+  if (!scope?.storeId) return open;
   try {
     const { data, error } = await scope.db
-      .rpc("ai_calls_today", { p_store_id: scope.storeId })
+      .rpc("ai_call_begin", { p_store_id: scope.storeId, p_route: route, p_model: model, p_cap: dailyCap() })
       .abortSignal(AbortSignal.timeout(DB_TIMEOUT_MS));
     if (error) throw error;
-    return Number(data) >= dailyCap();
+    return { capped: data?.allowed === false, id: typeof data?.id === "string" ? data.id : null };
   } catch (err) {
     warn(route, "cap_check_skipped", err);
-    return false;
+    return open;
   }
 }
 
 const count = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
 
-// usage is the provider's raw usage object, read here rather than from the result so a
-// refusal or a cut-off, which still bill their tokens, are recorded with them.
-export async function recordAiCall(scope: AiUsageScope | undefined, route: string, r: ClaudeResult, usage: any): Promise<void> {
-  if (!scope?.storeId) return;
+// Fill in how a reserved call ended. usage is the provider's raw usage object, read here
+// rather than from the result so a refusal or a cut-off, which still bill their tokens, are
+// recorded with them.
+export async function finishAiCall(scope: AiUsageScope | undefined, id: string | null, route: string, r: ClaudeResult, usage: any): Promise<void> {
+  if (!scope || !id) return;
   const outcome = outcomeOf(r);
   try {
     const { error } = await scope.db
-      .from("ai_call")
-      .insert({
-        store_id: scope.storeId,
-        route,
-        model: r.model,
-        outcome,
-        failure_kind: outcome === "failed" && !r.ok ? r.kind : null,
-        input_tokens: count(usage?.input_tokens),
-        output_tokens: count(usage?.output_tokens),
-        cache_read_tokens: count(usage?.cache_read_input_tokens),
-        cache_write_tokens: count(usage?.cache_creation_input_tokens),
-        duration_ms: r.ms
+      .rpc("ai_call_finish", {
+        p_id: id,
+        p_outcome: outcome,
+        p_model: r.model,
+        p_failure_kind: outcome === "failed" && !r.ok ? r.kind : null,
+        p_input_tokens: count(usage?.input_tokens),
+        p_output_tokens: count(usage?.output_tokens),
+        p_cache_read_tokens: count(usage?.cache_read_input_tokens),
+        p_cache_write_tokens: count(usage?.cache_creation_input_tokens),
+        p_duration_ms: r.ms
       })
       .abortSignal(AbortSignal.timeout(DB_TIMEOUT_MS));
     if (error) throw error;

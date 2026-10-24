@@ -1,5 +1,6 @@
 // The ai_call log and the daily cap, run through the real callClaude with fetch and the
-// Supabase client both mocked. No network, no database, no model call.
+// Supabase client both mocked. No network, no database, no model call. The lock that keeps
+// parallel calls under the cap lives in SQL and is checked in pg/ instead.
 const { callClaude, failureMessage } = require("./anthropic.js");
 const { dailyCap, DEFAULT_DAILY_CAP, outcomeOf } = require("./aiUsage.js");
 
@@ -25,16 +26,30 @@ const USAGE = { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens:
 const ANSWER = "Orgill is due Friday.";
 const ok = () => reply(200, { model: "claude-sonnet-5", stop_reason: "end_turn", content: [{ type: "text", text: ANSWER }], usage: USAGE });
 
-// Mimics the two supabase-js calls aiUsage makes: rpc(...).abortSignal(s) and
-// from(t).insert(row).abortSignal(s), each awaited for { data, error }.
-function fakeDb({ count = 0, rpcError = null, insertError = null, hang = false } = {}) {
-  const db = { rpcCalls: [], inserts: [] };
+// Mimics supabase-js rpc(...).abortSignal(s), awaited for { data, error }, and the two
+// functions' contracts: ai_call_begin answers {allowed, id} from how many calls the store has
+// used against p_cap; ai_call_finish takes the id and the outcome.
+function fakeDb({ used = 0, beginError = null, finishError = null, hang = false } = {}) {
+  const db = { begins: [], finishes: [], used };
   const settle = (value) => ({
     abortSignal: (signal) =>
       hang ? new Promise((_res, rej) => signal.addEventListener("abort", () => rej(signal.reason))) : Promise.resolve(value)
   });
-  db.rpc = (fn, args) => { db.rpcCalls.push({ fn, args }); return settle({ data: rpcError ? null : count, error: rpcError }); };
-  db.from = (table) => ({ insert: (row) => { db.inserts.push({ table, row }); return settle({ data: null, error: insertError }); } });
+  db.rpc = (fn, args) => {
+    if (fn === "ai_call_begin") {
+      db.begins.push(args);
+      if (beginError) return settle({ data: null, error: beginError });
+      if (db.used >= args.p_cap) return settle({ data: { allowed: false, id: null }, error: null });
+      db.used++;
+      return settle({ data: { allowed: true, id: `call-${db.used}` }, error: null });
+    }
+    if (fn === "ai_call_finish") {
+      db.finishes.push(args);
+      return settle({ data: null, error: finishError });
+    }
+    return settle({ data: null, error: { message: `unexpected rpc ${fn}` } });
+  };
+  db.from = () => { throw new Error("aiUsage must not write the table directly"); };
   return db;
 }
 
@@ -60,91 +75,94 @@ const call = (scope, extra = {}) => callClaude({ route: "ask", max_tokens: 100, 
   let r = await call(undefined);
   t("no scope: call made, answer returned", r.ok && r.text === ANSWER && fetchCalls === 1);
 
-  // Under the cap: counted first, called, one metadata row written.
-  let db = fakeDb({ count: 5 });
+  // Under the cap: reserved first, called, then finished with metadata only.
+  let db = fakeDb({ used: 5 });
   fetchCalls = 0;
   r = await call({ db, storeId: "store-1" });
   t("under cap: model called once", r.ok && fetchCalls === 1);
-  t("under cap: today's count asked for this store", db.rpcCalls.length === 1 && db.rpcCalls[0].fn === "ai_calls_today" && db.rpcCalls[0].args.p_store_id === "store-1");
-  const row = db.inserts[0]?.row || {};
-  t("one row into ai_call", db.inserts.length === 1 && db.inserts[0].table === "ai_call");
-  t("row: store, route, model, outcome", row.store_id === "store-1" && row.route === "ask" && row.model === "claude-sonnet-5" && row.outcome === "ok" && row.failure_kind === null);
-  t("row: all four token counts", row.input_tokens === 1200 && row.output_tokens === 300 && row.cache_read_tokens === 1000 && row.cache_write_tokens === 50);
-  t("row: duration is a number", typeof row.duration_ms === "number");
-  const keys = Object.keys(row).sort().join(",");
-  t("row carries metadata only", keys === "cache_read_tokens,cache_write_tokens,duration_ms,failure_kind,input_tokens,model,outcome,output_tokens,route,store_id", keys);
-  t("row holds neither prompt nor answer", !JSON.stringify(row).includes(PROMPT) && !JSON.stringify(row).includes(ANSWER));
+  const b = db.begins[0] || {};
+  t("under cap: reserved for this store, route, model and cap", db.begins.length === 1 && b.p_store_id === "store-1" && b.p_route === "ask" && b.p_model === "claude-sonnet-5" && b.p_cap === 100);
+  const f = db.finishes[0] || {};
+  t("finished once, on the reserved row", db.finishes.length === 1 && f.p_id === "call-6");
+  t("finish: outcome, model, no failure kind", f.p_outcome === "ok" && f.p_model === "claude-sonnet-5" && f.p_failure_kind === null);
+  t("finish: all four token counts", f.p_input_tokens === 1200 && f.p_output_tokens === 300 && f.p_cache_read_tokens === 1000 && f.p_cache_write_tokens === 50);
+  t("finish: duration is a number", typeof f.p_duration_ms === "number");
+  const keys = Object.keys(f).sort().join(",");
+  t("finish carries metadata only", keys === "p_cache_read_tokens,p_cache_write_tokens,p_duration_ms,p_failure_kind,p_id,p_input_tokens,p_model,p_outcome,p_output_tokens", keys);
+  const sent = JSON.stringify([db.begins, db.finishes]);
+  t("database never sees the prompt or the answer", !sent.includes(PROMPT) && !sent.includes(ANSWER));
 
-  // At the cap: no model call, a capped row, a plain message.
-  db = fakeDb({ count: 100 });
+  // At the cap: no model call, nothing to finish, a plain message.
+  db = fakeDb({ used: 100 });
   fetchCalls = 0;
   r = await call({ db, storeId: "store-1" });
   t("at cap: no model call", fetchCalls === 0);
   t("at cap: result is capped", !r.ok && r.kind === "capped");
-  const cappedRow = db.inserts[0]?.row || {};
-  t("at cap: capped row with no tokens", db.inserts.length === 1 && cappedRow.outcome === "capped" && cappedRow.input_tokens === null && cappedRow.output_tokens === null);
+  t("at cap: nothing finished (begin already wrote the capped row)", db.finishes.length === 0);
   const msg = failureMessage("capped");
   t("capped message is plain and says when it resets", /tomorrow/.test(msg) && /owner/.test(msg) && !msg.includes(String.fromCharCode(0x2014)) && !msg.includes("cap"), msg);
 
-  // The env cap applies at the boundary.
+  // The env cap reaches the database and applies at the boundary.
   process.env.AI_DAILY_CAP_PER_STORE = "3";
-  fetchCalls = 0;
-  r = await call({ db: fakeDb({ count: 2 }), storeId: "store-1" });
-  t("env cap 3, count 2: allowed", r.ok && fetchCalls === 1);
-  fetchCalls = 0;
-  r = await call({ db: fakeDb({ count: 3 }), storeId: "store-1" });
-  t("env cap 3, count 3: capped", !r.ok && r.kind === "capped" && fetchCalls === 0);
-  delete process.env.AI_DAILY_CAP_PER_STORE;
-
-  // Fails open: a missing table, a refused insert, or a hung database never blocks the call.
-  logged.length = 0;
-  db = fakeDb({ rpcError: { message: 'relation "public.ai_call" does not exist' } });
+  db = fakeDb({ used: 2 });
   fetchCalls = 0;
   r = await call({ db, storeId: "store-1" });
-  t("count error: call still made", r.ok && fetchCalls === 1);
-  t("count error: warning logged", logged.some((l) => l.includes("cap_check_skipped")));
+  t("env cap 3, used 2: allowed, cap passed through", r.ok && fetchCalls === 1 && db.begins[0].p_cap === 3);
+  fetchCalls = 0;
+  r = await call({ db, storeId: "store-1" });
+  t("env cap 3, used 3: capped", !r.ok && r.kind === "capped" && fetchCalls === 0);
+  delete process.env.AI_DAILY_CAP_PER_STORE;
+
+  // Fails open: a missing function, a refused finish, or a hung database never blocks the call.
   logged.length = 0;
-  r = await call({ db: fakeDb({ insertError: { message: "new row violates row-level security policy" } }), storeId: "store-1" });
-  t("insert refused: answer still returned", r.ok && r.text === ANSWER);
-  t("insert refused: warning logged", logged.some((l) => l.includes("log_skipped")));
+  db = fakeDb({ beginError: { message: "Could not find the function public.ai_call_begin" } });
+  fetchCalls = 0;
+  r = await call({ db, storeId: "store-1" });
+  t("reserve error: call still made", r.ok && fetchCalls === 1);
+  t("reserve error: nothing to finish", db.finishes.length === 0);
+  t("reserve error: warning logged", logged.some((l) => l.includes("cap_check_skipped")));
+  logged.length = 0;
+  r = await call({ db: fakeDb({ finishError: { message: "permission denied for function ai_call_finish" } }), storeId: "store-1" });
+  t("finish error: answer still returned", r.ok && r.text === ANSWER);
+  t("finish error: warning logged", logged.some((l) => l.includes("log_skipped")));
   const started = Date.now();
   fetchCalls = 0;
   r = await call({ db: fakeDb({ hang: true }), storeId: "store-1" });
   const waited = Date.now() - started;
-  // Two database calls, 1.5s budget each: the person waits at most about 3s more.
-  t("hung database: gives up and calls anyway", r.ok && fetchCalls === 1 && waited < 4000, `${waited} ms`);
+  // A hung reserve returns no id, so there is no finish to wait on: one 1.5s budget.
+  t("hung database: gives up and calls anyway", r.ok && fetchCalls === 1 && waited < 2500, `${waited} ms`);
 
   // Each way a call ends gets its outcome; refusals and cut-offs keep their tokens.
   responder = () => reply(200, { model: "claude-sonnet-5", stop_reason: "refusal", content: [], usage: { input_tokens: 800, output_tokens: 5 } });
   db = fakeDb();
   r = await call({ db, storeId: "store-1" });
-  t("refusal: refused row with tokens", !r.ok && db.inserts[0]?.row.outcome === "refused" && db.inserts[0]?.row.input_tokens === 800);
+  t("refusal: finished as refused with tokens", !r.ok && db.finishes[0]?.p_outcome === "refused" && db.finishes[0]?.p_input_tokens === 800);
   responder = () => reply(200, { model: "claude-sonnet-5", stop_reason: "max_tokens", content: [{ type: "text", text: "half" }], usage: { input_tokens: 900, output_tokens: 100 } });
   db = fakeDb();
   r = await call({ db, storeId: "store-1" });
-  t("max_tokens: cut_off row with output tokens", !r.ok && db.inserts[0]?.row.outcome === "cut_off" && db.inserts[0]?.row.output_tokens === 100);
+  t("max_tokens: finished as cut_off with output tokens", !r.ok && db.finishes[0]?.p_outcome === "cut_off" && db.finishes[0]?.p_output_tokens === 100);
   responder = () => reply(400, { error: { message: "bad" } });
   db = fakeDb();
   fetchCalls = 0;
   r = await call({ db, storeId: "store-1" });
-  t("400: one failed row, kind kept, not retried", fetchCalls === 1 && db.inserts.length === 1 && db.inserts[0].row.outcome === "failed" && db.inserts[0].row.failure_kind === "bad_request");
+  t("400: one failed finish, kind kept, not retried", fetchCalls === 1 && db.finishes.length === 1 && db.finishes[0].p_outcome === "failed" && db.finishes[0].p_failure_kind === "bad_request");
   responder = (init) => new Promise((_res, rej) => init.signal.addEventListener("abort", () => rej(init.signal.reason)));
   db = fakeDb();
   r = await call({ db, storeId: "store-1" }, { timeoutMs: 50 });
-  t("timeout: failed row, kind timeout", !r.ok && db.inserts[0]?.row.outcome === "failed" && db.inserts[0]?.row.failure_kind === "timeout");
+  t("timeout: failed finish, kind timeout", !r.ok && db.finishes[0]?.p_outcome === "failed" && db.finishes[0]?.p_failure_kind === "timeout");
   t("overloaded maps to failed", outcomeOf({ ok: false, kind: "overloaded", detail: "", model: "m", ms: 0 }) === "failed");
   responder = () => ok();
 
-  // No store, or no key: nothing counted, nothing written.
-  db = fakeDb({ count: 1000 });
+  // No store, or no key: nothing reserved, nothing finished.
+  db = fakeDb({ used: 1000 });
   fetchCalls = 0;
   r = await call({ db, storeId: null });
-  t("no store: not counted, not written, call made", r.ok && fetchCalls === 1 && db.rpcCalls.length === 0 && db.inserts.length === 0);
+  t("no store: not reserved, not finished, call made", r.ok && fetchCalls === 1 && db.begins.length === 0 && db.finishes.length === 0);
   delete process.env.ANTHROPIC_API_KEY;
   db = fakeDb();
   fetchCalls = 0;
   r = await call({ db, storeId: "store-1" });
-  t("no key: no call, no count, no row", !r.ok && r.kind === "no_key" && fetchCalls === 0 && db.rpcCalls.length === 0 && db.inserts.length === 0);
+  t("no key: no call, nothing reserved", !r.ok && r.kind === "no_key" && fetchCalls === 0 && db.begins.length === 0 && db.finishes.length === 0);
 
   clearInterval(keepAlive);
   console.log(`\n${pass} passed, ${fail} failed`);
