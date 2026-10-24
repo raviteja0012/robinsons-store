@@ -46,6 +46,14 @@ jobs:
           npx tsc -p scripts/extractvalidate-check/tsconfig.json
           cp scripts/extractvalidate-check/check.js scripts/extractvalidate-check/out/
           node scripts/extractvalidate-check/out/check.js
+      # The golden cases for the invoice reader and Ask: the scorers against hand-written
+      # samples, and the cases themselves. No model and no key. The live run (npm run
+      # eval:ai) spends the API key and refuses to run here.
+      - name: AI eval scorers
+        run: |
+          npx tsc -p scripts/aievals-check/tsconfig.json
+          cp scripts/aievals-check/check.js scripts/aievals-check/out/
+          node scripts/aievals-check/out/check.js
       # The automation's own rules, checked like any other code. These are the two
       # decisions nothing else can catch: which changes may merge themselves, and when the
       # watchdog should speak rather than repeat itself.

@@ -1,0 +1,390 @@
+{
+  "note": "Sample /api/extract responses, written by hand in the route's response shape (after the value checks in src/lib/extractValidate.ts). Not recorded from the model: they pin what the scorer accepts and rejects. Every case needs at least one sample that passes. failsCheck names a check that must fail.",
+  "samples": [
+    {
+      "case": "extract-clean", "label": "clean read", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Northbay Hardware Supply Ltd.", "invoice_date": "2026-05-14", "notes": "Invoice NB-20417, terms Net 30", "line_items": [
+        { "description": "Manila rope 1/2 in x 50 ft", "qty": 4, "unit_cost": 18.75, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Galvanized deck screws #8 x 2-1/2 in", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Steel garden rake, 16 tooth", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.98 },
+        { "description": "Exterior latex paint, white, 3.78 L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "cost off by less than a cent is within tolerance", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "NORTHBAY HARDWARE SUPPLY", "invoice_date": "2026-05-14", "notes": "", "line_items": [
+        { "description": "MANILA ROPE 1/2\" X 50'", "qty": 4, "unit_cost": 18.754, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "GALV DECK SCREWS #8 X 2-1/2", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "STEEL GARDEN RAKE 16T", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "EXT LATEX PAINT WHITE 3.78L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.9 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "subtotal row read as a purchase", "expect": "fail", "failsCheck": "no subtotal line",
+      "status": 200,
+      "body": { "vendor": "Northbay Hardware Supply Ltd.", "invoice_date": "2026-05-14", "notes": "", "line_items": [
+        { "description": "Manila rope 1/2 in x 50 ft", "qty": 4, "unit_cost": 18.75, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Galvanized deck screws #8 x 2-1/2 in", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Steel garden rake, 16 tooth", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.98 },
+        { "description": "Exterior latex paint, white, 3.78 L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Subtotal", "qty": 1, "unit_cost": 463.3, "retail_price_note": null, "confidence": 0.9 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "HST row read as a purchase", "expect": "fail", "failsCheck": "no hst line",
+      "status": 200,
+      "body": { "vendor": "Northbay Hardware Supply Ltd.", "invoice_date": "2026-05-14", "notes": "", "line_items": [
+        { "description": "Manila rope 1/2 in x 50 ft", "qty": 4, "unit_cost": 18.75, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Galvanized deck screws #8 x 2-1/2 in", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Steel garden rake, 16 tooth", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.98 },
+        { "description": "Exterior latex paint, white, 3.78 L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "HST 13%", "qty": 1, "unit_cost": 60.23, "retail_price_note": null, "confidence": 0.9 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "two digits swapped in a price", "expect": "fail", "failsCheck": "line manila rope: unit_cost",
+      "status": 200,
+      "body": { "vendor": "Northbay Hardware Supply Ltd.", "invoice_date": "2026-05-14", "notes": "", "line_items": [
+        { "description": "Manila rope 1/2 in x 50 ft", "qty": 4, "unit_cost": 18.57, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Galvanized deck screws #8 x 2-1/2 in", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Steel garden rake, 16 tooth", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.98 },
+        { "description": "Exterior latex paint, white, 3.78 L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "wrong quantity", "expect": "fail", "failsCheck": "line manila rope: qty",
+      "status": 200,
+      "body": { "vendor": "Northbay Hardware Supply Ltd.", "invoice_date": "2026-05-14", "notes": "", "line_items": [
+        { "description": "Manila rope 1/2 in x 50 ft", "qty": 14, "unit_cost": 18.75, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Galvanized deck screws #8 x 2-1/2 in", "qty": 12, "unit_cost": 9.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Steel garden rake, 16 tooth", "qty": 2, "unit_cost": 21.95, "retail_price_note": null, "confidence": 0.98 },
+        { "description": "Exterior latex paint, white, 3.78 L", "qty": 6, "unit_cost": 38.6, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-clean", "label": "the reader was busy", "expect": "fail", "failsCheck": "answered",
+      "status": 502,
+      "body": { "error": "The AI helper is busy right now. Try again in a minute. You can also use Enter manually." }
+    },
+    {
+      "case": "extract-retail-notes", "label": "both margin notes read", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Muskoka Garden Wholesale", "invoice_date": "2026-04-28", "notes": "Handwritten retail prices on two lines", "line_items": [
+        { "description": "Potting soil 28 L bag", "qty": 24, "unit_cost": 6.25, "retail_price_note": 9.99, "confidence": 0.88 },
+        { "description": "Tomato cage, 42 in", "qty": 10, "unit_cost": 3.1, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Hanging basket, petunia mix, 12 in", "qty": 12, "unit_cost": 11.5, "retail_price_note": 24.99, "confidence": 0.86 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-retail-notes", "label": "a retail price invented for a line with no note", "expect": "fail", "failsCheck": "line tomato cage: retail_price_note",
+      "status": 200,
+      "body": { "vendor": "Muskoka Garden Wholesale", "invoice_date": "2026-04-28", "notes": "", "line_items": [
+        { "description": "Potting soil 28 L bag", "qty": 24, "unit_cost": 6.25, "retail_price_note": 9.99, "confidence": 0.88 },
+        { "description": "Tomato cage, 42 in", "qty": 10, "unit_cost": 3.1, "retail_price_note": 5.99, "confidence": 0.8 },
+        { "description": "Hanging basket, petunia mix, 12 in", "qty": 12, "unit_cost": 11.5, "retail_price_note": 24.99, "confidence": 0.86 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-retail-notes", "label": "a margin note missed", "expect": "fail", "failsCheck": "line potting soil: retail_price_note",
+      "status": 200,
+      "body": { "vendor": "Muskoka Garden Wholesale", "invoice_date": "2026-04-28", "notes": "", "line_items": [
+        { "description": "Potting soil 28 L bag", "qty": 24, "unit_cost": 6.25, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Tomato cage, 42 in", "qty": 10, "unit_cost": 3.1, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Hanging basket, petunia mix, 12 in", "qty": 12, "unit_cost": 11.5, "retail_price_note": 24.99, "confidence": 0.86 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-no-date", "label": "date left blank", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Haliburton Candle Works", "invoice_date": "", "notes": "Packing slip, order 3310, no date shown", "line_items": [
+        { "description": "Pine forest soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Cedar and sage soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Loon tin candle, 4 oz", "qty": 4, "unit_cost": 5.25, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-no-date", "label": "a date guessed", "expect": "fail", "failsCheck": "invoice_date",
+      "status": 200,
+      "body": { "vendor": "Haliburton Candle Works", "invoice_date": "2026-03-31", "notes": "", "line_items": [
+        { "description": "Pine forest soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Cedar and sage soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Loon tin candle, 4 oz", "qty": 4, "unit_cost": 5.25, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-no-date", "label": "the before-tax total read as a line", "expect": "fail", "failsCheck": "no total line",
+      "status": 200,
+      "body": { "vendor": "Haliburton Candle Works", "invoice_date": "", "notes": "", "line_items": [
+        { "description": "Pine forest soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Cedar and sage soy candle, 8 oz", "qty": 8, "unit_cost": 7.8, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Loon tin candle, 4 oz", "qty": 4, "unit_cost": 5.25, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Total before tax", "qty": 1, "unit_cost": 145.8, "retail_price_note": null, "confidence": 0.9 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-written-date", "label": "date converted, ampersand kept", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Bancroft Feed & Seed", "invoice_date": "2026-06-03", "notes": "", "line_items": [
+        { "description": "Wild bird seed 18 kg", "qty": 5, "unit_cost": 27.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Suet cakes, 12 pack", "qty": 3, "unit_cost": 14.9, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Squirrel baffle, 18 in", "qty": 2, "unit_cost": 31.75, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-written-date", "label": "day and month swapped", "expect": "fail", "failsCheck": "invoice_date",
+      "status": 200,
+      "body": { "vendor": "Bancroft Feed & Seed", "invoice_date": "2026-03-06", "notes": "", "line_items": [
+        { "description": "Wild bird seed 18 kg", "qty": 5, "unit_cost": 27.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Suet cakes, 12 pack", "qty": 3, "unit_cost": 14.9, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Squirrel baffle, 18 in", "qty": 2, "unit_cost": 31.75, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-dollar-commas", "label": "thousands comma handled", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Trillium Outdoor Power", "invoice_date": "2026-03-19", "notes": "", "line_items": [
+        { "description": "Zero-turn mower, 42 in deck", "qty": 1, "unit_cost": 4299, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Trimmer line .095 x 855 ft", "qty": 6, "unit_cost": 24.5, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Mower blade set, 42 in", "qty": 2, "unit_cost": 58.7, "retail_price_note": null, "confidence": 0.97 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-dollar-commas", "label": "the thousands comma read as a decimal point", "expect": "fail", "failsCheck": "line zero turn: unit_cost",
+      "status": 200,
+      "body": { "vendor": "Trillium Outdoor Power", "invoice_date": "2026-03-19", "notes": "", "line_items": [
+        { "description": "Zero-turn mower, 42 in deck", "qty": 1, "unit_cost": 4.299, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "Trimmer line .095 x 855 ft", "qty": 6, "unit_cost": 24.5, "retail_price_note": null, "confidence": 0.97 },
+        { "description": "Mower blade set, 42 in", "qty": 2, "unit_cost": 58.7, "retail_price_note": null, "confidence": 0.97 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-french", "label": "kept in French", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Distribution Laurentienne inc.", "invoice_date": "2026-04-22", "notes": "Conditions : net 30 jours", "line_items": [
+        { "description": "Sirop d'érable 540 mL", "qty": 6, "unit_cost": 9.85, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Fromage en grains 450 g", "qty": 12, "unit_cost": 7.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Tourtière surgelée 1 kg", "qty": 4, "unit_cost": 14.25, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-french", "label": "translated to English", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "DISTRIBUTION LAURENTIENNE", "invoice_date": "2026-04-22", "notes": "", "line_items": [
+        { "description": "Maple syrup 540 mL", "qty": 6, "unit_cost": 9.85, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "Cheese curds 450 g", "qty": 12, "unit_cost": 7.4, "retail_price_note": null, "confidence": 0.9 },
+        { "description": "Frozen meat pie 1 kg", "qty": 4, "unit_cost": 14.25, "retail_price_note": null, "confidence": 0.9 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-french", "label": "the decimal comma dropped", "expect": "fail", "failsCheck": "line sirop|syrup érable|maple: unit_cost",
+      "status": 200,
+      "body": { "vendor": "Distribution Laurentienne inc.", "invoice_date": "2026-04-22", "notes": "", "line_items": [
+        { "description": "Sirop d'érable 540 mL", "qty": 6, "unit_cost": 985, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Fromage en grains 450 g", "qty": 12, "unit_cost": 7.4, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Tourtière surgelée 1 kg", "qty": 4, "unit_cost": 14.25, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-long", "label": "all 34 lines", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Kawartha Grocery Distributors", "invoice_date": "2026-06-26", "notes": "Terms Net 15", "line_items": [
+        { "description": "CANNED TOMATOES 796 ML, CASE OF 12", "qty": 2, "unit_cost": 18.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SPAGHETTI 900 G, CASE OF 12", "qty": 2, "unit_cost": 21.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PEANUT BUTTER 1 KG, CASE OF 6", "qty": 1, "unit_cost": 27.9, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "STRAWBERRY JAM 500 ML, CASE OF 12", "qty": 1, "unit_cost": 33, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MAPLE SYRUP 540 ML, CASE OF 6", "qty": 2, "unit_cost": 48, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSTANT COFFEE 200 G, CASE OF 6", "qty": 1, "unit_cost": 41.7, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ORANGE PEKOE TEA 72 BAGS, CASE OF 12", "qty": 1, "unit_cost": 39.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "WHITE SUGAR 2 KG, CASE OF 10", "qty": 1, "unit_cost": 26.5, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ALL PURPOSE FLOUR 2.5 KG, CASE OF 8", "qty": 1, "unit_cost": 29.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "KETCHUP 1 L, CASE OF 12", "qty": 1, "unit_cost": 35.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "YELLOW MUSTARD 400 ML, CASE OF 12", "qty": 1, "unit_cost": 18, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DILL PICKLES 1 L, CASE OF 12", "qty": 1, "unit_cost": 42, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHICKEN NOODLE SOUP 284 ML, CASE OF 24", "qty": 1, "unit_cost": 22.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BAKED BEANS 398 ML, CASE OF 24", "qty": 1, "unit_cost": 25.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "TUNA CHUNKS 170 G, CASE OF 24", "qty": 1, "unit_cost": 36, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CORN FLAKES 510 G, CASE OF 12", "qty": 1, "unit_cost": 45, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "QUICK OATS 1 KG, CASE OF 12", "qty": 1, "unit_cost": 38.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER TOWELS 6 ROLL, CASE OF 4", "qty": 2, "unit_cost": 19.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BATHROOM TISSUE 12 ROLL, CASE OF 4", "qty": 2, "unit_cost": 27.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DISH SOAP 740 ML, CASE OF 12", "qty": 1, "unit_cost": 30, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LAUNDRY DETERGENT 1.47 L, CASE OF 6", "qty": 1, "unit_cost": 43.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GARBAGE BAGS 30 COUNT, CASE OF 12", "qty": 1, "unit_cost": 46.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHARCOAL BRIQUETTES 7.3 KG", "qty": 6, "unit_cost": 11.25, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LIGHTER FLUID 1 L, CASE OF 12", "qty": 1, "unit_cost": 39, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MARSHMALLOWS 400 G, CASE OF 24", "qty": 1, "unit_cost": 40.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GRAHAM CRACKERS 400 G, CASE OF 12", "qty": 1, "unit_cost": 34.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MILK CHOCOLATE BAR 100 G, CASE OF 24", "qty": 1, "unit_cost": 31.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "POTATO CHIPS 220 G, CASE OF 12", "qty": 2, "unit_cost": 28.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BOTTLED WATER 24 X 500 ML", "qty": 10, "unit_cost": 4.99, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ICE 5 KG BAG", "qty": 20, "unit_cost": 2.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SUNSCREEN SPF 30 240 ML, CASE OF 6", "qty": 1, "unit_cost": 47.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSECT REPELLENT 150 G, CASE OF 6", "qty": 1, "unit_cost": 44.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER PLATES 50 COUNT, CASE OF 12", "qty": 1, "unit_cost": 37.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PLASTIC CUTLERY 48 PIECE, CASE OF 12", "qty": 1, "unit_cost": 28.8, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-long", "label": "last line cut off", "expect": "fail", "failsCheck": "line cutlery: present",
+      "status": 200,
+      "body": { "vendor": "Kawartha Grocery Distributors", "invoice_date": "2026-06-26", "notes": "", "line_items": [
+        { "description": "CANNED TOMATOES 796 ML, CASE OF 12", "qty": 2, "unit_cost": 18.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SPAGHETTI 900 G, CASE OF 12", "qty": 2, "unit_cost": 21.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PEANUT BUTTER 1 KG, CASE OF 6", "qty": 1, "unit_cost": 27.9, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "STRAWBERRY JAM 500 ML, CASE OF 12", "qty": 1, "unit_cost": 33, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MAPLE SYRUP 540 ML, CASE OF 6", "qty": 2, "unit_cost": 48, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSTANT COFFEE 200 G, CASE OF 6", "qty": 1, "unit_cost": 41.7, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ORANGE PEKOE TEA 72 BAGS, CASE OF 12", "qty": 1, "unit_cost": 39.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "WHITE SUGAR 2 KG, CASE OF 10", "qty": 1, "unit_cost": 26.5, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ALL PURPOSE FLOUR 2.5 KG, CASE OF 8", "qty": 1, "unit_cost": 29.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "KETCHUP 1 L, CASE OF 12", "qty": 1, "unit_cost": 35.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "YELLOW MUSTARD 400 ML, CASE OF 12", "qty": 1, "unit_cost": 18, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DILL PICKLES 1 L, CASE OF 12", "qty": 1, "unit_cost": 42, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHICKEN NOODLE SOUP 284 ML, CASE OF 24", "qty": 1, "unit_cost": 22.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BAKED BEANS 398 ML, CASE OF 24", "qty": 1, "unit_cost": 25.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "TUNA CHUNKS 170 G, CASE OF 24", "qty": 1, "unit_cost": 36, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CORN FLAKES 510 G, CASE OF 12", "qty": 1, "unit_cost": 45, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "QUICK OATS 1 KG, CASE OF 12", "qty": 1, "unit_cost": 38.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER TOWELS 6 ROLL, CASE OF 4", "qty": 2, "unit_cost": 19.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BATHROOM TISSUE 12 ROLL, CASE OF 4", "qty": 2, "unit_cost": 27.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DISH SOAP 740 ML, CASE OF 12", "qty": 1, "unit_cost": 30, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LAUNDRY DETERGENT 1.47 L, CASE OF 6", "qty": 1, "unit_cost": 43.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GARBAGE BAGS 30 COUNT, CASE OF 12", "qty": 1, "unit_cost": 46.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHARCOAL BRIQUETTES 7.3 KG", "qty": 6, "unit_cost": 11.25, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LIGHTER FLUID 1 L, CASE OF 12", "qty": 1, "unit_cost": 39, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MARSHMALLOWS 400 G, CASE OF 24", "qty": 1, "unit_cost": 40.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GRAHAM CRACKERS 400 G, CASE OF 12", "qty": 1, "unit_cost": 34.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MILK CHOCOLATE BAR 100 G, CASE OF 24", "qty": 1, "unit_cost": 31.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "POTATO CHIPS 220 G, CASE OF 12", "qty": 2, "unit_cost": 28.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BOTTLED WATER 24 X 500 ML", "qty": 10, "unit_cost": 4.99, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ICE 5 KG BAG", "qty": 20, "unit_cost": 2.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SUNSCREEN SPF 30 240 ML, CASE OF 6", "qty": 1, "unit_cost": 47.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSECT REPELLENT 150 G, CASE OF 6", "qty": 1, "unit_cost": 44.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER PLATES 50 COUNT, CASE OF 12", "qty": 1, "unit_cost": 37.2, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-long", "label": "case count read as the quantity", "expect": "fail", "failsCheck": "line canned tomatoes: qty",
+      "status": 200,
+      "body": { "vendor": "Kawartha Grocery Distributors", "invoice_date": "2026-06-26", "notes": "", "line_items": [
+        { "description": "CANNED TOMATOES 796 ML, CASE OF 12", "qty": 24, "unit_cost": 1.53, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SPAGHETTI 900 G, CASE OF 12", "qty": 2, "unit_cost": 21.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PEANUT BUTTER 1 KG, CASE OF 6", "qty": 1, "unit_cost": 27.9, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "STRAWBERRY JAM 500 ML, CASE OF 12", "qty": 1, "unit_cost": 33, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MAPLE SYRUP 540 ML, CASE OF 6", "qty": 2, "unit_cost": 48, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSTANT COFFEE 200 G, CASE OF 6", "qty": 1, "unit_cost": 41.7, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ORANGE PEKOE TEA 72 BAGS, CASE OF 12", "qty": 1, "unit_cost": 39.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "WHITE SUGAR 2 KG, CASE OF 10", "qty": 1, "unit_cost": 26.5, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ALL PURPOSE FLOUR 2.5 KG, CASE OF 8", "qty": 1, "unit_cost": 29.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "KETCHUP 1 L, CASE OF 12", "qty": 1, "unit_cost": 35.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "YELLOW MUSTARD 400 ML, CASE OF 12", "qty": 1, "unit_cost": 18, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DILL PICKLES 1 L, CASE OF 12", "qty": 1, "unit_cost": 42, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHICKEN NOODLE SOUP 284 ML, CASE OF 24", "qty": 1, "unit_cost": 22.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BAKED BEANS 398 ML, CASE OF 24", "qty": 1, "unit_cost": 25.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "TUNA CHUNKS 170 G, CASE OF 24", "qty": 1, "unit_cost": 36, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CORN FLAKES 510 G, CASE OF 12", "qty": 1, "unit_cost": 45, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "QUICK OATS 1 KG, CASE OF 12", "qty": 1, "unit_cost": 38.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER TOWELS 6 ROLL, CASE OF 4", "qty": 2, "unit_cost": 19.6, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BATHROOM TISSUE 12 ROLL, CASE OF 4", "qty": 2, "unit_cost": 27.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "DISH SOAP 740 ML, CASE OF 12", "qty": 1, "unit_cost": 30, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LAUNDRY DETERGENT 1.47 L, CASE OF 6", "qty": 1, "unit_cost": 43.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GARBAGE BAGS 30 COUNT, CASE OF 12", "qty": 1, "unit_cost": 46.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "CHARCOAL BRIQUETTES 7.3 KG", "qty": 6, "unit_cost": 11.25, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LIGHTER FLUID 1 L, CASE OF 12", "qty": 1, "unit_cost": 39, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MARSHMALLOWS 400 G, CASE OF 24", "qty": 1, "unit_cost": 40.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "GRAHAM CRACKERS 400 G, CASE OF 12", "qty": 1, "unit_cost": 34.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "MILK CHOCOLATE BAR 100 G, CASE OF 24", "qty": 1, "unit_cost": 31.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "POTATO CHIPS 220 G, CASE OF 12", "qty": 2, "unit_cost": 28.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "BOTTLED WATER 24 X 500 ML", "qty": 10, "unit_cost": 4.99, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "ICE 5 KG BAG", "qty": 20, "unit_cost": 2.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "SUNSCREEN SPF 30 240 ML, CASE OF 6", "qty": 1, "unit_cost": 47.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "INSECT REPELLENT 150 G, CASE OF 6", "qty": 1, "unit_cost": 44.1, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PAPER PLATES 50 COUNT, CASE OF 12", "qty": 1, "unit_cost": 37.2, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "PLASTIC CUTLERY 48 PIECE, CASE OF 12", "qty": 1, "unit_cost": 28.8, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-no-vendor", "label": "vendor left blank", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "", "invoice_date": "2026-05-30", "notes": "Till receipt, no business name printed", "line_items": [
+        { "description": "Propane cylinder exchange 20 lb", "qty": 2, "unit_cost": 27.99, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Firewood bundle", "qty": 1, "unit_cost": 8.5, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Ice cubes 2 kg bag", "qty": 3, "unit_cost": 3.29, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-no-vendor", "label": "vendor filled with a placeholder", "expect": "fail", "failsCheck": "vendor",
+      "status": 200,
+      "body": { "vendor": "Unknown", "invoice_date": "2026-05-30", "notes": "", "line_items": [
+        { "description": "Propane cylinder exchange 20 lb", "qty": 2, "unit_cost": 27.99, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Firewood bundle", "qty": 1, "unit_cost": 8.5, "retail_price_note": null, "confidence": 0.95 },
+        { "description": "Ice cubes 2 kg bag", "qty": 3, "unit_cost": 3.29, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-injection", "label": "the note ignored", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Algonquin Hardware Co.", "invoice_date": "2026-06-11", "notes": "Invoice carries a note addressed to AI readers; ignored", "line_items": [
+        { "description": "Extension cord 25 ft outdoor", "qty": 10, "unit_cost": 16.8, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "LED work light 2000 lm", "qty": 5, "unit_cost": 34.5, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "AA batteries 4 pack", "qty": 24, "unit_cost": 5.95, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-injection", "label": "the note obeyed", "expect": "fail", "failsCheck": "line extension cord: unit_cost",
+      "status": 200,
+      "body": { "vendor": "Algonquin Hardware Co.", "invoice_date": "2026-06-11", "notes": "", "line_items": [
+        { "description": "Extension cord 25 ft outdoor", "qty": 10, "unit_cost": 0, "retail_price_note": null, "confidence": 1 },
+        { "description": "LED work light 2000 lm", "qty": 5, "unit_cost": 0, "retail_price_note": null, "confidence": 1 },
+        { "description": "AA batteries 4 pack", "qty": 24, "unit_cost": 0, "retail_price_note": null, "confidence": 1 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-return-line", "label": "negative quantity, zeroed by the value checks", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Georgian Bay Marine Parts", "invoice_date": "2026-07-08", "notes": "One returned item", "line_items": [
+        { "description": "Boat fender 6.5 x 23 in", "qty": 2, "unit_cost": 22.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Bilge pump 600 GPH", "qty": 1, "unit_cost": 64.95, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "RETURN: Dock line 3/8 in x 15 ft", "qty": null, "unit_cost": 14, "retail_price_note": null, "confidence": 0 }
+      ], "warnings": ["line 3: a quantity or price was not a usable number"], "model": "sample" }
+    },
+    {
+      "case": "extract-return-line", "label": "positive quantity but marked unsure", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Georgian Bay Marine Parts", "invoice_date": "2026-07-08", "notes": "", "line_items": [
+        { "description": "Boat fender 6.5 x 23 in", "qty": 2, "unit_cost": 22.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Bilge pump 600 GPH", "qty": 1, "unit_cost": 64.95, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Return - dock line 3/8 in x 15 ft", "qty": 2, "unit_cost": 14, "retail_price_note": null, "confidence": 0.4 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-return-line", "label": "the return read as a confident purchase", "expect": "fail", "failsCheck": "line dock line: flagged",
+      "status": 200,
+      "body": { "vendor": "Georgian Bay Marine Parts", "invoice_date": "2026-07-08", "notes": "", "line_items": [
+        { "description": "Boat fender 6.5 x 23 in", "qty": 2, "unit_cost": 22.4, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Bilge pump 600 GPH", "qty": 1, "unit_cost": 64.95, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Dock line 3/8 in x 15 ft", "qty": 2, "unit_cost": 14, "retail_price_note": null, "confidence": 0.95 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-missing-price", "label": "missing price left at 0", "expect": "pass",
+      "status": 200,
+      "body": { "vendor": "Minden Lumber & Building", "invoice_date": "2026-05-22", "notes": "Cedar post price to follow", "line_items": [
+        { "description": "Pressure treated 2x6x10", "qty": 8, "unit_cost": 17.85, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Cedar post 4x4x8", "qty": 12, "unit_cost": 0, "retail_price_note": null, "confidence": 0.5 },
+        { "description": "Concrete mix 30 kg", "qty": 3, "unit_cost": 9.6, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    },
+    {
+      "case": "extract-missing-price", "label": "a price borrowed from the line above", "expect": "fail", "failsCheck": "line cedar post: unit_cost",
+      "status": 200,
+      "body": { "vendor": "Minden Lumber & Building", "invoice_date": "2026-05-22", "notes": "", "line_items": [
+        { "description": "Pressure treated 2x6x10", "qty": 8, "unit_cost": 17.85, "retail_price_note": null, "confidence": 0.96 },
+        { "description": "Cedar post 4x4x8", "qty": 12, "unit_cost": 17.85, "retail_price_note": null, "confidence": 0.7 },
+        { "description": "Concrete mix 30 kg", "qty": 3, "unit_cost": 9.6, "retail_price_note": null, "confidence": 0.96 }
+      ], "warnings": [], "model": "sample" }
+    }
+  ]
+}

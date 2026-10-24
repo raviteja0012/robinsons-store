@@ -396,6 +396,14 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- AI golden evals, 2026-10-24 (branch ai-golden-evals, see VERIFICATION.md): 23 made-up cases
+  in scripts/aievals-check, 11 invoices for extract and 12 questions for ask, scored by fixed
+  rules (field match with a one-cent tolerance; facts that must and must not appear; for the
+  money and store cases, the prompt itself). The scorer tests run in CI with no model.
+  `npm run eval:ai` sends the cases through the real routes and src/lib/anthropic.ts and
+  prints a pass rate per case. It spends the API key (69 calls by default, 23 with
+  `-- --runs 1`), so it never runs in CI and has not been run yet: the first run is the
+  owner's call.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
