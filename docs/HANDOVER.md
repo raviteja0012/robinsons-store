@@ -12,7 +12,7 @@ prove each move landed. Evidence tags follow `.claude/skills/robinsons-store/ref
 documentation this session, `[D]` reported and to be confirmed by a named person, `[J-open]`
 believed but unchecked, `[Q]` open question with an owner.
 
-Companion files: docs/PLATFORM.md (every service and why), docs/AGENTS.md (the AI agents and
+Companion files: docs/owner-notes/handover-checklist.md (every task as numbered, tickable steps, labelled with which account does each), docs/PLATFORM.md (every service and why), docs/AGENTS.md (the AI agents and
 whose key each runs on), ONBOARDING.md (the forms for the person taking over),
 docs/ENVIRONMENTS.md (dev and production), docs/SUPABASE_SETUP.md (the database connection
 secret), docs/DOMAIN_EMAIL.md (the domain and mailboxes).
