@@ -68,7 +68,7 @@ sequenceDiagram
 6. The home feed reads recent receiving_events per department.
 
 ## Data model
-The shipped schema is supabase/schema.sql. The entity list and conventions are in the skill at .claude/skills/robinsons-store/references/data-model.md. Key rules: snake_case, audit on every write, a confidence value per extracted line, low-confidence dollar fields never auto-post, money as integer cents before production. The open dev row-level security is the demo default; the per-store, per-role policies in supabase/auth_setup.sql take over when NEXT_PUBLIC_REQUIRE_AUTH is enabled (see RUNBOOK.md).
+The shipped schema is supabase/schema.sql. The entity list and conventions are in the skill at .claude/skills/robinsons-store/references/data-model.md. Key rules: snake_case, audit on every write, a confidence value per extracted line, low-confidence dollar fields never auto-post, money as numeric dollars (integer cents is not planned). The open dev row-level security is the demo default; the per-store, per-role policies in supabase/auth_setup.sql take over when NEXT_PUBLIC_REQUIRE_AUTH is enabled (see RUNBOOK.md).
 
 ## Design system
 The design philosophy is capture first. The color and form rules are in the skill at .claude/skills/robinsons-store/references/design-tokens.md, with the tokens wired into src/app/globals.css. Calm neutral canvas, one meaning per status hue, labels above fields, scan do not type, WCAG AA.

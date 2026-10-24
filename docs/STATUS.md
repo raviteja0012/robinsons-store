@@ -2,7 +2,17 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-08-17, on branch claude/pull-main-branches-atztoh (latest: the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/gifted-meitner-jhfql6 (latest: the money-type and region record round, below; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Money type and region record, 2026-10-24:
+- Money is numeric dollars and stays that way; integer cents is no longer planned. The
+  schema.sql header, ARCHITECTURE.md, the skill, data-model.md and the Deferred list below
+  now all say so. Comment and doc change only; no column changed.
+- Montreal is still unconfirmed. The x-vercel-id check could not run from the cloud
+  session (its proxy refuses outbound HTTPS to the store's domain, 403). Run it from any
+  normal terminal:
+  curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id
+  yul1 closes the item in VERIFICATION.md; anything else keeps it open.
 
 Production deploys stopped on 2026-08-13, found 2026-08-17:
 - Pushes to main have produced no production deployment since 2026-08-13. The live site is
@@ -412,7 +422,7 @@ A seven-dimension audit (store scoping, money gating, actor and audit integrity,
 - The owner command dashboard cancels stale queries on store switch and surfaces query errors instead of rendering zeros.
 
 ## Deferred (by design)
-- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; integer-cents money (before production hardening); the enterprise stack (see build spec section 8).
+- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; the enterprise stack (see build spec section 8).
 
 ## Run and deploy
 See RUNBOOK.md. Pushing to main auto-deploys to Vercel; each pull request gets a preview. The verification record and re-verification rules are in docs/VERIFICATION.md.

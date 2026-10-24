@@ -74,7 +74,7 @@ Every screen is a client component that reads through useActiveStore() and filte
 - API routes: `/api/extract` (Claude vision), `/api/ask` (context answer), `/api/reorder` (suggestions + summary), `/api/alerts` (daily due-date email, Resend, cron-guarded by x-cron-secret), `/api/import` (auto-detects bookings, schedule, or inventory workbooks), `/api/export` (full workbook export, owner and manager), `/api/admin/users` (service-role user management, owner and manager only, store-scoped). All of them resolve the caller through src/lib/serverMember.ts: enforced mode requires a signed-in member and queries run as the caller so RLS applies.
 
 ## Conventions
-Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as numeric dollars in the demo and integer cents before production.
+Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as numeric dollars (integer cents is not planned).
 
 App conventions to apply on every screen:
 - Multi-store: read through useActiveStore() and filter every query by the active store_id; stamp store_id on every insert. All chrome lives in AppShell: managers and owners get the grouped sidebar (Today, Money, Store, People, Property, Admin) from src/lib/nav.ts plus a topbar with View as, the bell, and Capture; staff get a four-item list; phones get a bottom tab bar and a More sheet. Screens never draw their own nav.
@@ -189,7 +189,7 @@ break:
 - Keep secrets out of the repo and out of chat. Env values go straight into Supabase and Vercel.
 
 ## Build sequence
-Phases 1-6 plus property, HR, compliance, multi-store, the auth cutover, signed-URL document storage, and the hard low-confidence gate are shipped; see docs/STATUS.md. Deferred: pgvector at scale, ML reorder, SMS, integer-cents money.
+Phases 1-6 plus property, HR, compliance, multi-store, the auth cutover, signed-URL document storage, and the hard low-confidence gate are shipped; see docs/STATUS.md. Deferred: pgvector at scale, ML reorder, SMS. Money stays numeric dollars; integer cents is not planned.
 
 ## Output and communication rules for this project
 - BLUF, bottom line up front, the military reporting standard (Army AR 25-50): the answer, result, or ask in the FIRST sentence, then only facts that change what the reader does next. Cut recaps, process narration, and anything already said once. Short and direct. No hedging or caveats unless asked. A status update is five lines or fewer; if it needs more, the extra lines must each earn a decision.
