@@ -32,7 +32,7 @@ export default function Ask() {
         body: JSON.stringify({ question: text, store_id: storeId })
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || data.error || "request failed");
+      if (!resp.ok) throw new Error(data.error || "request failed");
       setAnswer(data.answer || data.message || "No answer came back.");
     } catch (e: any) {
       setError(e.message);
@@ -73,7 +73,7 @@ export default function Ask() {
       {error && (
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
           <span className="chip chip-error">Error</span>
-          <p className="help" style={{ marginTop: 8 }}>{error}. The assistant needs ANTHROPIC_API_KEY set and the data loaded in Supabase.</p>
+          <p className="help" style={{ marginTop: 8 }}>{error}</p>
         </div>
       )}
 
