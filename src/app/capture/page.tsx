@@ -119,7 +119,7 @@ export default function Capture() {
       const resp = await fetch("/api/extract", {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ imageBase64: prepared.base64, mediaType: prepared.mediaType })
+        body: JSON.stringify({ imageBase64: prepared.base64, mediaType: prepared.mediaType, store_id: storeId })
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "extraction failed");

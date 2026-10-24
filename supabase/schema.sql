@@ -244,6 +244,52 @@ create table feedback (
 create index feedback_store_idx on feedback(store_id);
 create index feedback_status_idx on feedback(status);
 
+-- One row per AI model call, for the daily per-store cap (src/lib/aiUsage.ts). Metadata
+-- only: never the prompt, the store data sent with it, or the answer. Fresh installs get
+-- this here; existing databases get the identical table and function from
+-- supabase/ai_call.sql, which explains each column.
+create table ai_call (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references store(id),   -- multi-store
+  route text not null,          -- extract, ask, reorder, feedback-triage
+  model text,
+  outcome text not null check (outcome in ('ok','refused','cut_off','failed','capped')),
+  failure_kind text,            -- for failed: timeout, overloaded, bad_request, upstream
+  input_tokens integer,
+  output_tokens integer,
+  cache_read_tokens integer,
+  cache_write_tokens integer,
+  duration_ms integer,
+  created_at timestamptz not null default now()
+);
+create index ai_call_store_day_idx on ai_call(store_id, created_at);
+
+-- Today's AI calls for a store (Ontario calendar day), for the cap. Definer so a staff call
+-- counts the whole store without reading the owner-only rows; a signed-in caller always gets
+-- their own store. plpgsql so the auth_id branch, which this demo schema cannot take, is only
+-- planned when it runs. Capped rows never reached the model and do not count.
+create or replace function public.ai_calls_today(p_store_id uuid)
+returns integer
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_store uuid := p_store_id;
+begin
+  if auth.uid() is not null then
+    select u.store_id into v_store from public.app_user u where u.auth_id = auth.uid() limit 1;
+  end if;
+  return (
+    select count(*)::int from public.ai_call c
+    where c.store_id = v_store
+      and c.outcome <> 'capped'
+      and c.created_at >= date_trunc('day', now() at time zone 'America/Toronto') at time zone 'America/Toronto'
+  );
+end;
+$$;
+
 -- Payments engine: one atomic path every screen records through. Bodies reference tables
 -- created later in this file (activity_log); plpgsql resolves them at call time.
 

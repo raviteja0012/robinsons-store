@@ -141,6 +141,7 @@ export async function POST(req: NextRequest) {
 
     const result = await callClaude({
       route: "ask",
+      scope: { db, storeId },
       max_tokens: 1024,
       system,
       // Fenced so a note, a vendor comment, or the question itself cannot pass as an
@@ -155,6 +156,7 @@ ${question}
 </question>` }]
     });
     if (!result.ok) {
+      if (result.kind === "capped") return NextResponse.json({ error: failureMessage("capped") }, { status: 429 });
       return NextResponse.json({ error: failureMessage(result.kind) }, { status: result.kind === "refusal" ? 422 : 502 });
     }
     return NextResponse.json({ answer: plainText(result.text) });

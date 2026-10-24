@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
 
     const result = await callClaude({
       route: "reorder",
+      scope: { db, storeId },
       max_tokens: 1024,
       system,
       messages: [{ role: "user", content: `<store_data>
@@ -96,7 +97,7 @@ Summarize the likely reorders.` }]
     // Was HTTP 200 with the raw provider text, so the screen could not tell a failure from
     // an answer. The formula-based list on the screen still works either way.
     if (!result.ok) {
-      return NextResponse.json({ error: `${failureMessage(result.kind)} The formula-based list above still works.` }, { status: 502 });
+      return NextResponse.json({ error: `${failureMessage(result.kind)} The formula-based list above still works.` }, { status: result.kind === "capped" ? 429 : 502 });
     }
     return NextResponse.json({ answer: plainText(result.text) });
   } catch (err: any) {

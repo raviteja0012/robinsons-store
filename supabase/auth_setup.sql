@@ -128,6 +128,32 @@ begin
   end loop;
 end $$;
 
+-- ai_call (3a, its own block): store-scoped like the tables above but kept out of that array,
+-- which lets every member read. Any member's AI call writes a row for their own store; only
+-- the owner reads them; there is no update or delete policy, so the log is append-only for
+-- members, like activity_log. The daily cap counts through public.ai_calls_today, which runs
+-- as definer so a staff call still counts the whole store. Anonymous callers lose execute on
+-- it here: once login is on, every AI route already requires a signed-in member.
+do $$
+begin
+  if to_regclass('public.ai_call') is null then
+    raise notice 'auth_setup: table ai_call not found, skipping (rerun after creating it)';
+    return;
+  end if;
+  drop policy if exists owner_read on public.ai_call;
+  create policy owner_read on public.ai_call
+    for select
+    to authenticated
+    using (store_id = app_auth.my_store_id() and app_auth.my_role() = 'owner');
+  drop policy if exists member_insert_own_store on public.ai_call;
+  create policy member_insert_own_store on public.ai_call
+    for insert
+    to authenticated
+    with check (store_id = app_auth.my_store_id());
+  revoke execute on function public.ai_calls_today(uuid) from public, anon;
+  grant execute on function public.ai_calls_today(uuid) to authenticated;
+end $$;
+
 -- 3b. Child tables with no store_id of their own. Scope through the parent so a member only
 -- reaches rows that roll up to their store. Membership is enforced at the parent.
 

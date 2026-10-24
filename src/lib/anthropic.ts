@@ -11,6 +11,8 @@
 // No temperature or other sampling parameter is sent: current Claude models reject
 // non-default sampling params, and one rejected parameter would fail every call.
 
+import { overDailyCap, recordAiCall, type AiUsageScope } from "./aiUsage";
+
 export type ClaudeFailure =
   | "no_key"
   | "timeout"
@@ -18,7 +20,8 @@ export type ClaudeFailure =
   | "refusal"
   | "max_tokens"
   | "bad_request"
-  | "upstream";
+  | "upstream"
+  | "capped";
 
 export type ClaudeResult =
   | {
@@ -38,6 +41,9 @@ type CallOptions = {
   max_tokens: number;
   output_config?: unknown;
   timeoutMs?: number;
+  // The caller's database client and store, for the ai_call log and the daily cap
+  // (src/lib/aiUsage.ts). Left out, the call is neither logged to the table nor capped.
+  scope?: AiUsageScope;
 };
 
 // 429 is rate limited, 529 is overloaded, the 5xx are transient on the API side. A 400 or
@@ -60,6 +66,12 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
   const started = Date.now();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, kind: "no_key", detail: "ANTHROPIC_API_KEY is not set", model, ms: 0 };
+  if (await overDailyCap(opts.scope, opts.route)) {
+    const capped: ClaudeResult = { ok: false, kind: "capped", detail: "daily cap reached", model, ms: 0 };
+    logCall(opts.route, capped);
+    await recordAiCall(opts.scope, opts.route, capped, null);
+    return capped;
+  }
 
   const body = JSON.stringify({
     model,
@@ -122,11 +134,13 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
             usage: data.usage || null
           };
     logCall(opts.route, result);
+    await recordAiCall(opts.scope, opts.route, result, data.usage);
     return result;
   }
 
   const failed: ClaudeResult = { ok: false, ...last, model, ms: Date.now() - started };
   logCall(opts.route, failed);
+  await recordAiCall(opts.scope, opts.route, failed, null);
   return failed;
 }
 
@@ -154,6 +168,8 @@ export function failureMessage(kind: ClaudeFailure): string {
       return "The AI helper would not answer this one. Try rewording it, or tell the owner.";
     case "max_tokens":
       return "The answer was too long to finish. Ask a narrower question.";
+    case "capped":
+      return "The AI helper has used today's limit for this store. It starts again tomorrow, and the owner can raise the limit in the settings.";
     case "bad_request":
     case "upstream":
     default:
