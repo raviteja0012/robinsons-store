@@ -460,6 +460,13 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- Capture amber rule, 2026-10-24 (branch capture-staff-cost, see VERIFICATION.md): an amber
+  (low-confidence) line now clears only when a person retypes its unit cost; fixing the
+  description or qty leaves it amber, and the box covers the rest. Staff never see the cost, so
+  their amber lines are saved with no unit cost and the confidence as read, for the owner to
+  enter. Rules in src/lib/captureLines.ts, checked by scripts/extractvalidate-check in CI. No
+  schema or trigger change. Left open: no screen yet edits a saved receiving line, so the owner
+  has nowhere in the app to enter that cost, and the feed total counts the line as zero.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
