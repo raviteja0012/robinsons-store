@@ -19,7 +19,8 @@ data live", and one more thing that breaks in August when it matters most.
 
 ## Two open risks, both found 2026-08-12
 
-These outrank every feature question below.
+These outrank every feature question below. Both are closed by moving the accounts to the
+store, in docs/HANDOVER.md, which also registers who holds each account today.
 
 ### 1. Vercel Hobby does not license this app
 
@@ -57,9 +58,10 @@ Point-in-time recovery is a paid add-on on top (about $100 a month for 7 days), 
 it replaces daily backups rather than adding to them. PITR is overkill at this volume; daily
 backups are not.
 
-**Confirm which plan the production project is on.** If it is Free, the store's vendors,
-invoices, payments, HR records and uploaded invoice images have no automatic backup, against
-a six-year Canadian record-keeping requirement. Supabase Pro is $25 a month.
+**Confirmed 2026-10-18: the organization is on Free.** So the store's vendors, invoices,
+payments, HR records and uploaded invoice images have no automatic backup, against a six-year
+Canadian record-keeping requirement. Supabase Pro is $25 a month. docs/HANDOVER.md Step 2
+turns it on as part of moving the account to the store.
 
 The app's own Export screen (one workbook, a tab per table) is a real mitigation and worth
 running on a schedule regardless, but it is a manual export, not a restore path: it does not
@@ -70,12 +72,13 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 | Service | Does what | Plan | Notes |
 |---|---|---|---|
 | **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby, see risk 1** | Project `robinsons-store`. Preview deploys per PR are how the practice site works |
-| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Confirm, see risk 2** | ca-central Toronto. RLS per store per role. A second project is planned for dev per ENVIRONMENTS.md |
+| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free, confirmed 2026-10-18, see risk 2** | ca-central Toronto. RLS per store per role. A second project is planned for dev per ENVIRONMENTS.md |
 | **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | US-hosted. Default model claude-sonnet-5. $5 to $40 a month by volume |
 | **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set |
 | **Vianet** | Domain robinsonsgeneralstore.ca, 5 of 10 mailboxes, store internet | About $10/mo | Domain expires 2026-10-16, auto-renew on. No self-serve DNS editor, changes are a phone call |
-| **GitHub** | Code, and five Actions workflows | Free | `ci`, `jira-autopilot`, `migrate`, `post-deploy-watch`, `promote` |
-| **Jira** | The board the autopilot builds from | Free tier | See docs/JIRA_AUTOPILOT.md and docs/LOOP_ENGINEERING.md |
+| **GitHub** | Code, and eleven Actions workflows | Free | `ci`, `migrate`, `post-deploy-watch`, `promote`, `rls-audit`, `slack-announce`, `slack-autopilot`, `slack-lifecycle`, `vercel-diagnose`, `vercel-protect`, and `jira-autopilot` (parked) |
+| **Slack** | Build requests in, watchdog and migration messages out | Free | Bot app from docs/slack-app-manifest.yml plus an incoming webhook. See docs/SLACK_AUTOPILOT.md |
+| **Jira** | Switched off 2026-08-12 | None | The autopilot is parked, not deleted. See docs/JIRA_AUTOPILOT.md |
 | **AgentMail** | Inbound programmatic inbox | Marketplace, free tier | Installed 2026-08-12, **not yet wired in**. Chosen mechanism for email invoice intake, see DOMAIN_EMAIL.md section 4 |
 
 ### Vercel features adopted

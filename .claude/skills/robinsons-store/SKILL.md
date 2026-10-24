@@ -1,6 +1,6 @@
 ---
 name: robinsons-store
-description: Build, extend, debug, and operate the entire Robinsons General Store platform, a capture-first store operations app for a Canadian general store. This covers the whole build, not just one area: the receiving and capture loop, inventory and counts, the vendor and order ledger, invoices and payments and due-date alerts, retail pricing and price signs, property maintenance, HR, the Ontario pesticide licence and its expiry, the tribal-knowledge base, the document-extraction and reorder and ask-your-store AI agents, the Postgres schema and its row-level security, Supabase Auth and login, the color and form design system, Canadian tax and privacy rules, the Vercel deploy, and the common runtime errors and how to fix them. Use it whenever the work touches the Robinsons app, Ravikiran's store, the receiving screen, the login or auth, the Supabase schema, or any store feature, even without naming this skill. Apply the locked architecture, the invariants, and the output rules here on every task.
+description: Build, extend, debug, and operate the entire Robinsons General Store platform, a capture-first store operations app for a Canadian general store. This covers the whole build, not just one area: the receiving and capture loop, inventory and counts, the vendor and order ledger, invoices and payments and due-date alerts, retail pricing and price signs, property maintenance, HR, the Ontario pesticide licence and its expiry, the tribal-knowledge base, the document-extraction and reorder and ask-your-store AI agents, the Postgres schema and its row-level security, Supabase Auth and login, the color and form design system, Canadian tax and privacy rules, the Vercel deploy, and the common runtime errors and how to fix them. Use it whenever the work touches the Robinsons app, Ravikiran's store, the receiving screen, the login or auth, the Supabase schema, or any store feature, even without naming this skill. Also use it for writing or reviewing anything in docs/ (handover, decision records, onboarding, the agents register) and for reviewing any change before merge: references/standards.md holds the documentation and review standard. Apply the locked architecture, the invariants, the standards, and the output rules here on every task.
 ---
 
 # Robinsons General Store, Store Operations Platform
@@ -9,7 +9,7 @@ description: Build, extend, debug, and operate the entire Robinsons General Stor
 A capture-first operations app for a Canadian brick-and-mortar general store with heavy summer seasonality. The store currently runs on Excel, scribbled invoices, and Gmail subject-line search. The thesis: turn paper and the owner's head knowledge into a structured, attributed, searchable system simple enough for untrained seasonal staff, so the owner can hire a manager and run the store remotely.
 
 Store facts:
-- Robinsons General Store, the general store Ravikiran acquired, in Dorset, Ontario, P0A 1E0 per the pesticide licence at 1062 Main Street. Lakeside Dry Goods and L_S and Dry goods are a section inside it, not the store name. Confirm the operating address, an earlier note mentioned Atikokan. Tax is unaffected, both are Ontario at 13 percent HST.
+- Robinsons General Store, the general store Ravikiran acquired, at 1061 Main St, Dorset, Ontario, P0A 1E0, owned by 1000476363 ONTARIO INC. (Vianet account records, docs/DOMAIN_EMAIL.md; the pesticide licence shows 1062; the Vianet service address settled it as 1061). Lakeside Dry Goods and L_S and Dry goods are a section inside it, not the store name. Tax: Ontario, 13 percent HST.
 - Owner is Ravi Kiran. Expert in Hardware, only high-level knowledge of the other departments, which is the reason tribal-knowledge capture matters.
 - Departments, in the owner's required sequence (src/lib/departments.ts, applied to EVERY department list and dropdown): DryGoods & Lakeside, Hardware, Grocery, Property Maintenance, Bakery, Meat, Produce, Payrolls & Taxes, Others. Clothing and Gifts are sections inside DryGoods & Lakeside; Garden Center sits under Hardware. Chip Stand and Checkouts exist from earlier rounds and sort after the nine; do not delete them without asking.
 - Sells regulated pesticides under an Ontario vendor licence with a tracked expiry.
@@ -74,7 +74,7 @@ Every screen is a client component that reads through useActiveStore() and filte
 - API routes: `/api/extract` (Claude vision), `/api/ask` (context answer), `/api/reorder` (suggestions + summary), `/api/alerts` (daily due-date email, Resend, cron-guarded by x-cron-secret), `/api/import` (auto-detects bookings, schedule, or inventory workbooks), `/api/export` (full workbook export, owner and manager), `/api/admin/users` (service-role user management, owner and manager only, store-scoped). All of them resolve the caller through src/lib/serverMember.ts: enforced mode requires a signed-in member and queries run as the caller so RLS applies.
 
 ## Conventions
-Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as numeric dollars (integer cents is not planned).
+Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as `numeric` dollars (BUILT: every amount column in supabase/schema.sql); integer cents is not planned (decided 2026-10-24).
 
 App conventions to apply on every screen:
 - Multi-store: read through useActiveStore() and filter every query by the active store_id; stamp store_id on every insert. All chrome lives in AppShell: managers and owners get the grouped sidebar (Today, Money, Store, People, Property, Admin) from src/lib/nav.ts plus a topbar with View as, the bell, and Capture; staff get a four-item list; phones get a bottom tab bar and a More sheet. Screens never draw their own nav.
@@ -96,7 +96,7 @@ How identity resolves:
 - useEffectiveActor(users, actorId): returns the actor id to write with and the role to gate on. In enforced mode it is always the signed-in member regardless of any dropdown. In demo mode it is the picked actor.
 - useCurrentRole(): the role for screens with no dropdown (dashboard, reports). Defaults to owner in demo mode until a staff actor is picked, so the demo shows full visibility.
 
-Turning on real auth (the production cutover, about five minutes, in RUNBOOK.md "Turn on login"): enable Email auth, create one account per role with the SAME email as the seeded member (owner@/manager@/staff@/lead@robinsons.demo), run auth_setup.sql (it links every account to its member automatically by email, replaces the dev policies with per-store per-role ones, and locks the documents bucket to signed-in users), then set NEXT_PUBLIC_REQUIRE_AUTH=true in Vercel and redeploy. Login cannot be the compiled default because the accounts have to exist first and only the owner can create them in their Supabase; the security is fully built and ready, the switch-on is the owner's five-minute step.
+Real auth is ON in production (read live 2026-10-18: the per-store per-role policies from auth_setup.sql are applied, the documents bucket is private, one login account exists). For a NEW database the cutover is still the five-minute RUNBOOK.md "Turn on login" step: enable Email auth, create the accounts, run auth_setup.sql, set NEXT_PUBLIC_REQUIRE_AUTH=true and redeploy. Staff logins in production are made from the Team page once SUPABASE_SERVICE_ROLE_KEY is set in Vercel.
 
 Storage security: the app reads document thumbnails through docUrls() in src/lib/docs.ts, which creates signed, expiring URLs and falls back to the public URL only for the open demo bucket. Uploads require a policy on storage.objects or every capture fails with "new row violates row-level security policy". schema.sql opens the bucket for the demo (anon write, public-read); auth_setup.sql makes the bucket PRIVATE and narrows access to authenticated members, so in production no permanent public link to an invoice photo exists. Never reintroduce getPublicUrl as the primary read path.
 
@@ -135,7 +135,10 @@ Breaking any of these is a regression even if the build passes.
 ## AI agents (all shipped)
 1. Document extraction (/api/extract). Sends the image or PDF to Claude vision with a strict JSON-only contract (vendor, invoice_date, notes, line_items each with description, qty, unit_cost, retail_price_note, confidence), validates it, and shows a confirm screen that flags low-confidence fields and an order-vs-invoiced warning a human acknowledges. Never auto-post low-confidence amounts.
 2. Reorder suggestions (/reorder and /api/reorder). Formula-based from the order ledger, the counts, and the reorder knowledge notes, with an optional Claude summary. Dual-season demand and ML are deferred until a clean season of sales data exists. The human decides.
-3. Ask-your-store (/ask and /api/ask). Answers from the store's own notes, vendors, and invoices passed as context, naming the source. pgvector is the deferred upgrade at scale. This is the remote-oversight tool for departments the owner is not expert in.
+3. Ask-your-store (/ask and /api/ask). Answers from the store's own notes, vendors, and invoices passed as context, naming the source. pgvector is the deferred upgrade at scale. This is the remote-oversight tool for departments the owner is not expert in. It also logs "log this issue: ..." into Suggestions, deterministically and attributed.
+4. Suggestion screenshot reader (/api/feedback-triage). Describes a screenshot attached to an owner suggestion in under 120 words of plain text, so the developer digest carries it.
+
+docs/AGENTS.md is the register of every agent, these four and the build-side ones (Slack autopilot, the reviewer agents, the tier classifier, the watchdog), with their guardrails and whose key each runs on. Update it in the same change as any agent.
 
 Hosting note: the Anthropic API is US-hosted, fine for non-personal vendor invoices. Prefer Canadian-region services for any personal data.
 
@@ -191,6 +194,14 @@ break:
 ## Build sequence
 Phases 1-6 plus property, HR, compliance, multi-store, the auth cutover, signed-URL document storage, and the hard low-confidence gate are shipped; see docs/STATUS.md. Deferred: pgvector at scale, ML reorder, SMS. Money stays numeric dollars; integer cents is not planned.
 
+## Documents, decisions and reviews
+The full standard is references/standards.md; read it before writing anything in docs/ or reviewing a change. The short form:
+- Every document opens with a status line (DRAFT, PROPOSED, ACCEPTED or SUPERSEDED, date, owner, approver) and ends with a basis footer: claims checked, confirmed, killed, sources.
+- Every factual claim carries a tag: [R path:line], [V-run], [V-src], [D: confirm with a named person], [J-open] with a kill condition, [Q: owner]. Decisions never rest on [J-open].
+- Every capability is BUILT, PARTIAL, SCAFFOLDED or TARGET, and present tense is for BUILT only. The stale lines this caught on 2026-10-24 (an auth cutover described as still to do, money described as cents) are the reason.
+- One decision per record in docs/adr/, with the alternatives rejected. Accounts and keys live in the docs/HANDOVER.md register; every new service or secret gets a row there in the same change.
+- Before merge, name the reviewers the change needs: money-reviewer for amounts and status, invariant-auditor for tables, queries, screens and routes, a security read for login, roles and secrets.
+
 ## Output and communication rules for this project
 - BLUF, bottom line up front, the military reporting standard (Army AR 25-50): the answer, result, or ask in the FIRST sentence, then only facts that change what the reader does next. Cut recaps, process narration, and anything already said once. Short and direct. No hedging or caveats unless asked. A status update is five lines or fewer; if it needs more, the extra lines must each earn a decision.
 - No em dashes anywhere.
@@ -217,5 +228,9 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - RUNBOOK.md, the go-live steps and the "Turn on login" production cutover.
 - references/data-model.md, the entity list and database conventions.
 - references/design-tokens.md, the exact color values, status mapping, and form rules.
+- references/standards.md, how documents, decision records and reviews are written and checked.
+- docs/AGENTS.md, every AI agent in the app and in the build loop, and whose key it runs on.
+- docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, who owns each account and the move to store ownership.
+- ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
 - robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.

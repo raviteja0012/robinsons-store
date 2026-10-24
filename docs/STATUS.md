@@ -2,15 +2,74 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/gifted-meitner-jhfql6 (latest: the money-type and region record round, below; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/gifted-meitner-jhfql6 (latest: the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Money type and region record, 2026-10-24:
 - Money is numeric dollars and stays that way; integer cents is no longer planned. The
   schema.sql header, ARCHITECTURE.md, the skill, data-model.md and the Deferred list below
-  now all say so. Comment and doc change only; no column changed.
-- Montreal confirmed 2026-10-24. From a normal terminal, x-vercel-id on
-  app.robinsonsgeneralstore.ca/api/health read cle1::yul1::nlgbd-1792860014362-0a78d22ddff1:
-  edge cle1, function region yul1. The item is closed in VERIFICATION.md.
+  now all say so, and ARCH-09 in ARCHITECTURE.md is closed with that decision. Comment and
+  doc change only; no column changed.
+- Montreal: confirmed the same day and recorded in the handover entry below and in
+  VERIFICATION.md (function region yul1).
+
+The handover written to the standard, 2026-10-24:
+- docs/HANDOVER.md now names exactly what the store will own and under which names (team,
+  organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
+  progress table and open items HO-01 to HO-07. ADR-001 records the decision itself for
+  Ravi Kiran to approve. Nothing has moved yet: read live today, Supabase is still on Free and
+  the Vercel project is still on the developer's personal team.
+- docs/AGENTS.md registers every agent: four inside the app for staff (invoice reader, Ask the
+  store, reorder summary, suggestion screenshot reader) and the build side (Slack autopilot,
+  lifecycle, tier classifier, watchdog, two reviewer agents, the stop hook, parked Jira).
+- ONBOARDING.md holds the forms for the next team member: what we need from them, the access
+  each service grants and why, and their first week.
+- The documentation and review standard now lives inside the existing `robinsons-store`
+  skill as references/standards.md, rather than as a new skill. Applying it found five stale
+  statements, now fixed: the skill described the login cutover as still to do, gave 1062 Main
+  St, described money as integer cents, listed three agents of four, and CLAUDE.md said AI
+  routes run at low temperature when none sets a temperature.
+- docs/owner-notes/handover-call-agenda.md is the run sheet for the handover call.
+- docs/ARCHITECTURE.md rebuilt to the standard: numbered sections, nine routes not four,
+  context and container diagrams with the automation and the custom domain, the capture
+  sequence corrected (the file uploads before the database writes, and the writes are
+  separate requests, not one transaction), the four invoice statuses as the payment engine
+  derives them, and an open items table. It found two access gaps to close before staff
+  logins are made: dollar amounts are hidden from staff by the app and API only, because the
+  database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
+  are readable by any signed-in member of any store (ARCH-04, harmless while there is one
+  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
+
+The handover is prepared, 2026-10-18:
+- docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
+  the order to move each one to the store, with the full list of secrets and variables and
+  the checks that prove the move worked. The store already owns its domain; hosting,
+  database, code, the AI key and the Slack app are still on accounts the developer opened.
+- Read live the same day, not copied from older docs: Supabase is on **Free** (no backups;
+  PLATFORM.md risk 2 is now confirmed, not suspected), Vercel is on a personal **Hobby** team
+  (risk 1), and the last production deploy was the merge of PR #54 on 2026-09-01, Ready.
+- Two gates turned out to be done already, read from the live database: `edit_delete.sql`
+  is applied, and so is the login cutover in `auth_setup.sql` (locked per-store policies,
+  private documents bucket). One login account exists; staff logins are still to be made.
+- Stale records corrected: SLACK_WEBHOOK_URL was listed as still needed though it has posted
+  to Slack since 2026-08-17; the CNAME for the custom domain was still listed as an action
+  though it has been live since 2026-08-11; PLATFORM.md still listed five workflows and an
+  active Jira board; RUNBOOK.md still named a deleted branch.
+- Open and urgent: the domain was due to renew 2026-10-16 and nobody has seen it renew. The
+  watchdog would not catch a lapse while `PRODUCTION_URL` is unset. Check the Vianet panel.
+- The dev environment is still not stood up (no `develop` branch). HANDOVER.md Step 6 builds
+  it straight onto the store's accounts, so it is done after the move, not before.
+
+The dev guard, 2026-09-01 (PR #54, recorded here late):
+- Before any script runs against dev, `.github/scripts/distinct-databases.mjs` compares
+  which Supabase project each connection string belongs to and stops the run if they are
+  the same one. A pasted string in the wrong box would otherwise put invented DEV vendors
+  into the store's real directory and run every dev migration on the live ledger, silently.
+- Where it cannot tell, it says it did not check rather than claiming a match. The case that
+  matters most is the same project written two ways (session pooler on one side, direct
+  connection on the other): different text, same database. Sixteen cases pin it.
+- The same branch ran the whole dev chain on a real Postgres 16 for the first time:
+  schema.sql, seed.sql and seed_dev.sql apply clean, seed_dev.sql is safe to re-run, and all
+  nine migrations in run-order.txt converge with the fresh-install path.
 
 Production deploys stopped on 2026-08-13, found 2026-08-17:
 - Pushes to main have produced no production deployment since 2026-08-13. The live site is
@@ -359,9 +418,14 @@ Cross-cutting
 - Reads scoped and writes stamped by the active store. Every write records who and when in activity_log. CAD throughout, Ontario 13 percent HST from a tax table. Daily Resend email of due invoices (off until the key is set). Auth ships behind `NEXT_PUBLIC_REQUIRE_AUTH` with per-store per-role policies in auth_setup.sql; demo mode stays open with the Acting-as picker. Money fields hidden from staff in both modes.
 
 ## Gates before the product is real (in order)
-1. Owner: run `supabase/edit_delete.sql`, then merge PR #8.
-2. Owner: turn on login (RUNBOOK.md "Turn on login", about five minutes).
-3. Owner: set the Resend key, alert addresses, and cron secret so due-date emails send.
+1. DONE, read from the live database 2026-10-18: `edit_delete.sql` is applied (`voided_at`
+   on 15 tables) and PR #8 merged long ago.
+2. DONE on the database side, read 2026-10-18: `auth_setup.sql` is applied (21 locked
+   per-store policies, no open demo policies, private `documents` bucket). One login account
+   exists, so staff logins are still to be made, from the Team page once
+   `SUPABASE_SERVICE_ROLE_KEY` is set in Vercel.
+3. Owner: set the Resend key and alert addresses so due-date emails send. Do it under the
+   store's own Resend account (docs/HANDOVER.md Step 5).
 4. Owner: delete or redact the Lawson "PO Details.docx" in Drive; it holds a full credit card number in plain text. Never import it.
 
 Both build gates shipped 2026-07-07 on the owner's make-it-production-ready instruction:
@@ -395,6 +459,15 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 - Role and audit seams: the payments screen fails closed for an unknown role (it showed full dollar figures while the role was still resolving); reconcile runs only on an editor's page load (a staff view was writing status changes); every money write on the payout screens requires a known actor; voidRow/deleteRow no longer write null-actor audit rows.
 
 ## Open items (polish, tractable)
+- AI call hardening, 2026-10-24 (branch ai-call-hardening, see VERIFICATION.md): all four AI
+  routes go through src/lib/anthropic.ts (25s timeout, 45s on extract, two retries on
+  429/529/5xx, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
+  messages only; provider detail goes to the function log as metadata, never content. Reorder
+  failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
+  confidence 0. Store data, questions and notes are fenced as data in every prompt.
+  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
+  for the Ask system prompt.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.

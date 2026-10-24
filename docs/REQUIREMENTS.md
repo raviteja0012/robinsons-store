@@ -158,6 +158,20 @@ QUEUED (agreed, not built):
 - Price-check activity list and notification (grocery).
 
 OPEN (waiting on the owner):
+- Move every account to the store (asked 2026-10-18, "prepare for ownership transfer and
+  account set up"). The store already owns its domain; hosting, database, code, AI key and
+  the Slack app still sit on accounts the developer opened. docs/HANDOVER.md is the register
+  and the runbook: a store admin mailbox first, then Supabase to the store and onto Pro
+  (closes PLATFORM.md risk 2; the organization was confirmed on Free 2026-10-18), Vercel to a
+  store team on Pro (closes risk 1), the repository to a store GitHub organization, every key
+  reissued under the store, and the dev environment built straight onto the store's
+  accounts so it never needs moving. About $60 to $95 a month afterwards. Needs the owner
+  for every sign-up and card; the developer does the transfers.
+- Confirm the domain renewed. robinsonsgeneralstore.ca was due on 2026-10-16 with auto-renew
+  confirmed on, but the renewal itself has not been seen, and the watchdog may be checking
+  the vercel.app address, which would not notice a lapse. Check the Vianet panel, record the
+  new expiry in docs/DOMAIN_EMAIL.md, and set the GitHub variable PRODUCTION_URL to
+  https://app.robinsonsgeneralstore.ca.
 - DONE, verified 2026-08-11: run supabase/vendor_ordering_fields.sql. This was recorded as
   failing since 2026-08-06, with the vendor ordering fields unable to save. The live health
   check now answers ok:true with "vendor columns present" passing, so the script has been
@@ -185,9 +199,10 @@ OPEN (waiting on the owner):
   credits". It was not. Its model step was gated behind finding a ticket; the waste was 96 sweeps a day that each installed dependencies before checking, about 2,880 Actions minutes a month against a 2,000-minute allowance.) The board's two other jobs were free HTTP
   and are re-homed: the health watchdog now posts to Slack when the site's answer changes,
   and promotion to production is now a person running the promotion workflow rather than a
-  ticket moving to Approved. The working channel going forward is Slack. NEEDED to finish it:
-  SLACK_WEBHOOK_URL as a repository secret, or the watchdog logs what it would have said and
-  stays quiet.
+  ticket moving to Approved. The working channel going forward is Slack. SLACK_WEBHOOK_URL is set: on 2026-08-17 the
+  merge of PR #46 applied a migration and posted its production-success message to Slack,
+  which only happens through that secret. (Corrected 2026-10-18; this line said it was still
+  needed.)
 - Let the automation open its own pull requests (still worth doing for the promotion
   workflow, which opens the develop-to-main pull request): Settings, Actions, General, Workflow
   permissions, "Allow GitHub Actions to create and approve pull requests". Today GitHub
@@ -255,9 +270,9 @@ OPEN (waiting on the owner):
   Suggestions.
 - Domain panel actions (details and order in docs/DOMAIN_EMAIL.md): repoint or delete the
   stories@ alias (it forwards store mail to the previous owners' personal hotmail);
-  archive then retire joanne@; create invoices@ (unblocks email intake); ask Vianet hosting
-  to add the CNAME for app.robinsonsgeneralstore.ca so the app lives on the store's own
-  domain. (An earlier version of this line said three mailboxes were full and bouncing.
+  archive then retire joanne@; create invoices@ (unblocks email intake). The CNAME for
+  app.robinsonsgeneralstore.ca is no longer an action: it has been live and verified since
+  2026-08-11. (An earlier version of this line said three mailboxes were full and bouncing.
   That was wrong: the quota is 1000MB, not 250MB, and the fullest box is at 26 percent.
   Nothing is bouncing and nothing needs clearing.)
 - Departments&WorkFlow.xlsx (OneDrive), sheet Lakeside&DryGoodsPaymentRecordF: upload it so
