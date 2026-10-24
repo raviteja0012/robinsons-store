@@ -396,6 +396,17 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- Ask grounding and caching, 2026-10-24 (branch ai-ask-grounding-cache, see VERIFICATION.md):
+  two of the left-for-later items above are done. Ask withholds any answer that names a vendor
+  not in the store data, the app guide, or the question, and shows "Not confirmed" with a plain
+  message instead (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The model wraps
+  vendor names in [[ ]] for the check; the brackets never reach the screen. Unwrapped names are
+  caught only with a legal suffix or after "vendor", "supplier", or "order from", so a vendor
+  named with neither still gets through. Ask now caches its prompt: the rules and app guide
+  (roughly 1,600 to 2,000 tokens, over the 1,024 minimum for claude-sonnet-5) and the store
+  data, which repeats for the same store and role until a record changes. The function log
+  carries cache_creation_input_tokens and cache_read_input_tokens. Left: confirm reads are
+  non-zero on a preview with two questions a minute apart.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
