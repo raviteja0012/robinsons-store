@@ -211,7 +211,7 @@ Every name the code and workflows read [V-run, search of `process.env` in `src/`
 ## Proof the move worked
 
 - [ ] `https://app.robinsonsgeneralstore.ca/api/health` answers `ok: true`.
-- [ ] `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id` starts with `yul1`.
+- [ ] `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id` shows `yul1` as the second field: the header reads `<edge>::<function region>::<id>`, and the first field is the edge nearest the caller (before the move, 2026-10-24: `cle1::yul1::...`).
 - [ ] A merge to main produces a production deploy on the **store's** Vercel team.
 - [ ] Actions, Apply database scripts, run by hand: the gate prints a non-zero secret length.
 - [ ] Actions, "Say something in Slack", posts in the channel.

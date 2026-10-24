@@ -29,7 +29,7 @@ The handover written to the standard, 2026-10-24:
   logins are made: dollar amounts are hidden from staff by the app and API only, because the
   database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
-  store). It also found that nothing runs the tier classifier now that Jira is parked.
+  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and

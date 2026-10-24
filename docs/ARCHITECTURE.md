@@ -122,11 +122,11 @@ sent, on purpose, because current models reject non-default sampling; text answe
 through `plainText()` [R src/app/api/ask/route.ts:39, 152, 166] [R src/app/api/reorder/route.ts:23, 110]
 [R src/app/api/feedback-triage/route.ts:38, 86]. BUILT.
 
-Region: every route asks for Montreal (`yul1`) in code, but that export was found to have no
-effect on this plan; the developer set Function Region to Montreal in the Vercel dashboard on
-2026-08-17 [R docs/STATUS.md:59-64, 74-78]. PARTIAL. That production now runs in Montreal is
-[J-open: killed if `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health`
-shows an `x-vercel-id` starting `iad1`]. This session could not reach the site to check.
+Region: every route asks for Montreal (`yul1`) in code, and the developer set Function Region to Montreal in the Vercel dashboard on 2026-08-17 [R docs/STATUS.md:101-102]. BUILT:
+production runs in Montreal [V-run, `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health`, `x-vercel-id: cle1::yul1::...`, 2026-10-24].
+The header reads `<edge>::<function region>::<id>`, so the region is the second field; the first is the Vercel edge nearest the caller and varies.
+Whether the code export alone would also work is unknown: the August readings of `iad1` that
+called it a no-op did not record which field they read [R docs/STATUS.md:85].
 
 ## 3. The capture loop
 
@@ -377,8 +377,8 @@ not yet at the database (ARCH-03).
   [R src/app/api/reorder/route.ts:44-46]. BUILT.
 - Canadian regions: records and invoice images live in Toronto; invoice images go to
   Anthropic in the US to be read; the owner was told this in writing
-  [R docs/owner-notes/store-app-infrastructure.html:470-517]. Function processing in Canada
-  depends on the Montreal setting in section 2 (ARCH-01).
+  [R docs/owner-notes/store-app-infrastructure.html:470-517]. Function processing runs in
+  Montreal (section 2; ARCH-01 closed 2026-10-24).
 
 ## 8. What is deliberately not here
 
@@ -403,7 +403,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 
 | ID | Item | Owner | Blocking? |
 |---|---|---|---|
-| ARCH-01 | Montreal function region set 2026-08-17, never confirmed by the `x-vercel-id` check | The developer | No for the app; yes for the written Canada promise |
+| ARCH-01 | CLOSED 2026-10-24: Montreal function region confirmed, `x-vercel-id` second field reads `yul1` | The developer | No |
 | ARCH-02 | `NEXT_PUBLIC_REQUIRE_AUTH` production value not read this session | The developer | No |
 | ARCH-03 | Money is hidden from staff in the UI and API only; database policies are store-scoped, not role-scoped | The developer | Yes, before staff logins are made |
 | ARCH-04 | `documents` bucket open to any signed-in member, not scoped by store | The developer | No while there is one store |
@@ -433,4 +433,6 @@ capture, overdue and vendor pages, `vercel.json`, nine workflow files and the cl
 `.claude/settings.json`, CLAUDE.md, the robinsons-store skill, and docs PLATFORM, AGENTS,
 HANDOVER, ENVIRONMENTS, LOOP_ENGINEERING, STATUS, README and the owner infrastructure note;
 the eight killed are the six stale statements this rewrite replaces, the old diagram's upload
-after the database writes, and tier A self-merge in the live Slack loop.
+after the database writes, and tier A self-merge in the live Slack loop. Added the same day
+by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
+curl of the health route.

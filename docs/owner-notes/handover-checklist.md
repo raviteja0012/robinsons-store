@@ -194,7 +194,10 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
 ## Task 8. Prove it worked (10 minutes)
 
 - [ ] 8.1 https://app.robinsonsgeneralstore.ca/api/health answers `ok: true`.
-- [ ] 8.2 `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id` starts with `yul1`.
+- [ ] 8.2 `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id`
+      shows `yul1` as the **second** field. The header reads `<edge>::<function region>::<id>`;
+      the first field is the Vercel edge nearest whoever runs the curl and can be anything.
+      Before the move, on 2026-10-24, it read `cle1::yul1::...`: a pass.
 - [ ] 8.3 GitHub, Actions, Apply database scripts, Run workflow: the gate prints a non-zero length.
 - [ ] 8.4 GitHub, Actions, Post-deploy watch, Run workflow: green.
 - [ ] 8.5 RAVI signs in to the app as owner and sees everything.
