@@ -387,7 +387,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 - Role and audit seams: the payments screen fails closed for an unknown role (it showed full dollar figures while the role was still resolving); reconcile runs only on an editor's page load (a staff view was writing status changes); every money write on the payout screens requires a known actor; voidRow/deleteRow no longer write null-actor audit rows.
 
 ## Open items (polish, tractable)
-- AI call hardening, 2026-10-17 (branch ai-call-hardening, see VERIFICATION.md): all four AI
+- AI call hardening, 2026-10-24 (branch ai-call-hardening, see VERIFICATION.md): all four AI
   routes go through src/lib/anthropic.ts (25s timeout, 45s on extract, two retries on
   429/529/5xx, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
   messages only; provider detail goes to the function log as metadata, never content. Reorder
