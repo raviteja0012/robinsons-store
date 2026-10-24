@@ -2,7 +2,25 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-18, on branch claude/review-pending-requests-43g9hk (latest: the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+The handover written to the standard, 2026-10-24:
+- docs/HANDOVER.md now names exactly what the store will own and under which names (team,
+  organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
+  progress table and open items HO-01 to HO-07. ADR-001 records the decision itself for
+  Ravi Kiran to approve. Nothing has moved yet: read live today, Supabase is still on Free and
+  the Vercel project is still on the developer's personal team.
+- docs/AGENTS.md registers every agent: four inside the app for staff (invoice reader, Ask the
+  store, reorder summary, suggestion screenshot reader) and the build side (Slack autopilot,
+  lifecycle, tier classifier, watchdog, two reviewer agents, the stop hook, parked Jira).
+- ONBOARDING.md holds the forms for the next team member: what we need from them, the access
+  each service grants and why, and their first week.
+- The documentation and review standard now lives inside the existing `robinsons-store`
+  skill as references/standards.md, rather than as a new skill. Applying it found five stale
+  statements, now fixed: the skill described the login cutover as still to do, gave 1062 Main
+  St, described money as integer cents, listed three agents of four, and CLAUDE.md said AI
+  routes run at low temperature when none sets a temperature.
+- docs/owner-notes/handover-call-agenda.md is the run sheet for the handover call.
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
