@@ -24,7 +24,7 @@ current Claude models reject non-default sampling settings [R `src/app/api/extra
 | **Ask the store** | Answers questions from the store's own notes, vendors and invoices, with citations; also logs "log this issue: ..." straight into Suggestions | `/api/ask` [R `src/app/api/ask/route.ts:39`] | Dollar data withheld from roles that cannot see money [R `:36`, `:91`]; issue logging is deterministic, verbatim, attributed and only for signed-in members [R `:95-96`]; answer stripped to plain text [R `:166`] | BUILT |
 | **Reorder summary** | Turns the formula-based reorder list into a short plain-language summary | `/api/reorder` [R `src/app/api/reorder/route.ts:23`] | Money roles only once login is enforced [R `:33`]; plain text [R `:110`] | BUILT |
 | **Suggestion screenshot reader** | Describes a screenshot attached to an owner suggestion, so the developer digest carries it as text | `/api/feedback-triage` [R `src/app/api/feedback-triage/route.ts:12`] | Under 120 words, plain text [R `:21`, `:86`]; best-effort, never blocks saving the suggestion [R `:14`] | BUILT |
-| Ask the store over a vector index | Same answers, at a data size one prompt cannot hold | Not built | | TARGET (deferred until the data outgrows one prompt [R `docs/ARCHITECTURE.md:57`]) |
+| Ask the store over a vector index | Same answers, at a data size one prompt cannot hold | Not built | | TARGET (deferred until the data outgrows one prompt [R `docs/ARCHITECTURE.md:279`]) |
 | Email invoice intake | Vendors email invoices to invoices@, the reader files them | AgentMail installed, not wired [R `docs/PLATFORM.md`] | Sender allowlist (design in docs/DOMAIN_EMAIL.md section 4) | SCAFFOLDED (blocked on the invoices@ mailbox) |
 
 **Who pays and who can switch it off after handover:** the store's Anthropic organization
@@ -37,7 +37,7 @@ builds and the capture screen still offers Enter manually.
 |---|---|---|---|---|
 | **Slack autopilot** | Turns a request in the Slack requests channel into a draft pull request: reads the channel, builds the change, opens the PR, reports back in the thread | `.github/workflows/slack-autopilot.yml`, using `anthropics/claude-code-action@v1` [R `:138`] with `--model claude-sonnet-5`, tools limited to Bash, Read, Write, Edit, Glob, Grep, at most 60 turns [R `:152`] | GitHub Actions; `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN` | BUILT. Idle sweeps cost no model tokens (docs/SLACK_AUTOPILOT.md) |
 | **Slack lifecycle** | Keeps the status card under a Slack request current: ready to review, checks passed or failed, merged, live on the store's site; no model | `.github/workflows/slack-lifecycle.yml` [R `:3-4`] | GitHub Actions; `SLACK_BOT_TOKEN` | BUILT |
-| **Tier classifier** | A script, not a model, that reads the diff and decides how far a change may go: words merge themselves; app changes wait for a person; money, access, database and automation changes never merge on their own | `.github/scripts/classify-change.mjs` [R `:8-12`] | GitHub Actions | BUILT |
+| **Tier classifier** | A script, not a model, that reads the diff and decides how far a change may go: words merge themselves; app changes wait for a person; money, access, database and automation changes never merge on their own | `.github/scripts/classify-change.mjs` [R `:8-12`] | Called only by the parked Jira autopilot [R `.github/workflows/jira-autopilot.yml:184`]; the live Slack autopilot always opens a draft pull request for a person to merge, so nothing self-merges today | PARTIAL |
 | **Health watchdog** | Calls the live app's `/api/health` on a schedule and posts to Slack when the answer changes; no model | `.github/workflows/post-deploy-watch.yml` | GitHub Actions; `CRON_SECRET`, `SLACK_WEBHOOK_URL`; checks `PRODUCTION_URL` or falls back to the vercel.app address [R `:54`] | BUILT |
 | **money-reviewer** | Read-only reviewer for anything touching amounts, HST, freight, payments or invoice status | `.claude/agents/money-reviewer.md` | Claude Code sessions; tools Read, Grep, Glob only | BUILT |
 | **invariant-auditor** | Read-only check against store scoping, money visibility, soft voids, audit rows, RLS on new tables, blank-env build | `.claude/agents/invariant-auditor.md` | Claude Code sessions; tools Read, Grep, Glob only | BUILT |
@@ -70,7 +70,7 @@ loop in detail: docs/SLACK_AUTOPILOT.md. Whose account each key belongs to:
 docs/HANDOVER.md. The rules every agent works under: CLAUDE.md and
 `.claude/skills/robinsons-store/SKILL.md`.
 
-**Basis: 22 claims checked this session (2026-10-24), 22 confirmed, 0 killed, 1 source.**
+**Basis: 24 claims checked this session (2026-10-24), 23 confirmed, 1 killed, 1 source.**
 Each `[R]` above was read from the named file and line in this repository this session, plus
-the subagent and settings files read whole. One stale rule found and corrected (AG-01).
+the subagent and settings files read whole. One stale rule found and corrected (AG-01); one state killed on review: the tier classifier was first recorded as BUILT and is PARTIAL, because only the parked Jira loop calls it.
 Source: this repository.

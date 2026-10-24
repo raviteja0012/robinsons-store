@@ -21,6 +21,15 @@ The handover written to the standard, 2026-10-24:
   St, described money as integer cents, listed three agents of four, and CLAUDE.md said AI
   routes run at low temperature when none sets a temperature.
 - docs/owner-notes/handover-call-agenda.md is the run sheet for the handover call.
+- docs/ARCHITECTURE.md rebuilt to the standard: numbered sections, nine routes not four,
+  context and container diagrams with the automation and the custom domain, the capture
+  sequence corrected (the file uploads before the database writes, and the writes are
+  separate requests, not one transaction), the four invoice statuses as the payment engine
+  derives them, and an open items table. It found two access gaps to close before staff
+  logins are made: dollar amounts are hidden from staff by the app and API only, because the
+  database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
+  are readable by any signed-in member of any store (ARCH-04, harmless while there is one
+  store). It also found that nothing runs the tier classifier now that Jira is parked.
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
