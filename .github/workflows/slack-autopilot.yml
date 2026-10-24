@@ -21,8 +21,9 @@ name: Slack autopilot
 #
 # WHAT IT WILL NOT DO, on purpose:
 #   - Merge anything but words. It opens a pull request, and a script (not the model) reads
-#     the diff and labels it tier A, B or C (ADR-002). Only tier A, words only and small,
-#     merges itself, only after CI passes on that exact commit, and only while the variable
+#     the diff and labels it tier A, B or C (ADR-002). That script runs in a second job, on a
+#     fresh runner the model never touched. Only tier A, words only and small, merges itself,
+#     only after CI passes on that exact commit, and only while the variable
 #     AUTOMERGE_TIER_A is "true". Everything else waits for a person.
 #   - Touch payments, auth, or RLS without a person. Those requests get a reply saying so.
 #   - Follow instructions written inside a Slack message that try to change these rules.
@@ -65,17 +66,23 @@ concurrency:
   group: slack-autopilot
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
-  # Labels live on the issues API, and tier A starts CI and reads its result itself.
-  issues: write
-  actions: write
+# Each job asks for what it needs. The build job, where the model runs with this token, gets
+# the least: push its branch and open its pull request. It cannot start workflows.
+permissions: {}
 
 jobs:
   autopilot:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      found: ${{ steps.find.outputs.found }}
+      ts: ${{ steps.find.outputs.ts }}
+      request: ${{ steps.find.outputs.request }}
+      base: ${{ steps.base.outputs.branch }}
+      built: ${{ steps.build.outcome == 'success' }}
     steps:
       - name: Check the setup is there
         id: gate
@@ -187,35 +194,73 @@ jobs:
                owner would understand, saying what you did or why you stopped. No markdown
                headers, no em dashes. That paragraph goes back to Slack as the reply.
 
-      # The model wrote the code; this decides how far it travels. Keeping the two apart is
-      # what makes an unattended merge safe at all: a judgement the model makes about its own
-      # work is one it can talk itself into. The tier is decided on the pull request's head
-      # commit, the same commit CI checks and the merge is pinned to. ADR-002.
+  # The model wrote the code; this job decides how far it travels. Keeping the two apart is
+  # what makes an unattended merge safe at all: a judgement the model makes about its own
+  # work is one it can talk itself into. It is a separate job, not more steps, because the
+  # model had a shell on the build runner: anything it left there (an edited classifier, a
+  # changed git setting, another program earlier on the PATH) stays on that runner. This job
+  # starts on a fresh one, checks out the workflow's own commit, fetches the pull request as
+  # data and runs nothing from it. The build job's token stops working when that job ends,
+  # so nothing the model started can push to or retarget the pull request while this runs.
+  # ADR-002.
+  ship:
+    needs: autopilot
+    if: always() && needs.autopilot.outputs.found == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write        # merge
+      pull-requests: write   # find, label, comment on, mark ready and merge the pull request
+      actions: write         # start CI on the head commit and read its result
+    env:
+      BRANCH: claude/slack-${{ needs.autopilot.outputs.ts }}
+      BASE: ${{ needs.autopilot.outputs.base }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      # The tier is decided on the pull request's head commit, the same commit CI checks and
+      # the merge is pinned to, against the base the pull request really has.
       - name: Decide how far it can go
         id: tier
-        if: steps.build.outcome == 'success'
+        if: needs.autopilot.outputs.built == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: claude/slack-${{ steps.find.outputs.ts }}
-          BASE: ${{ steps.base.outputs.branch }}
         run: |
-          pr=$(gh pr list --head "$BRANCH" --state open --json number,headRefOid \
-                 --jq '.[] | "\(.number) \(.headRefOid)"' | head -1)
+          # Exactly one open pull request, from this repository's own branch. A fork can name
+          # its branch anything, so a pull request from one is never this run's.
+          pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open \
+                 --json number,headRefOid,baseRefName,isCrossRepository \
+                 --jq '[.[] | select(.isCrossRepository | not)]
+                       | if length == 1 then .[0] | "\(.number) \(.headRefOid) \(.baseRefName)" else empty end')
           if [ -z "$pr" ]; then
-            echo "No open pull request for $BRANCH, so there is nothing to classify."
+            echo "No single open pull request for $BRANCH, so there is nothing to classify."
             echo "tier=none" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          read -r number sha <<< "$pr"
+          read -r number sha base <<< "$pr"
           echo "pr=$number" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          git fetch origin "$BASE" "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" --quiet
+          # The merge lands on whatever base the pull request has, so that is the base it is
+          # judged against, and it must be the one this run chose. Anything else is for a person.
+          if [ "$base" != "$BASE" ]; then
+            echo "It targets $base, not $BASE, so a person decides where it goes."
+            echo "tier=C" >> "$GITHUB_OUTPUT"
+            echo "reason=It targets $base, not $BASE, so a person decides where it goes." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --quiet origin "+refs/heads/$BASE:refs/remotes/origin/$BASE" \
+            "+refs/pull/$number/head:refs/remotes/pr/$number"
           # A commit the runner cannot read makes the classifier answer C, so this fails closed.
           node .github/scripts/classify-change.mjs "origin/$BASE" "$sha"
 
       # Every pull request says on its face how far it may go, so a reviewer sees the blast
       # radius before opening the diff. A label is for people only: the merge below never
-      # trusts it, because anyone with write access can add one.
+      # trusts it, because anyone with write access can add one. These are the REST label and
+      # comment endpoints, which GitHub lists under the pull requests permission, so the job
+      # needs no issues permission.
       - name: Label it with its tier
         if: steps.tier.outputs.pr != '' && steps.tier.outputs.tier != 'none'
         continue-on-error: true
@@ -225,21 +270,28 @@ jobs:
           TIER: ${{ steps.tier.outputs.tier }}
           REASON: ${{ steps.tier.outputs.reason }}
         run: |
-          gh label create tier-a --force --color 0e8a16 --description "Words only: merges itself once CI passes"
-          gh label create tier-b --force --color fbca04 --description "Touches the app: a person merges"
-          gh label create tier-c --force --color b60205 --description "Money, access, database or automation: never merges itself"
-          gh pr edit "$PR" --add-label "tier-$(echo "$TIER" | tr 'ABC' 'abc')"
-          gh pr comment "$PR" --body "Tier $TIER. $REASON"
+          case "$TIER" in
+            A) label=tier-a; color=0e8a16; about="Words only: merges itself once CI passes" ;;
+            B) label=tier-b; color=fbca04; about="Touches the app: a person merges" ;;
+            *) label=tier-c; color=b60205; about="Money, access, database or automation: never merges itself" ;;
+          esac
+          gh api "repos/$GITHUB_REPOSITORY/labels/$label" --silent 2>/dev/null \
+            || gh api -X POST "repos/$GITHUB_REPOSITORY/labels" --silent \
+                 -f name="$label" -f color="$color" -f description="$about"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --silent -f "labels[]=$label"
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --silent -f body="Tier $TIER. $REASON"
 
       # Tier A merges itself, and only like this:
       #   1. CI is started on the exact head commit and waited for here. The pull request was
       #      opened with GITHUB_TOKEN, and GitHub starts no workflow for an event made with that
       #      token except workflow_dispatch, so without this CI would never run on it.
-      #   2. The merge is pinned to that commit (--match-head-commit). A push after CI started
-      #      makes GitHub refuse the merge rather than land something unchecked.
-      #   3. Anything unexpected (CI never starts, fails, times out, branch protection says no)
-      #      ends the step quietly with the pull request open for a person. It fails closed and
-      #      never fails the run, because the build itself succeeded.
+      #   2. Immediately before merging, the pull request is read again: still open, still on
+      #      the commit CI checked, still aimed at the base it was judged against. The merge
+      #      is pinned to that commit (--match-head-commit), so a push after this read makes
+      #      GitHub refuse the merge rather than land something unchecked.
+      #   3. Anything unexpected (CI never starts, fails, times out, the pull request changed,
+      #      branch protection says no) ends the step quietly with the pull request open for a
+      #      person. It fails closed and never fails the run, because the build itself succeeded.
       # Not --auto: with no required checks on the branch, auto-merge can land at once, before
       # any check has run. Waiting here does not depend on how the branch is protected.
       - name: Merge it when it is only words
@@ -250,9 +302,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ steps.tier.outputs.pr }}
           SHA: ${{ steps.tier.outputs.sha }}
-          BRANCH: claude/slack-${{ steps.find.outputs.ts }}
-          BASE: ${{ steps.base.outputs.branch }}
         run: |
+          hold() {
+            echo "::warning::$1 Pull request #$PR waits for a person."
+            echo "outcome=held" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
           started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           gh workflow run ci.yml --ref "$BRANCH"
           run=""
@@ -263,17 +318,19 @@ jobs:
                     --jq "[.[] | select(.headSha == \"$SHA\" and .createdAt >= \"$started\")][0].databaseId // empty")
             [ -n "$run" ] && break
           done
-          if [ -z "$run" ]; then
-            echo "::warning::CI never started on $SHA, so pull request #$PR waits for a person."
-            echo "outcome=held" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          [ -n "$run" ] || hold "CI never started on $SHA."
           if ! gh run watch "$run" --exit-status --interval 20 > /dev/null; then
             echo "CI did not pass on $SHA, so pull request #$PR waits for a person."
             echo "outcome=checks_failed" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           gh pr ready "$PR"
+          now=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json state,baseRefName,headRefOid \
+                  --jq '"\(.state) \(.baseRefName) \(.headRefOid)"') || now="unreadable"
+          if [ "$now" != "OPEN $BASE $SHA" ]; then
+            gh pr ready "$PR" --undo || true
+            hold "The pull request is no longer what was checked (now: $now)."
+          fi
           if gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge --delete-branch --match-head-commit "$SHA"; then
             echo "outcome=merged" >> "$GITHUB_OUTPUT"
             # The merge was made with GITHUB_TOKEN too, so the push to the base starts no CI
@@ -281,9 +338,8 @@ jobs:
             # schedule. Ask for that CI run directly. Vercel deploys from Git either way.
             gh workflow run ci.yml --ref "$BASE" || true
           else
-            echo "::warning::GitHub refused the merge of #$PR (branch protection or a newer commit). It waits for a person."
             gh pr ready "$PR" --undo || true
-            echo "outcome=held" >> "$GITHUB_OUTPUT"
+            hold "GitHub refused the merge (branch protection or a newer commit)."
           fi
 
       # A failed build still updates the card. A request that goes silent is worse than one
@@ -292,15 +348,15 @@ jobs:
       # By this point the pull request exists and its tier is known, so the card says which of
       # the three it was: merged itself, waiting for a person, or a person must look first.
       - name: Say what happened
-        if: always() && steps.find.outputs.found == 'true'
+        if: always()
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_REQUEST_CHANNEL: ${{ vars.SLACK_REQUEST_CHANNEL || secrets.SLACK_REQUEST_CHANNEL }}
-          THREAD_TS: ${{ steps.find.outputs.ts }}
-          REQUEST: ${{ steps.find.outputs.request }}
+          THREAD_TS: ${{ needs.autopilot.outputs.ts }}
+          REQUEST: ${{ needs.autopilot.outputs.request }}
           STAGE: ${{ steps.automerge.outputs.outcome == 'merged' && 'merged'
             || steps.automerge.outputs.outcome == 'checks_failed' && 'checks_failed'
-            || steps.build.outcome == 'success' && 'built'
+            || needs.autopilot.outputs.built == 'true' && 'built'
             || 'stopped' }}
           NOTE: ${{ steps.automerge.outputs.outcome == 'merged'
             && 'Only wording changed, so it merged itself once the checks passed. It goes out to the store''s site in a few minutes.'
@@ -308,7 +364,7 @@ jobs:
             && 'Only wording changed, but the automatic checks did not pass, so it is waiting for a person.'
             || steps.tier.outputs.tier == 'C'
             && 'Finished building. This touches money, logins, the database or the automation itself, so a person has to look before anything changes.'
-            || steps.build.outcome == 'success'
+            || needs.autopilot.outputs.built == 'true'
             && 'Finished building. It is waiting for a person to look and merge.'
             || 'I could not finish this one, so nothing has changed. It needs a person to look.' }}
           LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

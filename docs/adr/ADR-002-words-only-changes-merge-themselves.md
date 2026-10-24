@@ -47,26 +47,52 @@ two months.
 
 ## Decision
 
-1. **The Slack loop classifies every pull request it opens.** After the build, a script runs
-   `classify-change.mjs` on the pull request's head commit against its base
-   [R `.github/workflows/slack-autopilot.yml:190-214`].
+1. **The Slack loop classifies every pull request it opens, in a job of its own.** After the
+   build job ends, a second job on a fresh runner checks out the workflow's own commit, finds
+   the one open pull request from this repository's `claude/slack-*` branch (never a fork's),
+   reads its head commit and its base, and runs `classify-change.mjs` on that commit against
+   that base [R `.github/workflows/slack-autopilot.yml:197-257`]. It runs nothing from the
+   pull request, so nothing the model left on the build runner reaches the decision. A pull
+   request whose base is not the one the run chose is tier C. The build job's token can push
+   and open pull requests and nothing more [R `.github/workflows/slack-autopilot.yml:68-79`],
+   and it expires when that job ends [V-src, docs.github.com GITHUB_TOKEN concepts page,
+   2026-10-24].
 2. **Every Slack pull request carries its tier.** It gets a `tier-a`, `tier-b` or `tier-c`
-   label and a one-line comment saying why [R `.github/workflows/slack-autopilot.yml:216-232`].
-   The label is for people. The merge never reads it.
-3. **Only tier A merges itself, and only like this** [R `.github/workflows/slack-autopilot.yml:234-287`]:
-   CI is started with `workflow_dispatch` on the exact head commit and waited for; the merge is
-   pinned with `--match-head-commit`; anything unexpected (CI never starts, fails, times out,
-   branch protection refuses) leaves the pull request open for a person and does not fail the
-   run. `--auto` is not used.
+   label and a one-line comment saying why [R `.github/workflows/slack-autopilot.yml:259-282`].
+   The label is for people. The merge never reads it. The step calls GitHub's REST label and
+   comment endpoints, which GitHub lists under the pull requests permission for installation
+   tokens, so the workflow asks for no issues permission [V-src, docs.github.com "Permissions
+   required for GitHub Apps", 2026-10-24].
+3. **Only tier A merges itself, and only like this** [R `.github/workflows/slack-autopilot.yml:284-343`]:
+   CI is started with `workflow_dispatch` on the exact head commit and waited for; immediately
+   before merging, the pull request is read again and must still be open, on that commit and
+   aimed at the base it was judged against; the merge is pinned with `--match-head-commit`;
+   anything unexpected (CI never starts, fails, times out, the pull request changed, branch
+   protection refuses) leaves the pull request open for a person and does not fail the run.
+   `--auto` is not used.
 4. **It is off until switched on.** The merge step runs only while the repository variable
-   `AUTOMERGE_TIER_A` is `true` [R `.github/workflows/slack-autopilot.yml:247`]. Unset, every
+   `AUTOMERGE_TIER_A` is `true` [R `.github/workflows/slack-autopilot.yml:299`]. Unset, every
    pull request is labelled and waits for a person, as before.
-5. **Instructions are never words.** `CLAUDE.md`, `.agents/`, `.kiro/`, `skills-lock.json`,
-   `docs/LOOP_ENGINEERING.md` and `docs/adr/` move to tier C; the in-app guide moves to tier B
-   [R `.github/scripts/classify-change.mjs:33-60`].
-6. **The rules are tested.** `classify-change.test.mjs` pins 26 cases across all tiers and runs
-   in CI [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 26 passed, 0
-   failed] [R `.github/workflows/ci.yml:49`].
+5. **Instructions are never words.** Agent instruction files are tier C by name, at any depth
+   and in any case: `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`, `AGENT.md`, `GEMINI.md`,
+   `SKILL.md`, `copilot-instructions.md`, `.cursorrules`, `.windsurfrules`, `.clinerules` and
+   `.mcp.json`, and anything under a `.claude/`, `.agents/`, `.kiro/`, `.cursor/`, `.windsurf/`
+   or `.clinerules/` folder. That includes `docs/AGENTS.md`: it is this project's register of
+   agents, but its name makes it instructions to every tool that follows the AGENTS.md
+   convention. `skills-lock.json`, `docs/LOOP_ENGINEERING.md` and `docs/adr/` are tier C too,
+   and so is any `.sql` file and any manifest or configuration file (`.yml`, `.yaml`, `.json`,
+   `.toml`, `.ini`, `.env` files, `.npmrc`) wherever it sits
+   [R `.github/scripts/classify-change.mjs:25-64`].
+6. **Words means prose files.** Only `.md` and `.txt` files under `docs/` and `.md` files at
+   the root count as words. Scripts, HTML pages and images under `docs/` are tier B, as is the
+   in-app guide (TypeScript). A file git reports as binary, a link, a submodule or a file with
+   the executable bit is never words, whatever its name: git counts a binary file as zero
+   lines, so the line limit could not see its size
+   [R `.github/scripts/classify-change.mjs:66-75`, `:81-135`].
+7. **The rules are tested.** `classify-change.test.mjs` pins 77 cases across all tiers,
+   including every rule above and the parsing of git's output, and runs in CI
+   [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 77 passed, 0 failed]
+   [R `.github/workflows/ci.yml:49`].
 
 ## Conditions
 
@@ -134,3 +160,13 @@ branch; running the classifier tests, the classifier on this branch, the `CLAUDE
 Two stay `[J-open]` with kill conditions: GitHub's `GITHUB_TOKEN` trigger rule and whether a
 dispatched CI run wakes the post-deploy watch. The decision does not rest on either, because
 the merge step fails closed when CI does not start. Sources: this repository, the `gh` CLI, git.
+
+**Amended 2026-10-24, before merge: decisions 1, 2, 3, 5 and 7 tightened, decision 6 added.
+10 further claims checked, 10 confirmed, 0 killed, 1 source added (GitHub's documentation).**
+Confirmed by running the classifier tests (77 passed); the classifier on this branch (tier C);
+the classifier end to end on a scratch repository (a binary `.md`, an executable `.md` and a
+link named `.md` rate B, a `CLAUDE.md` under a folder with a non-ASCII name rates C, an
+unreadable commit rates C); parsing the workflow and `bash -n` on every `run:` block; both
+new `jq` filters against live `gh` output; `gh` 2.102.0's help for `api -f key[]=` and the
+`pr list` JSON fields; and GitHub's documentation for the label and comment permissions, job
+outputs, and the token's lifetime. Not verified: a live run of the two-job workflow.

@@ -73,24 +73,29 @@ a ticket, a prompt, or the model's own reasoning can move it.
 
 | Tier | What it is | What happens |
 |---|---|---|
-| **A** | Words only: `docs/` and root `.md` files, 300 lines or fewer. | Merges itself once CI passes on that exact commit, and deploys. Only while `AUTOMERGE_TIER_A` is `true`. |
-| **B** | Anything else in the app, including the in-app guide (it is TypeScript). | Draft pull request. A person merges. **The default.** |
+| **A** | Words only: `.md` and `.txt` files under `docs/` and `.md` files at the root, plain text, 300 lines or fewer. | Merges itself once CI passes on that exact commit, and deploys. Only while `AUTOMERGE_TIER_A` is `true`. |
+| **B** | Anything else in the app, including the in-app guide (it is TypeScript), and scripts, HTML pages, images, links or binary files under `docs/`. | Draft pull request. A person merges. **The default.** |
 | **C** | Money, access, the database, or the automation's own files and instructions. | Nothing merges. Labelled and left for a person. |
 
 Tier C deserves its list spelled out: `supabase/**`, `src/lib/payments.ts`, the auth and
 edit helpers, `src/app/api/**`, `package.json`, and critically **`.github/**`, `.claude/**`,
-`.agents/**`, `CLAUDE.md`, this file and `docs/adr/`**. CLAUDE.md is the one that looks like
-words and is not: the autopilot reads it first on every run, so a "documentation" change to it
-rewrites the next run's rules (ADR-002).
+`.agents/**`, every agent instruction file by name at any depth (`CLAUDE.md`, `AGENTS.md`,
+`docs/AGENTS.md` included, `GEMINI.md`, `SKILL.md` and the like), this file and `docs/adr/`**,
+plus any `.sql`, manifest or configuration file wherever it sits. CLAUDE.md is the one that
+looks like words and is not: the autopilot reads it first on every run, so a "documentation"
+change to it rewrites the next run's rules (ADR-002).
 
 **How the Slack loop applies it** (ADR-002, since 2026-10-24). After the model opens its pull
-request, a step runs the classifier on the pull request's head commit, labels the pull request
-`tier-a`, `tier-b` or `tier-c`, and comments the reason. For tier A, and only while the
-repository variable `AUTOMERGE_TIER_A` is `true`, it starts CI on that commit itself, waits for
-it, and merges with the head commit pinned. It starts CI itself because the pull request was
-opened with `GITHUB_TOKEN`, and an event made with that token starts no workflow. Anything
-unexpected leaves the pull request open for a person; the step fails closed and never fails
-the run. Rules tested in `.github/scripts/classify-change.test.mjs`, which CI runs.
+request and its job ends, a second job on a fresh runner checks out the workflow's own commit,
+runs the classifier on the pull request's head commit against the pull request's own base,
+labels the pull request `tier-a`, `tier-b` or `tier-c`, and comments the reason. Nothing the
+model left on its runner reaches that job, and a pull request aimed at another base is tier C.
+For tier A, and only while the repository variable `AUTOMERGE_TIER_A` is `true`, it starts CI
+on that commit itself, waits for it, reads the pull request again, and merges with the head
+commit pinned. It starts CI itself because the pull request was opened with `GITHUB_TOKEN`,
+and an event made with that token starts no workflow. Anything unexpected leaves the pull
+request open for a person; the step fails closed and never fails the run. Rules tested in
+`.github/scripts/classify-change.test.mjs`, which CI runs.
 
 That last exclusion is the one people forget. **A loop that can edit its own limits does not
 have limits, and a loop that can edit its own reviewer has no reviewer.** The automation is

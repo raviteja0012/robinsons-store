@@ -6,18 +6,23 @@ Last updated: 2026-10-24, on branch claude/hopeful-brahmagupta-vdnnwq, stacked o
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
-  `tier-a`, `tier-b` or `tier-c`, and comments why [R `.github/workflows/slack-autopilot.yml:190-232`].
-  PARTIAL until the first live request shows a label.
+  `tier-a`, `tier-b` or `tier-c`, and comments why. It does this in a second job on a fresh
+  runner, from the workflow's own commit, against the pull request's real base; the build job's
+  token can only push and open pull requests [R `.github/workflows/slack-autopilot.yml:68-79`,
+  `:197-282`]. PARTIAL until the first live request shows a label.
 - Tier A (words only, 300 lines or fewer) merges itself after CI passes on its exact head
-  commit, with the merge pinned to that commit; anything unexpected leaves it for a person
-  [R `.github/workflows/slack-autopilot.yml:234-287`]. SCAFFOLDED: off until the repository
-  variable `AUTOMERGE_TIER_A` is `true`. Before setting it, see ADR-002 conditions 2 to 4.
-- Two holes closed whatever the switch: `CLAUDE.md` matched the words-only rule and so could
-  have merged itself [V-run, regex in node, 2026-10-24], and the in-app guide is TypeScript.
-  CLAUDE.md, `.agents/`, `.kiro/`, `skills-lock.json`, LOOP_ENGINEERING.md and `docs/adr/` are
-  now tier C; the in-app guide is tier B [R `.github/scripts/classify-change.mjs:33-60`].
-- The rules are pinned by `classify-change.test.mjs`, 26 cases, run in CI
-  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 26 passed].
+  commit, with the pull request read again and the merge pinned to that commit; anything
+  unexpected leaves it for a person [R `.github/workflows/slack-autopilot.yml:284-343`].
+  SCAFFOLDED: off until the repository variable `AUTOMERGE_TIER_A` is `true`. Before setting
+  it, see ADR-002 conditions 2 to 4.
+- Instructions and configuration are never words, whatever the switch: every agent
+  instruction file by name at any depth (CLAUDE.md, AGENTS.md with docs/AGENTS.md, GEMINI.md,
+  SKILL.md and the like), agent folders, `skills-lock.json`, LOOP_ENGINEERING.md, `docs/adr/`,
+  and any `.sql`, manifest or config file are tier C. Words means `.md` and `.txt` under
+  `docs/` and `.md` at the root, as plain text; scripts, pages, images, links and binary files
+  are tier B, as is the in-app guide [R `.github/scripts/classify-change.mjs:25-75`].
+- The rules are pinned by `classify-change.test.mjs`, 77 cases, run in CI
+  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 77 passed].
 - Open: whether GitHub's `GITHUB_TOKEN` rule is what kept CI off Slack pull requests, and
   whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
   ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with

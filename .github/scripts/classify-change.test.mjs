@@ -4,20 +4,21 @@
 // here: a rule that silently widens tier A is invisible in review and only shows up as a
 // change that merged itself.
 
-import { classify, MAX_AUTO_LINES } from "./classify-change.mjs";
+import { classify, parseDiff, MAX_AUTO_LINES } from "./classify-change.mjs";
 
 let pass = 0, fail = 0;
 const t = (name, ok, detail = "") => {
   ok ? pass++ : fail++;
   console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  [" + detail + "]" : ""}`);
 };
-const tier = (files, lines = 10) => classify(files, lines).tier;
+const tier = (files, lines = 10, notPlainText = []) => classify(files, lines, notPlainText).tier;
 
 // Words only, small: the one case that may merge itself.
 t("a doc is A", tier(["docs/STATUS.md"]) === "A");
 t("a root readme is A", tier(["README.md"]) === "A");
 t("several docs together are A", tier(["docs/STATUS.md", "docs/VERIFICATION.md", "RUNBOOK.md"]) === "A");
 t("a doc at the line limit is A", tier(["docs/STATUS.md"], MAX_AUTO_LINES) === "A");
+t("a plain text note under docs is A", tier(["docs/notes/opening-hours.txt"]) === "A");
 
 // Words, but too many of them.
 t("a doc over the line limit is B", tier(["docs/STATUS.md"], MAX_AUTO_LINES + 1) === "B");
@@ -27,6 +28,26 @@ t("a screen is B", tier(["src/app/capture/page.tsx"]) === "B");
 t("a doc plus a screen is B", tier(["docs/STATUS.md", "src/app/capture/page.tsx"]) === "B");
 t("the in-app guide is B, because it is TypeScript", tier(["src/lib/appGuide.ts"]) === "B");
 t("markdown below the root, outside docs, is B", tier(["src/notes.md"]) === "B");
+
+// Under docs/ but not prose. Only .md and .txt are words there; code and pages are B.
+for (const f of [
+  "docs/owner-notes/render.mjs",
+  "docs/owner-notes/store-app-infrastructure.html",
+  "docs/tools/fix.sh",
+  "docs/diagram.png",
+  "docs/diagram.svg",
+  "docs/owner-notes/.gitignore"
+]) {
+  t(`${f} is B`, tier([f]) === "B");
+}
+t("a text file at the root is B; only .md is words there", tier(["notes.txt"]) === "B");
+t("a doc plus a script under docs is B", tier(["docs/STATUS.md", "docs/owner-notes/render.mjs"]) === "B");
+
+// Binary, linked or executable files are not words, whatever they are called. Git counts a
+// binary file as zero lines, so without this the line limit could not see its size.
+t("a binary file named .md is B", tier(["docs/STATUS.md"], 0, ["docs/STATUS.md"]) === "B");
+t("one binary doc among docs makes the whole change B",
+  tier(["docs/STATUS.md", "docs/VERIFICATION.md"], 4, ["docs/VERIFICATION.md"]) === "B");
 
 // Money, access, the database, and the automation. Never merges.
 for (const f of [
@@ -48,15 +69,86 @@ for (const f of [
 ]) {
   t(`${f} is C`, tier([f]) === "C");
 }
+
+// Agent instructions by name, at any depth and in any case. The first three are .md files
+// under docs/ or at the root, which the words-only rule would otherwise pass.
+for (const f of [
+  "AGENTS.md",
+  "docs/AGENTS.md",
+  "docs/CLAUDE.md",
+  "AGENT.md",
+  "GEMINI.md",
+  "docs/GEMINI.md",
+  "CLAUDE.local.md",
+  "claude.md",
+  "docs/guides/Claude.MD",
+  "docs/skills/ordering/SKILL.md",
+  "src/app/CLAUDE.md",
+  ".github/copilot-instructions.md",
+  "docs/copilot-instructions.md",
+  ".cursorrules",
+  "docs/.windsurfrules",
+  ".clinerules",
+  ".mcp.json",
+  "docs/.claude/settings.md",
+  "src/app/.cursor/rules/style.mdc",
+  "docs/.kiro/steering/notes.md"
+]) {
+  t(`${f} is C`, tier([f]) === "C");
+}
+
+// The database and configuration, wherever they sit.
+for (const f of [
+  "docs/fix.sql",
+  "scripts/cleanup.SQL",
+  "docs/slack-app-manifest.yml",
+  "docs/settings.yaml",
+  "docs/config.json",
+  "docs/config.toml",
+  "tsconfig.json",
+  ".eslintrc.json",
+  ".env.example",
+  "docs/.env",
+  ".npmrc"
+]) {
+  t(`${f} is C`, tier([f]) === "C");
+}
 t("one blocked file among docs makes the whole change C",
   tier(["docs/STATUS.md", "CLAUDE.md"]) === "C");
+t("an instruction file among docs makes the whole change C",
+  tier(["docs/STATUS.md", "docs/AGENTS.md"]) === "C");
 t("C wins over the line limit", tier(["CLAUDE.md"], 1) === "C");
+t("C wins over a binary file", tier(["docs/fix.sql"], 0, ["docs/fix.sql"]) === "C");
 
 // Nothing changed.
 t("an empty diff is none", tier([]) === "none");
 
 // The reason is what a person reads on the pull request; it must name the file.
 t("a C reason names the file", classify(["CLAUDE.md"], 1).reason.includes("CLAUDE.md"));
+t("a B reason names the file", classify(["docs/owner-notes/render.mjs"], 1).reason.includes("render.mjs"));
+
+// Reading git's output. Fixtures are what `git diff -z --numstat` and `--raw` print.
+{
+  const numstat = "3\t1\tdocs/STATUS.md\0-\t-\tdocs/STATUS-copy.md\0" + "2\t0\tdocs/odd\tname.md\0";
+  const raw = ":100644 100644 aaa bbb M\0docs/STATUS.md\0" +
+    ":000000 100644 000 ccc A\0docs/STATUS-copy.md\0" +
+    ":000000 100644 000 ddd A\0docs/odd\tname.md\0";
+  const d = parseDiff(numstat, raw);
+  t("parseDiff lists every file", d.files.length === 3 && d.files.includes("docs/odd\tname.md"));
+  t("parseDiff counts only text lines", d.lines === 6, `lines=${d.lines}`);
+  t("parseDiff marks a binary file", d.notPlainText.length === 1 && d.notPlainText[0] === "docs/STATUS-copy.md");
+}
+{
+  const numstat = "1\t0\tdocs/link.md\0" + "1\t0\tdocs/run.md\0" + "0\t4\tdocs/old.md\0";
+  const raw = ":000000 120000 000 aaa A\0docs/link.md\0" +
+    ":100644 100755 bbb bbb M\0docs/run.md\0" +
+    ":100644 000000 ccc 000 D\0docs/old.md\0";
+  const d = parseDiff(numstat, raw);
+  t("parseDiff marks a link and an executable, not a deletion",
+    d.notPlainText.length === 2 && d.notPlainText.includes("docs/link.md") && d.notPlainText.includes("docs/run.md"));
+  t("a link named .md is B", tier(d.files, d.lines, d.notPlainText) === "B");
+}
+t("parseDiff of an empty diff is empty", parseDiff("", "").files.length === 0);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
