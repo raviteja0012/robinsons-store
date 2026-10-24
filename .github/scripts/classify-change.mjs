@@ -41,23 +41,23 @@ import { pathToFileURL } from "node:url";
 // or config file changes how something runs (the Slack app's scopes, the lint and type
 // gates, the servers an agent may call).
 export const BLOCKED = [
-  /^supabase\//,
-  /^src\/lib\/payments\.ts$/,
-  /^src\/lib\/auth\.ts$/,
-  /^src\/lib\/edit\.ts$/,
-  /^src\/lib\/serverMember\.ts$/,
-  /^src\/lib\/supabaseClient\.ts$/,
-  /^src\/app\/api\//,
-  /^\.github\//,
+  /^supabase\//i,
+  /^src\/lib\/payments\.ts$/i,
+  /^src\/lib\/auth\.ts$/i,
+  /^src\/lib\/edit\.ts$/i,
+  /^src\/lib\/serverMember\.ts$/i,
+  /^src\/lib\/supabaseClient\.ts$/i,
+  /^src\/app\/api\//i,
+  /^\.github\//i,
   /(^|\/)\.(claude|agents|kiro|cursor|windsurf|clinerules)\//i,
   /(^|\/)(CLAUDE|CLAUDE\.local|AGENTS?|GEMINI|SKILL|copilot-instructions)\.md$/i,
   /(^|\/)\.(cursorrules|windsurfrules|clinerules|mcp\.json)$/i,
-  /^skills-lock\.json$/,
-  /^docs\/LOOP_ENGINEERING\.md$/,
-  /^docs\/adr\//,
-  /^vercel\.json$/,
-  /^package\.json$/,
-  /^package-lock\.json$/,
+  /^skills-lock\.json$/i,
+  /^docs\/LOOP_ENGINEERING\.md$/i,
+  /^docs\/adr\//i,
+  /^vercel\.json$/i,
+  /^package\.json$/i,
+  /^package-lock\.json$/i,
   /\.sql$/i,
   /\.(ya?ml|json|jsonc|toml|ini|cfg|conf)$/i,
   /(^|\/)\.(env[^/]*|npmrc)$/i
@@ -78,6 +78,9 @@ export const WORDS_ONLY = [
 // else wearing a hat.
 export const MAX_AUTO_LINES = 300;
 
+// Control characters (C0, DEL and C1), and the Unicode line and paragraph separators.
+const CONTROL = /[\p{Cc}\p{Zl}\p{Zp}]/u;
+
 /**
  * The decision itself, pure, so the rules can be tested without a git repository.
  * notPlainText lists files git reports as binary, or whose new mode is not a plain file (a
@@ -85,6 +88,12 @@ export const MAX_AUTO_LINES = 300;
  */
 export function classify(files, changedLines, notPlainText = []) {
   if (!files.length) return { tier: "none", reason: "Nothing changed." };
+
+  // A file name with a line break or other control character is never words, and it is not
+  // repeated in the reason: the reason is written to GITHUB_OUTPUT, one value per line.
+  if (files.some((f) => CONTROL.test(f))) {
+    return { tier: "C", reason: "A file name contains a control character, so a person must review it." };
+  }
 
   const blocked = files.filter((f) => BLOCKED.some((r) => r.test(f)));
   if (blocked.length) {
@@ -134,10 +143,15 @@ export function parseDiff(numstat, raw) {
   return { files, lines, notPlainText };
 }
 
+/** One GITHUB_OUTPUT line. Anything that could end the line early becomes a space. */
+export function outputLine(key, value) {
+  return `${key}=${String(value).replace(new RegExp(CONTROL.source, "gu"), " ")}\n`;
+}
+
 function out(key, value) {
   const f = process.env.GITHUB_OUTPUT;
-  console.log(`${key}: ${value}`);
-  if (f) appendFileSync(f, `${key}=${String(value).replace(/\n/g, " ")}\n`);
+  console.log(outputLine(key, value).trimEnd());
+  if (f) appendFileSync(f, outputLine(key, value));
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
@@ -156,6 +170,8 @@ if (isMain) {
   } catch (e) {
     result = { tier: "C", reason: `Could not read the diff, so nothing is merged: ${e.message}` };
   }
-  out("tier", result.tier);
+  // Tier last: when a key appears twice the later line wins, so nothing in the reason can
+  // stand in for it.
   out("reason", result.reason);
+  out("tier", result.tier);
 }

@@ -4,7 +4,7 @@
 // here: a rule that silently widens tier A is invisible in review and only shows up as a
 // change that merged itself.
 
-import { classify, parseDiff, MAX_AUTO_LINES } from "./classify-change.mjs";
+import { classify, parseDiff, outputLine, MAX_AUTO_LINES } from "./classify-change.mjs";
 
 let pass = 0, fail = 0;
 const t = (name, ok, detail = "") => {
@@ -118,6 +118,40 @@ t("one blocked file among docs makes the whole change C",
 t("an instruction file among docs makes the whole change C",
   tier(["docs/STATUS.md", "docs/AGENTS.md"]) === "C");
 t("C wins over the line limit", tier(["CLAUDE.md"], 1) === "C");
+
+// Case does not move a file out of tier C: on a laptop that ignores case it is the same file.
+for (const f of [
+  "docs/ADR/ADR-002-words-only-changes-merge-themselves.md",
+  "docs/loop_engineering.md",
+  "Supabase/fix.sql",
+  "SRC/lib/Payments.ts",
+  ".GitHub/workflows/ci.yml"
+]) {
+  t(`${f} is C`, tier([f]) === "C");
+}
+
+// A file name with a control character is C, and the name is kept out of the reason, which
+// is written to GITHUB_OUTPUT one value per line.
+const ch = (n) => String.fromCharCode(n);
+for (const [label, f] of [
+  ["a carriage return", `docs/notes${ch(13)}tier=A`],
+  ["a line feed", `docs/notes${ch(10)}tier=A.md`],
+  ["a tab", `docs/notes${ch(9)}.md`],
+  ["a line separator", `docs/notes${ch(0x2028)}.md`],
+  ["a next-line character", `docs/notes${ch(0x85)}.md`]
+]) {
+  const r = classify(["docs/STATUS.md", f], 1);
+  t(`a file name with ${label} is C`, r.tier === "C");
+  t(`a file name with ${label} stays out of the reason`, !r.reason.includes("notes"));
+}
+t("an ordinary name with spaces is still A", tier(["docs/Opening Hours.md"]) === "A");
+
+// One output line, whatever the value holds.
+{
+  const line = outputLine("reason", `a${ch(13)}tier=A${ch(10)}b${ch(0x2028)}c`);
+  t("an output line has exactly one line break, at its end",
+    line.endsWith("\n") && !/[\p{Cc}\p{Zl}\p{Zp}]/u.test(line.slice(0, -1)), JSON.stringify(line));
+}
 t("C wins over a binary file", tier(["docs/fix.sql"], 0, ["docs/fix.sql"]) === "C");
 
 // Nothing changed.

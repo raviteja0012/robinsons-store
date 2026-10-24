@@ -81,17 +81,19 @@ two months.
    agents, but its name makes it instructions to every tool that follows the AGENTS.md
    convention. `skills-lock.json`, `docs/LOOP_ENGINEERING.md` and `docs/adr/` are tier C too,
    and so is any `.sql` file and any manifest or configuration file (`.yml`, `.yaml`, `.json`,
-   `.toml`, `.ini`, `.env` files, `.npmrc`) wherever it sits
-   [R `.github/scripts/classify-change.mjs:25-64`].
+   `.toml`, `.ini`, `.env` files, `.npmrc`) wherever it sits. Every tier C rule ignores case.
+   A file name with a control character is tier C, and is kept out of the reason, which the
+   script writes to the job's outputs one value per line, the tier last
+   [R `.github/scripts/classify-change.mjs:25-64`, `:81-97`, `:146-177`].
 6. **Words means prose files.** Only `.md` and `.txt` files under `docs/` and `.md` files at
    the root count as words. Scripts, HTML pages and images under `docs/` are tier B, as is the
    in-app guide (TypeScript). A file git reports as binary, a link, a submodule or a file with
    the executable bit is never words, whatever its name: git counts a binary file as zero
    lines, so the line limit could not see its size
-   [R `.github/scripts/classify-change.mjs:66-75`, `:81-135`].
-7. **The rules are tested.** `classify-change.test.mjs` pins 77 cases across all tiers,
+   [R `.github/scripts/classify-change.mjs:66-75`, `:116-144`].
+7. **The rules are tested.** `classify-change.test.mjs` pins 94 cases across all tiers,
    including every rule above and the parsing of git's output, and runs in CI
-   [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 77 passed, 0 failed]
+   [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 94 passed, 0 failed]
    [R `.github/workflows/ci.yml:49`].
 
 ## Conditions
@@ -162,11 +164,12 @@ dispatched CI run wakes the post-deploy watch. The decision does not rest on eit
 the merge step fails closed when CI does not start. Sources: this repository, the `gh` CLI, git.
 
 **Amended 2026-10-24, before merge: decisions 1, 2, 3, 5 and 7 tightened, decision 6 added.
-10 further claims checked, 10 confirmed, 0 killed, 1 source added (GitHub's documentation).**
-Confirmed by running the classifier tests (77 passed); the classifier on this branch (tier C);
+11 further claims checked, 11 confirmed, 0 killed, 1 source added (GitHub's documentation).**
+Confirmed by running the classifier tests (94 passed); the classifier on this branch (tier C);
 the classifier end to end on a scratch repository (a binary `.md`, an executable `.md` and a
 link named `.md` rate B, a `CLAUDE.md` under a folder with a non-ASCII name rates C, an
-unreadable commit rates C); parsing the workflow and `bash -n` on every `run:` block; both
+unreadable commit rates C, and a file name holding a carriage return rates C with clean
+output lines); parsing the workflow and `bash -n` on every `run:` block; both
 new `jq` filters against live `gh` output; `gh` 2.102.0's help for `api -f key[]=` and the
 `pr list` JSON fields; and GitHub's documentation for the label and comment permissions, job
 outputs, and the token's lifetime. Not verified: a live run of the two-job workflow.
