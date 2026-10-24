@@ -167,9 +167,11 @@ break:
   which is what actually ran the Actions allowance dry. Its model step was always correctly
   gated; the install was not.
 - How far a change travels is decided by a SCRIPT reading the diff
-  (.github/scripts/classify-change.mjs), never by the model's own judgement. Words only
-  merge themselves; app changes wait for a person; money, access, the database, and the
-  automation's own files never merge.
+  (.github/scripts/classify-change.mjs), never by the model's own judgement. The Slack loop
+  labels every pull request with its tier. Words only merge themselves once CI passes, and
+  only while AUTOMERGE_TIER_A is "true"; app changes wait for a person; money, access, the
+  database, the automation's own files and its instructions (CLAUDE.md included) never
+  merge. ADR-002.
 - **`.github/**` and `.claude/**` are tier C.** The automation cannot edit the automation. A
   loop that can change its own limits does not have limits, and one that can change its own
   reviewer has no reviewer. Changing what the autopilot may do takes a human merging it.

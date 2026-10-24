@@ -19,7 +19,7 @@ written for, and how current it is. Start here.
 | File | What it answers |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Every AI agent: the four inside the app for staff, and the ones that build and watch it. What each does, its guardrails, and whose key it runs on |
-| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account |
+| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account. ADR-002: words-only changes from the Slack loop merge themselves |
 | [../ONBOARDING.md](../ONBOARDING.md) | For a new team member: what we need from them, what access they get and why, and their first week |
 | [owner-notes/handover-checklist.md](owner-notes/handover-checklist.md) | The handover as tickable steps, each labelled with which account does it: your personal accounts give, admin@ receives |
 | [HANDOVER.md](HANDOVER.md) | **Who holds each account today, and the order to move every one to the store.** Includes the register of every secret and variable, and the checks that prove the move worked |

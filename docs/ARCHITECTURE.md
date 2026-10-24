@@ -299,9 +299,9 @@ Question: how does a change travel from a request to the live store?
 flowchart LR
   REQ["Slack request<br/>or developer"]
   AP["slack-autopilot<br/>builds on a branch"]
-  PR["Draft pull request"]
+  PR["Draft pull request<br/>labelled tier A, B or C"]
   CI["CI: lint, tsc,<br/>blank-env build"]
-  HUM["A person merges"]
+  HUM["A person merges<br/>(tier A may merge itself)"]
   VD["Vercel deploys main"]
   MIG["migrate: run-order.txt<br/>to production"]
   WD["post-deploy-watch<br/>GET /api/health"]
@@ -317,17 +317,18 @@ flowchart LR
   PR -- "slack-lifecycle updates card" --> SLK
 ```
 
-Plain flow: a request in Slack becomes a draft pull request; CI runs the three gates; a person
-merges; Vercel deploys main, migrate applies any merged database scripts, and the watchdog
+Plain flow: a request in Slack becomes a draft pull request labelled with its tier; CI runs
+the three gates; a person merges, or a words-only change merges itself once switched on; Vercel deploys main, migrate applies any merged database scripts, and the watchdog
 asks the live site whether it is healthy and tells Slack when that changes.
 
 | Step | What happens | State | Evidence |
 |---|---|---|---|
-| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request, never merges | BUILT | [R .github/workflows/slack-autopilot.yml:21-27, 50-51, 152, 164-177] |
+| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request; merges only tier A (see below) | BUILT | [R .github/workflows/slack-autopilot.yml:21-27, 50-51, 152, 164-177] |
 | Status card | Updates the Slack thread through review, checks, merge and live, for `claude/slack-*` branches only | BUILT | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] |
-| Tier classifier | Script that sorts a diff into A (words, may self-merge), B (app, person merges), C (money, access, database, automation; never merges). Only the parked Jira autopilot calls it; the live Slack loop does not, so nothing self-merges today | PARTIAL | [R .github/scripts/classify-change.mjs:8-12] [R .github/workflows/jira-autopilot.yml:184-199] |
+| Tier classifier | Script that sorts a diff into A (words, may self-merge), B (app, person merges), C (money, access, database, automation and its instructions, CLAUDE.md included; never merges). The Slack loop runs it on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:33-60] [R .github/workflows/slack-autopilot.yml:190-232] [R .github/workflows/ci.yml:49] |
+| Tier A self-merge | Starts CI on the head commit, waits, merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:234-287] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges. Changes under `.github/` and `.claude/` never merge on their own | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] |
+| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
 | Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose | BUILT | [R .github/workflows/migrate.yml:33-39, 131] [R supabase/run-order.txt:10-16] |
 | Watchdog | After CI completes on main and every two hours, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 54] |
@@ -412,7 +413,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
 | ARCH-09 | `schema.sql:3` still says move to integer cents before production; production runs `numeric`. Keep or migrate? [Q: the developer] | The developer | No |
-| ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
+| ARCH-10 | ~~Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop~~ Closed 2026-10-24 by ADR-002: wired, off until `AUTOMERGE_TIER_A` is set | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
 
 ## 10. How this maps to the rest of the docs
@@ -434,3 +435,5 @@ capture, overdue and vendor pages, `vercel.json`, nine workflow files and the cl
 HANDOVER, ENVIRONMENTS, LOOP_ENGINEERING, STATUS, README and the owner infrastructure note;
 the eight killed are the six stale statements this rewrite replaces, the old diagram's upload
 after the database writes, and tier A self-merge in the live Slack loop.
+Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
+script, 6 claims checked, 6 confirmed. Source: this repository.

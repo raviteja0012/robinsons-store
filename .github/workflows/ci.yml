@@ -46,6 +46,7 @@ jobs:
       - name: Automation rules
         run: |
           node .github/scripts/health-notify.test.mjs
+          node .github/scripts/classify-change.test.mjs
           node --check .github/scripts/classify-change.mjs
           node --check .github/scripts/health-check.mjs
           node --check .github/scripts/health-notify.mjs

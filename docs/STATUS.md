@@ -2,7 +2,26 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/hopeful-brahmagupta-vdnnwq, stacked on claude/review-pending-requests-43g9hk (latest: tier A self-merge wired into the Slack loop, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
+- The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
+  `tier-a`, `tier-b` or `tier-c`, and comments why [R `.github/workflows/slack-autopilot.yml:190-232`].
+  PARTIAL until the first live request shows a label.
+- Tier A (words only, 300 lines or fewer) merges itself after CI passes on its exact head
+  commit, with the merge pinned to that commit; anything unexpected leaves it for a person
+  [R `.github/workflows/slack-autopilot.yml:234-287`]. SCAFFOLDED: off until the repository
+  variable `AUTOMERGE_TIER_A` is `true`. Before setting it, see ADR-002 conditions 2 to 4.
+- Two holes closed whatever the switch: `CLAUDE.md` matched the words-only rule and so could
+  have merged itself [V-run, regex in node, 2026-10-24], and the in-app guide is TypeScript.
+  CLAUDE.md, `.agents/`, `.kiro/`, `skills-lock.json`, LOOP_ENGINEERING.md and `docs/adr/` are
+  now tier C; the in-app guide is tier B [R `.github/scripts/classify-change.mjs:33-60`].
+- The rules are pinned by `classify-change.test.mjs`, 26 cases, run in CI
+  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 26 passed].
+- Open: whether GitHub's `GITHUB_TOKEN` rule is what kept CI off Slack pull requests, and
+  whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
+  ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
+  `--auto`; replace that step before waking it (ADR-002 condition 5).
 
 The handover written to the standard, 2026-10-24:
 - docs/HANDOVER.md now names exactly what the store will own and under which names (team,
