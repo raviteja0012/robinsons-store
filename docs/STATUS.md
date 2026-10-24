@@ -8,11 +8,9 @@ Money type and region record, 2026-10-24:
 - Money is numeric dollars and stays that way; integer cents is no longer planned. The
   schema.sql header, ARCHITECTURE.md, the skill, data-model.md and the Deferred list below
   now all say so. Comment and doc change only; no column changed.
-- Montreal is still unconfirmed. The x-vercel-id check could not run from the cloud
-  session (its proxy refuses outbound HTTPS to the store's domain, 403). Run it from any
-  normal terminal:
-  curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health | grep -i x-vercel-id
-  yul1 closes the item in VERIFICATION.md; anything else keeps it open.
+- Montreal confirmed 2026-10-24. From a normal terminal, x-vercel-id on
+  app.robinsonsgeneralstore.ca/api/health read cle1::yul1::nlgbd-1792860014362-0a78d22ddff1:
+  edge cle1, function region yul1. The item is closed in VERIFICATION.md.
 
 Production deploys stopped on 2026-08-13, found 2026-08-17:
 - Pushes to main have produced no production deployment since 2026-08-13. The live site is
