@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveMember } from "@/lib/serverMember";
+import { callClaude, claudeConfigured, failureMessage } from "@/lib/anthropic";
+import { normalizeExtraction, EXTRACT_MEDIA_TYPES, EXTRACT_MAX_BASE64 } from "@/lib/extractValidate";
 
 export const runtime = "nodejs";
 // Run in Montreal, not the default iad1 (Washington DC). The Supabase project is in
@@ -7,6 +9,8 @@ export const runtime = "nodejs";
 // Canada rather than crossing the border on every request, and it is the nearest region
 // to the database, which Vercel recommends for latency.
 export const preferredRegion = "yul1";
+// Long enough for a multi-page invoice read plus one retry; the client times out at 45s.
+export const maxDuration = 60;
 
 const PROMPT = `You are extracting a vendor invoice or receipt for a Canadian general store.
 Read printed text and any handwritten notes or prices written in the margins.
@@ -75,10 +79,14 @@ export async function POST(req: NextRequest) {
     if (!imageBase64 || !mediaType) {
       return NextResponse.json({ error: "imageBase64 and mediaType are required" }, { status: 400 });
     }
+    if (!EXTRACT_MEDIA_TYPES.has(mediaType)) {
+      return NextResponse.json({ error: "That file type cannot be read. Use a photo (JPG or PNG) or a PDF." }, { status: 415 });
+    }
+    if (typeof imageBase64 !== "string" || imageBase64.length > EXTRACT_MAX_BASE64) {
+      return NextResponse.json({ error: "That file is too large to read. Take a closer photo of just the invoice." }, { status: 413 });
+    }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
-    if (!apiKey) {
+    if (!claudeConfigured()) {
       return NextResponse.json({ error: "ANTHROPIC_API_KEY is not set" }, { status: 500 });
     }
 
@@ -87,70 +95,54 @@ export async function POST(req: NextRequest) {
         ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: imageBase64 } }
         : { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } };
 
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model,
-        // Was 2000, which a long delivery could exceed. Running out of room mid-answer
-        // truncates the JSON, and the store was then told "could not parse model output"
-        // for what was really a full invoice with too many lines to fit.
-        max_tokens: 8000,
-        // No temperature override: current Claude models reject non-default sampling
-        // params; the strict JSON contract in the prompt keeps extraction stable.
-        output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
-        messages: [{ role: "user", content: [block, { type: "text", text: PROMPT }] }]
-      })
+    const result = await callClaude({
+      route: "extract",
+      // Was 2000, which a long delivery could exceed. Running out of room mid-answer
+      // truncates the JSON, and the store was then told "could not parse model output"
+      // for what was really a full invoice with too many lines to fit.
+      max_tokens: 8000,
+      output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
+      messages: [{ role: "user", content: [block, { type: "text", text: PROMPT }] }],
+      timeoutMs: 45000
     });
 
-    if (!resp.ok) {
-      const detail = (await resp.text()).slice(0, 300);
-      return NextResponse.json({ error: "model call failed", detail }, { status: 502 });
+    if (!result.ok) {
+      // A refusal and a cut-off get their own words because each points at a different fix
+      // for the person holding the invoice: a seasonal employee at the receiving door, who
+      // is never asked to debug. Tell them what to do next instead.
+      if (result.kind === "refusal") {
+        return NextResponse.json(
+          { error: "The reader would not process this document. Enter the invoice by hand using Enter manually, and tell the owner which invoice it was." },
+          { status: 422 }
+        );
+      }
+      // Ran out of room. The invoice was read fine, there were just more lines than would
+      // fit, and saying so points at the real fix (capture it in two photos).
+      if (result.kind === "max_tokens") {
+        return NextResponse.json(
+          { error: "This invoice is longer than the reader can return in one go. Photograph it in two halves and capture each, or enter it by hand." },
+          { status: 422 }
+        );
+      }
+      return NextResponse.json({ error: `${failureMessage(result.kind)} You can also use Enter manually.` }, { status: 502 });
     }
 
-    const data = await resp.json();
-
-    // A refusal arrives as HTTP 200 with stop_reason "refusal" and no usable content, so
-    // code that reads the first content block unconditionally would fail here with something
-    // meaningless. The person holding the invoice is a seasonal employee at the receiving
-    // door, and the standing rule is that they are never asked to debug: tell them what to
-    // do next instead.
-    if (data.stop_reason === "refusal") {
-      return NextResponse.json(
-        { error: "The reader would not process this document. Enter the invoice by hand using Enter manually, and tell the owner which invoice it was." },
-        { status: 422 }
-      );
-    }
-
-    // Ran out of room. Distinguishing this from a parse failure matters: the invoice was
-    // read fine, there were just more lines than would fit, and saying so points at the
-    // real fix (capture it in two photos) rather than at a broken reader.
-    if (data.stop_reason === "max_tokens") {
-      return NextResponse.json(
-        { error: "This invoice is longer than the reader can return in one go. Photograph it in two halves and capture each, or enter it by hand." },
-        { status: 422 }
-      );
-    }
-
-    const textPart = (data.content || []).find((c: any) => c.type === "text");
     // Structured outputs should make the fence strip unnecessary, since the response is
     // constrained to the schema. It stays because it costs nothing and this is the path a
     // failed capture blocks the receiving door on.
-    const raw = (textPart?.text || "").replace(/```json|```/g, "").trim();
+    const raw = result.text.replace(/```json|```/g, "").trim();
 
     let parsed: any;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      return NextResponse.json({ error: "could not parse model output", raw }, { status: 502 });
+      console.warn(JSON.stringify({ ai_call: "extract", outcome: "unparseable", chars: raw.length }));
+      return NextResponse.json({ error: "The reader returned something unreadable. Try the photo again, or use Enter manually." }, { status: 502 });
     }
 
-    if (!Array.isArray(parsed.line_items)) parsed.line_items = [];
-    return NextResponse.json(parsed);
+    const { data, warnings } = normalizeExtraction(parsed);
+    if (warnings.length) console.warn(JSON.stringify({ ai_call: "extract", outcome: "coerced", warnings }));
+    return NextResponse.json({ ...data, warnings, model: result.model });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || "unexpected error" }, { status: 500 });
   }

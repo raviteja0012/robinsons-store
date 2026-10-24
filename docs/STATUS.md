@@ -53,7 +53,7 @@ The handover written to the standard, 2026-10-24:
   logins are made: dollar amounts are hidden from staff by the app and API only, because the
   database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
-  store). It also found that nothing runs the tier classifier now that Jira is parked.
+  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
@@ -475,6 +475,15 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 - Role and audit seams: the payments screen fails closed for an unknown role (it showed full dollar figures while the role was still resolving); reconcile runs only on an editor's page load (a staff view was writing status changes); every money write on the payout screens requires a known actor; voidRow/deleteRow no longer write null-actor audit rows.
 
 ## Open items (polish, tractable)
+- AI call hardening, 2026-10-24 (branch ai-call-hardening, see VERIFICATION.md): all four AI
+  routes go through src/lib/anthropic.ts (25s timeout, 45s on extract, two retries on
+  429/529/5xx, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
+  messages only; provider detail goes to the function log as metadata, never content. Reorder
+  failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
+  confidence 0. Store data, questions and notes are fenced as data in every prompt.
+  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
+  for the Ask system prompt.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.

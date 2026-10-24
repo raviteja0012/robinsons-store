@@ -122,7 +122,7 @@ export default function Capture() {
         body: JSON.stringify({ imageBase64: prepared.base64, mediaType: prepared.mediaType })
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.detail || data.error || "extraction failed");
+      if (!resp.ok) throw new Error(data.error || "extraction failed");
       setAck(false);
       setLowAck(false);
       setDraft({
