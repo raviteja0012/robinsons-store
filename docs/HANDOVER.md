@@ -87,12 +87,17 @@ never needs moving.
 
 ### Step 2. Supabase (15 minutes)
 
-1. Sign up at Supabase as admin@ and confirm the email from the admin@ inbox.
-2. The developer, in organization `robinsons-store`, Team, invites admin@ as **Owner**. Only
-   an Owner can add owners or move projects; an Administrator cannot [V-src, access-control,
-   2026-10-24].
-3. As admin@: accept, add the store card, upgrade to **Pro**, set the billing email to admin@.
-4. Change the developer to **Developer**.
+Keep the organization; change who owns it. Moving the project would change nothing the store
+needs and would put the connection strings at risk.
+
+1. The developer, signed in with the account that owns organization `robinsons-store`, opens
+   Team and invites `admin@robinsonsgeneralstore.ca` as **Owner**. Only an Owner can add
+   owners or move projects; an Administrator cannot [V-src, access-control, 2026-10-24].
+2. In a private window, open the invite from the admin@ inbox and follow its link; create the
+   admin@ Supabase account there (password into the store vault), then accept.
+3. As admin@: add the store card, upgrade to **Pro**, set the billing email to admin@.
+4. The developer stays **Owner** until a second store-controlled owner exists (ADR-001,
+   condition 2), then drops to **Developer** at close-out.
 5. Reset the database password (Project settings, Database). Nothing in the app reads it.
    Rebuild `SUPABASE_DB_URL` as docs/SUPABASE_SETUP.md says (session pooler, port 5432) and
    replace the GitHub secret.
