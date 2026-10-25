@@ -278,23 +278,13 @@ create policy member_insert_self on public.activity_log
   to authenticated
   with check (actor_id = (app_auth.app_member()).id);
 
--- 3d. Storage. Supabase enables row-level security on storage.objects, so uploads need a policy
--- or every capture fails with "new row violates row-level security policy". Drop the dev policy
--- that allowed the anon key to write, and allow only signed-in members to read and write the
--- `documents` bucket (invoice photos, payment confirmations). The bucket goes PRIVATE here:
--- the app reads thumbnails through signed, expiring URLs (src/lib/docs.ts), so no permanent
--- public link to an invoice photo exists and a logged-out visitor gets nothing.
+-- 3d. Storage. The `documents` bucket goes PRIVATE here: the app reads every stored file through
+-- signed, expiring URLs (src/lib/docs.ts), so no permanent public link to an invoice photo exists
+-- and a logged-out visitor gets nothing. Who may save and open which file is section 3f, after
+-- 3e, because it uses app_auth.can_see_money().
 insert into storage.buckets (id, name, public)
 values ('documents', 'documents', false)
 on conflict (id) do update set public = excluded.public;
-
-drop policy if exists "documents_dev_all" on storage.objects;
-drop policy if exists "documents_auth_rw" on storage.objects;
-create policy "documents_auth_rw" on storage.objects
-  for all
-  to authenticated
-  using (bucket_id = 'documents')
-  with check (bucket_id = 'documents');
 
 -- 3e. Money by role (ARCH-03; docs/adr/ADR-003-money-by-role-at-the-database.md). Every signed-in
 -- member shares the one authenticated Postgres role, so a column cannot be shown to one member
@@ -498,6 +488,133 @@ revoke all on public.vendor_directory, public.invoice_due, public.insurance_rene
   from anon, authenticated;
 grant select on public.vendor_directory, public.invoice_due, public.insurance_renewal
   to authenticated;
+
+-- 3f. Stored files by store and role (ARCH-04; docs/adr/ADR-004-stored-files-by-store-and-role.md).
+-- Supabase enables row-level security on storage.objects, so every upload, signed URL, download
+-- and listing passes the two policies below. The app saves each file under its store's folder,
+-- then a folder for its kind (src/lib/documentPath.ts):
+--   <store_id>/invoices/<department_id>/<file>   Capture's invoice photos
+--   <store_id>/feedback/<file>                   Suggestions' screenshots and voice notes
+--   <store_id>/imports/<file>                    the archive of imported workbooks
+-- A member opens only their own store's files, and by kind:
+--   invoices   lead, manager, owner: an invoice shows prices, so the money rule of 3e applies
+--   feedback   lead, manager, owner, and the member who attached it
+--   imports    owner and manager, the roles that may import
+-- Any member saves an invoice photo or a suggestion file, so Capture works for staff, who upload
+-- the invoice in their hand without opening it again; only an owner or manager saves a workbook.
+-- No policy lets a member change or delete a stored file. supabase/documents_by_role.sql applies
+-- 3d and this section to a live database: change them together.
+
+-- Files saved before the store folders keep their old names: <department_id>/<file>,
+-- feedback/<file> and imports/<file>. Rather than move them, each is recorded once here with the
+-- store it belongs to. Members can neither read nor write this table, and nothing a member saves
+-- later adds to it. Row-level security is on with no policy: only its owner, which runs this
+-- script and the functions below, reads it.
+create table if not exists app_auth.legacy_document (
+  name text primary key,
+  kind text not null check (kind in ('invoices', 'feedback', 'imports')),
+  store_id uuid
+);
+alter table app_auth.legacy_document enable row level security;
+revoke all on app_auth.legacy_document from public, anon, authenticated;
+
+-- Records every older file not yet recorded, with its store: a photo's department; otherwise the
+-- store of the member who uploaded it; otherwise, for a suggestion file, the store of the one
+-- suggestion that names it; otherwise the only store, when the database has just one. When none
+-- of those settles it, the store stays empty and nobody opens the file in the app.
+create or replace function app_auth.record_legacy_documents()
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  with recorded as (
+    insert into app_auth.legacy_document (name, kind, store_id)
+    select o.name, k.kind, coalesce(
+        case when k.kind = 'invoices' then
+          (select d.store_id from public.department d where d.id::text = split_part(o.name, '/', 1))
+        end,
+        (select u.store_id from public.app_user u where u.auth_id::text = o.owner_id),
+        case when k.kind = 'feedback' then
+          (select min(f.store_id::text)::uuid from public.feedback f
+           where o.name in (f.screenshot_path, f.audio_path)
+           having count(distinct f.store_id) = 1)
+        end,
+        (select s.id from public.store s where (select count(*) from public.store) = 1))
+    from storage.objects o
+    cross join lateral (select case
+        when o.name like 'feedback/%' then 'feedback'
+        when o.name like 'imports/%' then 'imports'
+        when o.name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[^/]+$' then 'invoices'
+      end as kind) k
+    where o.bucket_id = 'documents' and k.kind is not null
+    on conflict (name) do nothing
+    returning 1)
+  select count(*)::integer from recorded;
+$$;
+revoke execute on function app_auth.record_legacy_documents() from public, anon, authenticated;
+select app_auth.record_legacy_documents() as older_files_recorded;
+
+-- Whether the signed-in member may open a stored file, from its name and who uploaded it. The
+-- store and kind come from the name's first two folders or, for an older file, from
+-- app_auth.legacy_document. Store ids are compared as text, so a malformed name matches nothing.
+create or replace function app_auth.can_open_document(object_name text, uploader text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(bool_or(
+      f.store_id = app_auth.my_store_id()::text
+      and case f.kind
+        when 'invoices' then app_auth.can_see_money()
+        when 'feedback' then app_auth.can_see_money() or uploader = auth.uid()::text
+        when 'imports' then app_auth.my_role() in ('owner', 'manager')
+        else false
+      end), false)
+  from (
+    select split_part(object_name, '/', 1) as store_id, split_part(object_name, '/', 2) as kind
+    where object_name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(invoices|feedback|imports)/.'
+    union all
+    select l.store_id::text, l.kind from app_auth.legacy_document l where l.name = object_name
+  ) f;
+$$;
+
+-- Whether the signed-in member may save a file under this name: only into their own store's
+-- folder and one of the three kind folders, a workbook only as an owner or manager, and never
+-- under an older-style name.
+create or replace function app_auth.can_save_document(object_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    object_name ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(invoices|feedback|imports)/.'
+    and split_part(object_name, '/', 1) = app_auth.my_store_id()::text
+    and (split_part(object_name, '/', 2) <> 'imports' or app_auth.my_role() in ('owner', 'manager')),
+    false);
+$$;
+
+revoke execute on function app_auth.can_open_document(text, text), app_auth.can_save_document(text)
+  from public, anon;
+grant execute on function app_auth.can_open_document(text, text), app_auth.can_save_document(text)
+  to authenticated;
+
+drop policy if exists "documents_dev_all" on storage.objects;
+drop policy if exists "documents_auth_rw" on storage.objects;
+drop policy if exists "documents_open" on storage.objects;
+drop policy if exists "documents_save" on storage.objects;
+create policy "documents_open" on storage.objects
+  for select
+  to authenticated
+  using (bucket_id = 'documents' and app_auth.can_open_document(name, owner_id));
+create policy "documents_save" on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'documents' and app_auth.can_save_document(name));
 
 -- 4. Link Supabase Auth accounts to app_user rows BY EMAIL. Run this AFTER you create each
 -- account in Authentication, Users with the same email as the app_user row (the demo emails are
