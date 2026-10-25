@@ -11,6 +11,8 @@
 // No temperature or other sampling parameter is sent: current Claude models reject
 // non-default sampling params, and one rejected parameter would fail every call.
 
+import { finishAiCall, reserveAiCall, type AiUsageScope } from "./aiUsage";
+
 export type ClaudeFailure =
   | "no_key"
   | "timeout"
@@ -18,7 +20,8 @@ export type ClaudeFailure =
   | "refusal"
   | "max_tokens"
   | "bad_request"
-  | "upstream";
+  | "upstream"
+  | "capped";
 
 export type ClaudeResult =
   | {
@@ -39,6 +42,10 @@ type CallOptions = {
   max_tokens: number;
   output_config?: unknown;
   timeoutMs?: number;
+  // The caller's database client and store, for the ai_call log and the daily cap
+  // (src/lib/aiUsage.ts). Required so a route cannot drop it without tsc noticing; null,
+  // the call is neither logged nor capped.
+  scope: AiUsageScope | null;
 };
 
 // 429 is rate limited, 529 is overloaded, the 5xx are transient on the API side. A 400 or
@@ -58,9 +65,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms + Math.floor(M
 
 export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
   const model = claudeModel();
-  const started = Date.now();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, kind: "no_key", detail: "ANTHROPIC_API_KEY is not set", model, ms: 0 };
+  const slot = await reserveAiCall(opts.scope, opts.route, model);
+  if (slot.capped) {
+    const capped: ClaudeResult = { ok: false, kind: "capped", detail: "daily cap reached", model, ms: 0 };
+    logCall(opts.route, capped);
+    return capped;
+  }
+  // Started after the reservation, so ms is the model's time and not the database's.
+  const started = Date.now();
 
   const body = JSON.stringify({
     model,
@@ -106,7 +120,19 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
       break;
     }
 
-    const data = await resp.json();
+    // The model has already run and billed by now, so an unreadable body is a failure, not a
+    // retry: a second attempt would pay twice. Read here rather than thrown, the reserved
+    // ai_call row is still finished below.
+    let data: any;
+    try {
+      data = await resp.json();
+    } catch (err: any) {
+      last =
+        err?.name === "TimeoutError" || err?.name === "AbortError"
+          ? { kind: "timeout", detail: "answer body not received in time" }
+          : { kind: "upstream", detail: "answer was not JSON" };
+      break;
+    }
     const ms = Date.now() - started;
     // A refusal and a cut-off both arrive as HTTP 200, so they have to be read from
     // stop_reason rather than the status code.
@@ -123,11 +149,13 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
             usage: data.usage || null
           };
     logCall(opts.route, result);
+    await finishAiCall(opts.scope, slot.id, opts.route, result, data.usage);
     return result;
   }
 
   const failed: ClaudeResult = { ok: false, ...last, model, ms: Date.now() - started };
   logCall(opts.route, failed);
+  await finishAiCall(opts.scope, slot.id, opts.route, failed, null);
   return failed;
 }
 
@@ -146,7 +174,7 @@ function logCall(route: string, r: ClaudeResult) {
 export function failureMessage(kind: ClaudeFailure): string {
   switch (kind) {
     case "no_key":
-      return "The AI helper is off. The owner can turn it on in the settings.";
+      return "The AI helper is off. Tell the owner.";
     case "timeout":
       return "The AI helper took too long to answer. Try again in a minute.";
     case "overloaded":
@@ -155,6 +183,8 @@ export function failureMessage(kind: ClaudeFailure): string {
       return "The AI helper would not answer this one. Try rewording it, or tell the owner.";
     case "max_tokens":
       return "The answer was too long to finish. Ask a narrower question.";
+    case "capped":
+      return "The AI helper has used today's limit for this store and starts again tomorrow. If it is needed sooner, the owner can raise the limit in Vercel and redeploy.";
     case "bad_request":
     case "upstream":
     default:

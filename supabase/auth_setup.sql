@@ -128,6 +128,30 @@ begin
   end loop;
 end $$;
 
+-- ai_call (3a, its own block): store-scoped like the tables above but kept out of that array,
+-- which lets every member read and write. Only the owner reads their store's rows. Nobody
+-- writes the table directly: an AI call reserves and finishes its row through
+-- public.ai_call_begin and public.ai_call_finish (supabase/ai_call.sql), which run as definer,
+-- stamp the caller's own store, and are the only way a staff call counts against the cap.
+-- Anonymous callers get no execute on them: once login is on, every AI route already
+-- requires a signed-in member.
+do $$
+begin
+  if to_regclass('public.ai_call') is null then
+    raise notice 'auth_setup: table ai_call not found, skipping (rerun after creating it)';
+    return;
+  end if;
+  drop policy if exists owner_read on public.ai_call;
+  create policy owner_read on public.ai_call
+    for select
+    to authenticated
+    using (store_id = app_auth.my_store_id() and app_auth.my_role() = 'owner');
+  revoke execute on function public.ai_call_begin(uuid, text, text, integer) from public, anon;
+  revoke execute on function public.ai_call_finish(uuid, text, text, text, integer, integer, integer, integer, integer) from public, anon;
+  grant execute on function public.ai_call_begin(uuid, text, text, integer) to authenticated;
+  grant execute on function public.ai_call_finish(uuid, text, text, text, integer, integer, integer, integer, integer) to authenticated;
+end $$;
+
 -- 3b. Child tables with no store_id of their own. Scope through the parent so a member only
 -- reaches rows that roll up to their store. Membership is enforced at the parent.
 

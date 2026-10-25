@@ -4,6 +4,17 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Data loads kept out of the repository, 2026-10-24 (branch keep-data-loads-local):
+- `supabase/seed_bookings.sql` and `supabase/seed_schedule.sql` are no longer committed. The
+  generators (`scripts/generate-seed-bookings.mjs`, `scripts/generate-seed-schedule.ts`) write
+  them on the developer's machine from the store's workbooks, and `.gitignore` keeps them out.
+  Neither was ever in `supabase/run-order.txt`, so no workflow applied them and the live
+  database is unchanged.
+- `supabase/seed.sql` keeps its curated vendors with made-up phone numbers (705-555-01NN) and
+  no email addresses.
+- RUNBOOK Step 2, the store skill's file map and the Kiro data-model notes say how to generate
+  the loads locally.
+
 Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
 - `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
   and `debugging` tool groups: documentation search, logs and advisors.
@@ -491,7 +502,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
-  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  Left for later: an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
@@ -525,6 +536,15 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   enter. Rules in src/lib/captureLines.ts, checked by scripts/extractvalidate-check in CI. No
   schema or trigger change. Left open: no screen yet edits a saved receiving line, so the owner
   has nowhere in the app to enter that cost, and the feed total counts the line as zero.
+- AI call log and daily cap, 2026-10-24 (branch ai-usage-cap, see VERIFICATION.md): every AI
+  call reserves an ai_call row before the model is asked and fills it in after (store, route,
+  model, token counts, outcome, duration; never content). Once the store has made
+  AI_DAILY_CAP_PER_STORE calls today (Ontario day, default 100) the call is refused without
+  reaching the model: 429 and a plain message. The reservation counts under a per-store lock,
+  so parallel requests cannot overshoot the cap. Fails open: no table, a slow database or an
+  error logs a warning and the call goes ahead. Owner action: supabase/ai_call.sql applies
+  itself on merge and the cap works from then; rerun auth_setup.sql after it so the owner can
+  read the rows. Not built: a screen for the owner to read the log (Supabase for now).
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.

@@ -183,6 +183,7 @@ Every name the code and workflows read [V-run, search of `process.env` in `src/`
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Server only, bypasses the policies | **Yes** |
 | `ANTHROPIC_API_KEY` | Anthropic | Also a GitHub secret | **Yes** |
 | `ANTHROPIC_MODEL` | Set by hand | Optional; the code defaults to `claude-sonnet-5` [R `src/app/api/extract/route.ts:80`] | No |
+| `AI_DAILY_CAP_PER_STORE` | Set by hand | Optional; AI calls per store per Ontario day, the code defaults to 100 [R `src/lib/aiUsage.ts:28`]. A change applies after a redeploy | No |
 | `CRON_SECRET` | Made up | Same value as the GitHub secret | **Yes** |
 | `RESEND_API_KEY`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` | Resend, set by hand | Only when the daily email is wanted | Key only |
 
