@@ -48,10 +48,12 @@ export async function POST(req: NextRequest) {
     // selected. minimum_order_amount is a dollar figure and rides the same money gate as the
     // invoice section below: a role that cannot see money reads the vendor_directory view,
     // because once login is on the vendor table returns it no rows (supabase/money_by_role.sql).
-    // The view cannot embed the department, so that role gets the names from the department list.
+    // The view holds every vendor column but the money ones, so it is read whole: a field added
+    // to the registry before the view drops out of the answer instead of failing the read. The
+    // view cannot embed the department, so that role gets the names from the department list.
     const scopeVendor = includeMoney
       ? db.from("vendor").select(vendorSelect(["department:department_id(name)"])).is("voided_at", null)
-      : db.from("vendor_directory").select(vendorSelect([], { money: false })).is("voided_at", null);
+      : db.from("vendor_directory").select("*").is("voided_at", null);
     const scopeDepartment = db.from("department").select("id, name");
     const scopeInvoice = db.from("invoice").select("amount, hst_amount, freight_charges, tax_mode, due_date, status, terms, vendor:vendor_id(name)").is("voided_at", null);
     const [notes, vendors, invoices, departments] = await Promise.all([

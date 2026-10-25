@@ -343,18 +343,9 @@ export function visibleFacts(
  * This is what stops the eight hand-written selects drifting apart again. It always fetches
  * every field's columns regardless of department, because a vendor's department can be
  * changed after the row is written and rule 1 needs the data present to honour it.
- *
- * `money: false` leaves out every money field. That is the select for the vendor_directory
- * view, which is how a role that cannot see money reads vendors: once login is on, the vendor
- * table itself returns no rows to staff (supabase/money_by_role.sql), and the view has no
- * dollar columns to ask for.
  */
-export function vendorSelect(extra: string[] = [], opts: { money?: boolean } = {}): string {
-  const withMoney = opts.money ?? true;
+export function vendorSelect(extra: string[] = []): string {
   const cols = new Set<string>(["id", "store_id", "department_id", ...extra]);
-  for (const f of VENDOR_FIELDS) {
-    if (f.money && !withMoney) continue;
-    for (const c of f.columns) cols.add(c);
-  }
+  for (const f of VENDOR_FIELDS) for (const c of f.columns) cols.add(c);
   return [...cols].join(", ");
 }

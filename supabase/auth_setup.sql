@@ -425,8 +425,17 @@ create policy member_store_insert on public.receiving_line
 -- caller's own store, so the view runs as the caller and is never itself a definer view.
 -- The functions live in app_auth, which the API does not expose, so nobody calls them directly.
 --   vendor_directory    every vendor column except the minimum order (Capture, Ask)
---   invoice_due         which invoices are open and when they fall due (the bell)
---   insurance_renewal   policy names and renewal dates (the bell)
+--   invoice_due         which invoices are open and when they fall due (the bell, Due)
+--   insurance_renewal   policy names and renewal dates (the bell, Compliance)
+-- The views and functions are dropped and made again on every run: create or replace cannot
+-- change a function's columns, so this is what lets a column be added to a view later.
+drop view if exists public.vendor_directory;
+drop view if exists public.invoice_due;
+drop view if exists public.insurance_renewal;
+drop function if exists app_auth.vendor_directory_rows();
+drop function if exists app_auth.invoice_due_rows();
+drop function if exists app_auth.insurance_renewal_rows();
+
 create or replace function app_auth.vendor_directory_rows()
 returns table (
   id uuid, store_id uuid, department_id uuid, name text, rep_name text, phone text, email text,
@@ -448,13 +457,15 @@ as $$
 $$;
 
 create or replace function app_auth.invoice_due_rows()
-returns table (id uuid, store_id uuid, vendor_id uuid, due_date date, status text, voided_at timestamptz)
+returns table (
+  id uuid, store_id uuid, vendor_id uuid, invoice_number text, terms text, due_date date,
+  status text, voided_at timestamptz)
 language sql
 stable
 security definer
 set search_path = public
 as $$
-  select i.id, i.store_id, i.vendor_id, i.due_date, i.status, i.voided_at
+  select i.id, i.store_id, i.vendor_id, i.invoice_number, i.terms, i.due_date, i.status, i.voided_at
   from public.invoice i
   where i.store_id = app_auth.my_store_id();
 $$;

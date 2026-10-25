@@ -206,8 +206,9 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
 ## Task 9. Before any staff login is made
 
 - [ ] 9.1 **YOU, with Claude**: fix ARCH-03, so dollar amounts are hidden from staff by the
-      database itself, not only by the screens. It is queued as its own task, "Enforce money
-      visibility in the database".
+      database itself, not only by the screens. Built on branch claude/arch-03-money-by-role
+      (docs/adr/ADR-003-money-by-role-at-the-database.md); done once it is merged and the
+      ADR-003 condition 3 check reads clean. Decide ARCH-04 (stored files) at the same time.
 - [ ] 9.2 Only then: RAVI or a manager adds staff from the app's Admin, Team page.
 
 ## Task 10. The new team member

@@ -9,18 +9,22 @@ docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
 - A staff login can no longer read a dollar figure straight from the database. The nine tables
   that carry one (vendor, purchase_order, invoice, credit_note, insurance_policy, payment,
   payment_allocation, pay_rate, receiving_line) open only to lead, manager and owner, and the
-  payment functions refuse staff.
+  payment functions refuse staff. A payment can only be allocated to an invoice in the same
+  store.
 - Staff screens read three views with no dollar column: vendor_directory (Capture's vendor
-  list, Ask), invoice_due (the bell's overdue count) and insurance_renewal (the bell's
-  renewals). Capture still saves priced lines for staff; staff cannot read them back.
+  list, Ask), invoice_due (the bell's overdue count, the Due list) and insurance_renewal (the
+  bell's renewals, Compliance). Money roles keep reading the tables. Capture still saves priced
+  lines for staff; staff cannot read them back.
 - It applies itself: supabase/money_by_role.sql is last in run-order.txt, and auth_setup.sql
   section 3e carries the same block so a rerun keeps money locked. Demo databases stay open.
-- Proven on Supabase Postgres 17: supabase/money_by_role_test.sql passes 129 of 129 on a fresh
-  install and on a copy upgraded from today's policies, 8 of 8 on demo copies; 37 of 37 app
-  read and write paths pass through PostgREST v14.18.
+  Capture falls back to the vendor table if a deploy lands before the migration.
+- Proven on Supabase Postgres 17: supabase/money_by_role_test.sql passes 130 of 130 on a fresh
+  install and on a copy of main's scripts after the migration, 8 of 8 on demo copies; 48 of 48
+  app read and write paths pass through PostgREST v14.18; the AI evals pass offline, 23 of 23.
 - After the merge: nothing to run. Read the two checks in ADR-003 condition 3 once. Still open:
   ARCH-04 (stored files), and item.cost_price is left out while nothing writes it. Staff
-  opening a manager screen by its address now see an empty list.
+  opening a manager-only screen by its address (Vendors, Payments, Reports, Employees) now see
+  an empty list.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
 - docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes

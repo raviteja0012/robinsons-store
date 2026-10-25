@@ -18,6 +18,10 @@ returns void
 language plpgsql
 as $fn$
 begin
+  drop view if exists public.vendor_directory;
+  drop view if exists public.invoice_due;
+  drop view if exists public.insurance_renewal;
+
   create or replace view public.vendor_directory with (security_invoker = true) as
     select v.id, v.store_id, v.department_id, v.name, v.rep_name, v.phone, v.email,
            v.products_we_carry, v.default_terms, v.status, v.notes, v.summer_order_timeline,
@@ -26,7 +30,7 @@ begin
     from public.vendor v;
 
   create or replace view public.invoice_due with (security_invoker = true) as
-    select i.id, i.store_id, i.vendor_id, i.due_date, i.status, i.voided_at
+    select i.id, i.store_id, i.vendor_id, i.invoice_number, i.terms, i.due_date, i.status, i.voided_at
     from public.invoice i;
 
   create or replace view public.insurance_renewal with (security_invoker = true) as
@@ -158,6 +162,14 @@ begin
   -- The three money-free views. Each reads through a definer function that returns only the
   -- caller's own store, so the view runs as the caller and is never itself a definer view.
   -- The functions live in app_auth, which the API does not expose, so nobody calls them directly.
+  -- Dropped and made again on every run: create or replace cannot change a function's columns,
+  -- so this is what lets a column be added to a view later.
+  drop view if exists public.vendor_directory;
+  drop view if exists public.invoice_due;
+  drop view if exists public.insurance_renewal;
+  drop function if exists app_auth.vendor_directory_rows();
+  drop function if exists app_auth.invoice_due_rows();
+  drop function if exists app_auth.insurance_renewal_rows();
   create or replace function app_auth.vendor_directory_rows()
   returns table (
     id uuid, store_id uuid, department_id uuid, name text, rep_name text, phone text, email text,
@@ -179,13 +191,15 @@ begin
   $body$;
 
   create or replace function app_auth.invoice_due_rows()
-  returns table (id uuid, store_id uuid, vendor_id uuid, due_date date, status text, voided_at timestamptz)
+  returns table (
+    id uuid, store_id uuid, vendor_id uuid, invoice_number text, terms text, due_date date,
+    status text, voided_at timestamptz)
   language sql
   stable
   security definer
   set search_path = public
   as $body$
-    select i.id, i.store_id, i.vendor_id, i.due_date, i.status, i.voided_at
+    select i.id, i.store_id, i.vendor_id, i.invoice_number, i.terms, i.due_date, i.status, i.voided_at
     from public.invoice i
     where i.store_id = app_auth.my_store_id();
   $body$;

@@ -298,12 +298,12 @@ which is how a single cheque settles several invoices.
 The store-scoping rule. BUILT: every read filters by the active `store_id` and every insert
 stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:122].
 At the database, 14 tables carry their own `store_id` policy: nine in section 3a
-[R supabase/auth_setup.sql:111-131] and the five that carry a dollar figure in section 3e,
-which adds the role fence [R supabase/auth_setup.sql:325-340]. `inventory_count_line`,
+[R supabase/auth_setup.sql:102-133] and the five that carry a dollar figure in section 3e,
+which adds the role fence [R supabase/auth_setup.sql:325-341]. `inventory_count_line`,
 `shift` and `retail_price` scope through their parents [R supabase/auth_setup.sql:159-198];
 `payment` through its vendor (or legacy invoice), `payment_allocation` through its payment,
 and `pay_rate` and `receiving_line` through theirs, all in 3e
-[R supabase/auth_setup.sql:343-418]. `ai_call`, the AI usage log, is store-scoped in its own
+[R supabase/auth_setup.sql:343-422]. `ai_call`, the AI usage log, is store-scoped in its own
 block: the owner reads it, and nobody writes it except through its two functions
 [R supabase/auth_setup.sql:135-157]. It runs just before `money_by_role.sql`, the last script
 in the run order [R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
@@ -365,18 +365,21 @@ non-negotiable.
 
 ## 7. Security and privacy
 
-Store data is fenced by store at the database, and money by role in the app, the API and the
-database (ARCH-03 closed 2026-10-25; docs/adr/ADR-003-money-by-role-at-the-database.md).
-Stored files are not yet fenced by role (ARCH-04).
+Store data is fenced by store at the database. Money is fenced by role in the app and the API,
+and the same fence at the database is built and applies on merge (ARCH-03;
+docs/adr/ADR-003-money-by-role-at-the-database.md). Stored files are not yet fenced by role
+(ARCH-04).
 
 - Row-level security, repository default: a fresh install from `schema.sql` gets the open
   demo policy set (`dev_all`, anon read and write on every table) and a public `documents`
   bucket [R supabase/schema.sql:683-712]. BUILT, for demos only.
 - Row-level security, production: the cutover in `auth_setup.sql` is applied: 21
   `member_store_rw` policies, no open dev policies, the `documents` bucket private, one login
-  account [R docs/STATUS.md:15-17, 388-391]. That was read live on 2026-10-18 and not re-read
+  account [R docs/STATUS.md:495-498]. That was read live on 2026-10-18 and not re-read
   this session [J-open: killed if `select count(*) from pg_policies where policyname =
-  'dev_all'` returns more than 0].
+  'dev_all'` returns more than 0]. Once `money_by_role.sql` applies, the nine money tables
+  carry `money_store_rw` instead of `member_store_rw`, and `receiving_line` also
+  `member_store_insert` (ADR-003 condition 3 reads it).
 - Login enforcement in the app is the build-time flag `NEXT_PUBLIC_REQUIRE_AUTH`; with it on,
   every API route requires a valid session and queries run as the caller
   [R src/lib/serverMember.ts:3-10, 35-50]. Its production value was not read this session
@@ -387,16 +390,18 @@ Stored files are not yet fenced by role (ARCH-04).
   [R src/lib/serverMember.ts:18-21]; and the database applies it as
   `app_auth.can_see_money()` [R supabase/auth_setup.sql:310-319]. BUILT in the repository: the
   nine tables that carry a dollar figure return no rows to staff and refuse their writes, the
-  payment functions (security invoker) refuse them, and staff screens read three views with no
-  dollar column: `vendor_directory`, `invoice_due`, `insurance_renewal`
-  [R supabase/auth_setup.sql:325-485]. Capture still saves a priced line for staff without
-  reading it back [R supabase/auth_setup.sql:413-418]. Proven on fresh and upgraded copies
-  [V-run, supabase/money_by_role_test.sql on supabase/postgres 17.11.0.005, 2026-10-25: 129 of
-  129 checks pass on both] and through PostgREST v14.18 with the app's own client
-  [V-run, 37 of 37 read and write paths for owner, manager and staff, 2026-10-25]. Live once
-  `supabase/money_by_role.sql` applies on merge [Q: the developer, run ADR-003 condition 3
-  after the merge]. Two columns stay open by design: `item.cost_price`, which nothing writes,
-  and `department.target_margin`, a percentage (ADR-003).
+  payment functions (security invoker) refuse them, and a payment cannot be allocated to
+  another store's invoice [R supabase/auth_setup.sql:325-422]. Staff screens read three views
+  with no dollar column: `vendor_directory` (Capture, Ask), `invoice_due` (the bell, Due) and
+  `insurance_renewal` (the bell, Compliance) [R supabase/auth_setup.sql:424-500]. Capture still
+  saves a priced line for staff without reading it back [R supabase/auth_setup.sql:417-422].
+  Proven on fresh and upgraded copies [V-run, supabase/money_by_role_test.sql on
+  supabase/postgres 17.11.0.005, 2026-10-25: 130 of 130 checks pass on both] and through
+  PostgREST v14.18 with the app's own client [V-run, 48 of 48 read and write paths for owner,
+  manager and staff, 2026-10-25]. Live once `supabase/money_by_role.sql` applies on merge
+  [Q: the developer, run ADR-003 condition 3 after the merge]. Two columns stay outside the
+  fence by design: `item.cost_price`, which nothing writes, and `department.target_margin`, a
+  percentage (ADR-003).
 - Documents: private bucket, readable and writable by any signed-in member; read through
   signed, expiring URLs [R supabase/auth_setup.sql:281-297]. Not store-scoped, and not fenced
   by role (ARCH-04).
@@ -407,12 +412,12 @@ Stored files are not yet fenced by role (ARCH-04).
   [R src/app/api/import/route.ts:417] [R src/app/api/alerts/route.ts:35]
   [R src/app/api/health/route.ts:112].
 - PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
-  reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-51]
+  reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-58]
   [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
   content: feedback triage sends the attached screenshot as an image, so a screenshot of the
   HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
   and knowledge notes, typed freely by staff, go into every Ask prompt
-  [R src/app/api/ask/route.ts:45, 64-67]. The screenshot picker says so before anything is attached
+  [R src/app/api/ask/route.ts:45, 73-76]. The screenshot picker says so before anything is attached
   [R src/app/suggestions/page.tsx:275-277]. BUILT.
 - Canadian regions: records and stored files live in Toronto, and the API routes run in
   Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
@@ -447,8 +452,8 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 |---|---|---|---|
 | ARCH-01 | CLOSED 2026-10-24: Montreal function region confirmed, `x-vercel-id` second field reads `yul1` | The developer | No |
 | ARCH-02 | `NEXT_PUBLIC_REQUIRE_AUTH` production value not read this session | The developer | No |
-| ARCH-03 | CLOSED 2026-10-25: money is fenced by role at the database as well as in the UI and API (ADR-003; `supabase/money_by_role.sql`); 129 of 129 checks on fresh and upgraded copies. Live after the merge applies it | The developer | No |
-| ARCH-04 | `documents` bucket open to any signed-in member, not scoped by store or by role. Follow-up from ARCH-03, not fixed there: the bucket holds Capture's invoice photos and Suggestions' screenshots [R src/app/capture/page.tsx:207] [R src/app/suggestions/page.tsx:130-138]. Next: storage policies that scope each path by store and keep invoice photos and suggestion files to money roles | The developer | Decide before staff logins which stored files staff may open [Q: Ravi Kiran] |
+| ARCH-03 | BUILT 2026-10-25: money is fenced by role at the database as well as in the UI and API (ADR-003; `supabase/money_by_role.sql`), 130 of 130 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-003 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
+| ARCH-04 | `documents` bucket open to any signed-in member, not scoped by store or by role. Follow-up from ARCH-03, not fixed there: the bucket holds Capture's invoice photos and Suggestions' screenshots [R src/app/capture/page.tsx:212] [R src/app/suggestions/page.tsx:130-138]. Next: storage policies that scope each path by store and keep invoice photos and suggestion files to money roles | The developer | Decide before staff logins which stored files staff may open [Q: Ravi Kiran] |
 | ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER Step 2) | Ravi Kiran | Yes |
 | ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
@@ -477,7 +482,7 @@ HANDOVER, ENVIRONMENTS, LOOP_ENGINEERING, STATUS, README and the owner infrastru
 the eight killed are the six stale statements this rewrite replaces, the old diagram's upload
 after the database writes, and tier A self-merge in the live Slack loop. Added the same day
 by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
-curl of the health route. Added 2026-10-25 by the ARCH-03 session: 9 claims checked, 9 confirmed, 0
+curl of the health route. Added 2026-10-25 by the ARCH-03 session: 19 claims checked, 19 confirmed, 0
 killed, 3 sources (this repository, the local test databases and PostgREST runs cited in
 section 7, and docs/adr/ADR-003-money-by-role-at-the-database.md); line references into
 `supabase/auth_setup.sql` in sections 5 and 7 were re-read after section 3e moved them.

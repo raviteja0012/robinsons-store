@@ -169,7 +169,7 @@ begin
   perform pg_temp.expect('vendor_directory columns',
     'id,store_id,department_id,name,rep_name,phone,email,products_we_carry,default_terms,status,notes,summer_order_timeline,order_location,order_location_other,reorder_status,reorder_comments,specializes_in,created_at,voided_at',
     pg_temp.view_columns('vendor_directory'));
-  perform pg_temp.expect('invoice_due columns', 'id,store_id,vendor_id,due_date,status,voided_at',
+  perform pg_temp.expect('invoice_due columns', 'id,store_id,vendor_id,invoice_number,terms,due_date,status,voided_at',
     pg_temp.view_columns('invoice_due'));
   perform pg_temp.expect('insurance_renewal columns', 'id,store_id,name,renewal_date,voided_at',
     pg_temp.view_columns('insurance_renewal'));

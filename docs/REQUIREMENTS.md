@@ -41,7 +41,8 @@ What the world knows about the store (researched 2026-07-27; sources: Discover M
 ## Standing invariants (never regress these)
 
 1. Every read and write is store-scoped; new tables get store_id, RLS, and a line in
-   auth_setup.sql section 3a.
+   auth_setup.sql section 3a (section 3e and supabase/money_by_role.sql if the table holds a
+   dollar figure).
 2. Money visibility fails closed: null/unknown role sees no dollars (canSeeMoney).
 3. Editing is role-gated (canEdit); destructive actions are soft voids (voidRow /
    void_payment) filtered with .is("voided_at", null); user-facing label is Void.

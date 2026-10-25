@@ -792,7 +792,7 @@ create or replace view public.vendor_directory with (security_invoker = true) as
   from public.vendor v;
 
 create or replace view public.invoice_due with (security_invoker = true) as
-  select i.id, i.store_id, i.vendor_id, i.due_date, i.status, i.voided_at
+  select i.id, i.store_id, i.vendor_id, i.invoice_number, i.terms, i.due_date, i.status, i.voided_at
   from public.invoice i;
 
 create or replace view public.insurance_renewal with (security_invoker = true) as
