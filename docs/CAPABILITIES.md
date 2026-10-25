@@ -277,7 +277,7 @@ Nothing here is refused. Each one is a decision already made, waiting on a condi
 | Streaming Functions | Vercel | The owner says Ask feels slow | The answer starts appearing instead of the phone looking frozen. Never on /api/extract | days; included |
 | AI SDK | Vercel | Only if streaming ships, scoped to /api/ask | The cheapest correct way to stream, without touching extract | days; free |
 | Streaming (SSE) | Anthropic | max_tokens on any route goes above about 16k, or answers grow long | Answers appear as they are written | days; free |
-| Prompt caching | Anthropic | Ask or reorder becomes daily staff use, or a scheduled summary calls them | Slightly faster answers and lower spend | hours; cache read 0.1x input |
+| Prompt caching | Anthropic | In use on /api/ask since #59 (from the #58 left-for-later list). Pays off only when a follow-up comes within 5 minutes, about 1 in 5 asks to break even. Reorder still waits for daily staff use or a scheduled summary | Slightly faster answers and lower spend | hours; cache read 0.1x input |
 | Claude Opus 5 | Anthropic | A measured extraction failure rate the amber gate is not catching | A stronger reader in reserve, switched by one setting. Raise max_tokens first | minutes to switch; $5/$25 per MTok |
 | Usage and Cost Admin API | Anthropic | Monthly spend crosses about half the working budget, or intake makes volume machine-driven | Spend attributed between the store's app and the build loop | hours; free |
 | Bedrock, Vertex, Foundry | Anthropic | An AI feature has to read staff personal data under a formal residency commitment | A route to keeping document reading inside Canada | days; 10% regional premium |
