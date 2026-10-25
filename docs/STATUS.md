@@ -486,6 +486,17 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   until a record changes. The function log carries cache_creation_input_tokens and
   cache_read_input_tokens. Left: confirm reads are non-zero on a preview with two questions a
   minute apart.
+- One of the left-for-later items above is built, not yet run: the golden-case evals,
+  2026-10-24 (branch ai-golden-evals, see VERIFICATION.md). 24 made-up cases in
+  scripts/aievals-check, 11 invoices for extract and 13 questions for ask, scored by fixed
+  rules (field match with a one-cent tolerance; facts that must and must not appear; for the
+  money and store cases, the prompt itself). The scorer tests are a step in ci.yml and use no
+  model. `npm run eval:ai` sends the cases through the real routes and src/lib/anthropic.ts
+  and prints a pass rate per case. It spends the API key (72 calls by default, 24 with
+  `-- --runs 1`), so it never runs in CI and has not been run yet: the first run is the
+  owner's call. One case is marked as a known gap and is expected to fail until it is fixed:
+  Ask lists a partly paid invoice at its full total as what is owed
+  (ask-owed-partial-payment).
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
