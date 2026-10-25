@@ -10,8 +10,9 @@ that is a real number clears an amber line; fixing a description or qty, emptyin
 box, or typing something that is not a number does not. When the role cannot see money,
 an amber line is saved with no unit cost, so staff never post a cost they could not check.
 `costEntry` reads the cost an owner or manager types later on the feed's "Needs a cost" list:
-a plain non-negative number, with an optional dollar sign and thousands commas, saved with
-confidence 1. A decimal comma such as "12,50" is refused rather than read as 1250.
+a number above 0 and up to $100,000, with an optional dollar sign and thousands commas, saved
+with confidence 1. "12,50" and "0,500" are refused rather than read as 1250 or 500. Zero is
+refused because the invoice reader writes 0 for a cost it could not read.
 
 ## Running it
 
