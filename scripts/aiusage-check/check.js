@@ -202,7 +202,12 @@ const call = (scope, extra = {}) => callClaude({ route: "ask", max_tokens: 100, 
   r = await call({ db, storeId: null });
   t("no store: not reserved, not finished, call made", r.ok && fetchCalls === 1 && db.begins.length === 0 && db.finishes.length === 0);
 
-  // The Ask route, through its real POST handler, with resolveMember stood in for.
+  // The Ask route, through its real POST handler, with resolveMember stood in for. The route
+  // reaches the browser client through payments.ts (it only uses invoiceTotal from there),
+  // and building that client needs a WebSocket that Node 20 does not have, so it is stood in
+  // for too.
+  const browserClient = require.resolve("./lib/supabaseClient.js");
+  require.cache[browserClient] = { id: browserClient, filename: browserClient, loaded: true, exports: { supabase: {}, DOCUMENTS_BUCKET: "documents", SUPABASE_CONFIGURED: false } };
   const serverMember = require("./lib/serverMember.js");
   const { NextRequest } = require("next/server");
   let askDb = null;
