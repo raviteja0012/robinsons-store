@@ -52,7 +52,12 @@ What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICA
 - docs/owner-notes/store-app-infrastructure.html told the owner that only invoice images reach
   the AI and staff details never do. Corrected: it now lists what each AI feature sends, the
   30-day deletion, the screenshot path and the daily email, and the services table and the
-  four-pieces card name screenshot reading.
+  four-pieces card name screenshot reading. After a fact-check the same day: the AI block
+  lists five uses (screenshot reading and the Slack builder added), the services table has
+  Slack, and two statements the code does not back were removed (one under "What protects
+  it", and an "AI never reads staff records" line). The watchdog now reads as a Slack message.
+- The PLATFORM.md Slack builder row says the request text is in the public run log for 90
+  days and the build leaves a branch, draft pull request and ledger entries in the repository.
 - The Suggestions screenshot picker now says under the field: "Screenshots are read by an AI
   service in the United States. Leave out pay, schedules and staff details."
 - docs/ARCHITECTURE.md section 7 restated the old claim; its PIPEDA and Canadian regions

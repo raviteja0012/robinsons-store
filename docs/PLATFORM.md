@@ -91,18 +91,18 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 ## What leaves Canada
 
 Checked 2026-10-24 against the code on main and each provider's published terms. The
-database and the stored files stay in Supabase in Toronto, and the API routes run in Montreal
-(ARCHITECTURE.md section 2). These are the flows that carry store data out of Canada. Each
-one runs when someone uses the feature or the schedule fires; nothing is copied out in bulk.
+database and the stored files are in Supabase in Toronto, and the API routes run in Montreal
+(ARCHITECTURE.md section 2). Each row says what one flow sends outside Canada, where it goes,
+and how long the provider keeps it.
 
 | Route or job | What it sends | Provider | Region | Retention |
 |---|---|---|---|---|
 | `/api/extract` (Capture) | The invoice photo or PDF, and a fixed reading prompt | Anthropic API | US (a) | 30 days (b) |
-| `/api/ask` (Ask the store) | The question as typed. Every knowledge note (department, topic, body, tags), which staff type freely. Every vendor's name, department, terms, status, phone, notes and ordering profile. For money roles (lead, manager, owner) also each vendor's minimum order and each invoice's vendor, amount owed, status, due date and terms. The app guide text | Anthropic API | US (a) | 30 days (b) |
-| `/api/reorder` (Reorder summary) | Every vendor's name, department, status, terms, notes and ordering profile, minimum order included. Every purchase order's vendor, season, amount, ship date and status. Knowledge notes tagged `reorder` (topic, body). Money roles only | Anthropic API | US (a) | 30 days (b) |
+| `/api/ask` (Ask the store) | The question as typed. Every knowledge note (department, topic, body, tags), which staff type freely. Every vendor's name, department, terms, status, phone, notes and ordering profile. Each vendor's minimum order, and each non-voided invoice's vendor, invoice total (amount, freight and HST, as `invoiceTotal()` computes it; paid invoices included, nothing subtracted), status, due date and terms: for money roles (lead, manager, owner) when sign-in is on, for every caller when it is off. The app guide text | Anthropic API | US (a) | 30 days (b) |
+| `/api/reorder` (Reorder summary) | Every vendor's name, department, status, terms, notes and ordering profile, minimum order included. Every purchase order's vendor, season, amount, ship date and status. Knowledge notes tagged `reorder` (topic, body). Money roles only when sign-in is on | Anthropic API | US (a) | 30 days (b) |
 | `/api/feedback-triage` (Suggestions) | The attached screenshot, plus the note and screen name typed with it. The screenshot is whatever was on screen, which can be the HR, pay rate or schedule screen. The Suggestions page warns about this under the picker | Anthropic API | US (a) | 30 days (b) |
 | `/api/alerts` (daily due-date email; off until the Resend keys are set) | For each unpaid invoice overdue or due within 7 days: vendor name, invoice number, amount left to pay, due date, store name, with the counts and total owed in the subject. Sent to the `ALERT_EMAIL_TO` addresses | Resend | Account data, email metadata and logs in the US; the sending region is picked when the domain is added, and none is in Canada (c) | 30 days on Free, Pro and Scale (d) |
-| `slack-autopilot.yml` (build requests from Slack) | The request text typed in the store's Slack channel, and the repository files the agent reads while building. Sent with the same Anthropic key from a GitHub-hosted runner | Anthropic API, through GitHub Actions on Azure (region not published, e) | US (a) | Anthropic 30 days (b). Actions run logs 90 days (f). The request stays in Slack, which deletes it after one year on Free (g) |
+| `slack-autopilot.yml` (build requests from Slack) | The request text typed in the store's Slack channel, and the repository files the agent reads while building. Sent with the same Anthropic key from a GitHub-hosted runner. The request text also appears in the run log, which is public because the repository is. The build writes a branch, a draft pull request and entries in docs/STATUS.md and docs/VERIFICATION.md into this public repository | Anthropic API, through GitHub Actions on Azure (region not published, e) | US (a) | Anthropic 30 days (b). The public run log 90 days (f). The branch, pull request and ledger entries stay in the repository until someone removes them. The request stays in Slack, which deletes it after one year on Free (g) |
 
 `git grep -n 'callClaude(' src/app/api` lists the four Anthropic routes above; a fifth match
 means this table is out of date. Where the `ai_call` usage log is present
@@ -139,7 +139,7 @@ Sources, read 2026-10-24:
 **The rule for a new flow.** A change that sends store data to a new provider, or sends a new
 kind of data to an existing one, adds or edits its row here in the same pull request, and
 updates the data section of docs/owner-notes/store-app-infrastructure.html if the owner's
-picture changes. Employee, pay rate and shift rows never go into a prompt.
+picture changes.
 
 ## Worth adopting, each tied to a real requirement
 
