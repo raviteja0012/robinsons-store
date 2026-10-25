@@ -2,7 +2,25 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-25, on branch claude/arch-03-money-by-role (latest: money fenced by role at the database, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Money fenced by role at the database, 2026-10-25 (branch claude/arch-03-money-by-role; ARCH-03,
+docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
+- A staff login can no longer read a dollar figure straight from the database. The nine tables
+  that carry one (vendor, purchase_order, invoice, credit_note, insurance_policy, payment,
+  payment_allocation, pay_rate, receiving_line) open only to lead, manager and owner, and the
+  payment functions refuse staff.
+- Staff screens read three views with no dollar column: vendor_directory (Capture's vendor
+  list, Ask), invoice_due (the bell's overdue count) and insurance_renewal (the bell's
+  renewals). Capture still saves priced lines for staff; staff cannot read them back.
+- It applies itself: supabase/money_by_role.sql is last in run-order.txt, and auth_setup.sql
+  section 3e carries the same block so a rerun keeps money locked. Demo databases stay open.
+- Proven on Supabase Postgres 17: supabase/money_by_role_test.sql passes 129 of 129 on a fresh
+  install and on a copy upgraded from today's policies, 8 of 8 on demo copies; 37 of 37 app
+  read and write paths pass through PostgREST v14.18.
+- After the merge: nothing to run. Read the two checks in ADR-003 condition 3 once. Still open:
+  ARCH-04 (stored files), and item.cost_price is left out while nothing writes it. Staff
+  opening a manager screen by its address now see an empty list.
 
 Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
 - `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`

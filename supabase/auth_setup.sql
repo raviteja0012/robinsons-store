@@ -15,6 +15,7 @@
 --      automatically, by email. Re-run it any time you add more accounts (it is idempotent).
 --   4. Set NEXT_PUBLIC_REQUIRE_AUTH=true in Vercel and redeploy.
 --
+-- supabase/money_by_role_test.sql checks the role and store fences on a disposable database.
 -- TEST BEFORE TRUSTING: sign in as one owner and one staff and confirm staff cannot read
 -- another store's rows and cannot see costs. RLS is only as good as its test.
 --
@@ -101,13 +102,16 @@ end $$;
 -- 3a. Store-scoped tables with a direct store_id column. A signed-in member may select and
 -- write rows whose store_id equals their store. USING gates reads and the pre-image of
 -- writes; WITH CHECK gates the post-image so a row cannot be moved to another store.
+-- The tables that carry a dollar figure (vendor, purchase_order, invoice, insurance_policy,
+-- credit_note) are NOT in this array: they get the same store fence plus a money fence in 3e.
+-- Adding one of them back here would reopen its amounts to staff.
 do $$
 declare t text;
 begin
   foreach t in array array[
-    'vendor','item','receiving_event','purchase_order','invoice',
+    'item','receiving_event',
     'inventory_count','knowledge_note','maintenance_asset','maintenance_task',
-    'insurance_policy','employee','licence','credit_note','feedback'
+    'employee','licence','feedback'
   ]
   loop
     -- Skip tables that do not exist yet (for example credit_note before credit_notes.sql has
@@ -154,57 +158,7 @@ end $$;
 
 -- 3b. Child tables with no store_id of their own. Scope through the parent so a member only
 -- reaches rows that roll up to their store. Membership is enforced at the parent.
-
--- receiving_line via its receiving_event.
-drop policy if exists member_store_rw on public.receiving_line;
-create policy member_store_rw on public.receiving_line
-  for all
-  to authenticated
-  using (exists (
-    select 1 from public.receiving_event e
-    where e.id = receiving_line.receiving_event_id and e.store_id = app_auth.my_store_id()))
-  with check (exists (
-    select 1 from public.receiving_event e
-    where e.id = receiving_line.receiving_event_id and e.store_id = app_auth.my_store_id()));
-
--- payment via its vendor (payments can exist without an invoice, e.g. a deposit or
--- prepayment), falling back to the invoice link for legacy rows without vendor_id.
-drop policy if exists member_store_rw on public.payment;
-create policy member_store_rw on public.payment
-  for all
-  to authenticated
-  using (
-    exists (
-      select 1 from public.vendor v
-      where v.id = payment.vendor_id and v.store_id = app_auth.my_store_id())
-    or exists (
-      select 1 from public.invoice i
-      where i.id = payment.invoice_id and i.store_id = app_auth.my_store_id()))
-  with check (
-    exists (
-      select 1 from public.vendor v
-      where v.id = payment.vendor_id and v.store_id = app_auth.my_store_id())
-    or exists (
-      select 1 from public.invoice i
-      where i.id = payment.invoice_id and i.store_id = app_auth.my_store_id()));
-
--- payment_allocation via its payment's vendor or invoice.
-drop policy if exists member_store_rw on public.payment_allocation;
-create policy member_store_rw on public.payment_allocation
-  for all
-  to authenticated
-  using (exists (
-    select 1 from public.payment p
-    left join public.vendor v on v.id = p.vendor_id
-    left join public.invoice i on i.id = p.invoice_id
-    where p.id = payment_allocation.payment_id
-      and coalesce(v.store_id, i.store_id) = app_auth.my_store_id()))
-  with check (exists (
-    select 1 from public.payment p
-    left join public.vendor v on v.id = p.vendor_id
-    left join public.invoice i on i.id = p.invoice_id
-    where p.id = payment_allocation.payment_id
-      and coalesce(v.store_id, i.store_id) = app_auth.my_store_id()));
+-- receiving_line, payment, payment_allocation and pay_rate carry dollar figures and are in 3e.
 
 -- inventory_count_line via its inventory_count.
 drop policy if exists member_store_rw on public.inventory_count_line;
@@ -217,18 +171,6 @@ create policy member_store_rw on public.inventory_count_line
   with check (exists (
     select 1 from public.inventory_count c
     where c.id = inventory_count_line.inventory_count_id and c.store_id = app_auth.my_store_id()));
-
--- pay_rate via its employee. PIPEDA personal data, kept inside the member's store.
-drop policy if exists member_store_rw on public.pay_rate;
-create policy member_store_rw on public.pay_rate
-  for all
-  to authenticated
-  using (exists (
-    select 1 from public.employee e
-    where e.id = pay_rate.employee_id and e.store_id = app_auth.my_store_id()))
-  with check (exists (
-    select 1 from public.employee e
-    where e.id = pay_rate.employee_id and e.store_id = app_auth.my_store_id()));
 
 -- shift via its employee. PIPEDA personal data, kept inside the member's store.
 drop policy if exists member_store_rw on public.shift;
@@ -353,6 +295,198 @@ create policy "documents_auth_rw" on storage.objects
   to authenticated
   using (bucket_id = 'documents')
   with check (bucket_id = 'documents');
+
+-- 3e. Money by role (ARCH-03; docs/adr/ADR-003-money-by-role-at-the-database.md). Every signed-in
+-- member shares the one authenticated Postgres role, so a column cannot be shown to one member
+-- and hidden from another. Instead the rows of the nine tables that carry a dollar figure open
+-- only to a role that sees money, the same rule as canSeeMoney in src/lib/auth.ts: lead,
+-- manager, owner. Staff, and a member whose role is missing, get no rows, and the payment
+-- functions (security invoker) refuse them for the same reason. Staff screens read what they
+-- still need through three views that carry no dollar column. supabase/money_by_role.sql
+-- applies this same section to a live database: change both together.
+
+-- True only for a signed-in member whose role sees money. Unlinked, anonymous, or a role not
+-- on the list is false, so money fails closed here exactly as it does in the app.
+create or replace function app_auth.can_see_money()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(app_auth.my_role() in ('lead','manager','owner'), false);
+$$;
+grant execute on function app_auth.can_see_money() to authenticated, anon;
+
+-- Tables with their own store_id: the store fence from 3a plus the money fence.
+do $$
+declare tbl text;
+begin
+  foreach tbl in array array['vendor','purchase_order','invoice','credit_note','insurance_policy']
+  loop
+    if to_regclass('public.' || tbl) is null then
+      raise notice 'auth_setup: table % not found, skipping (rerun after creating it)', tbl;
+      continue;
+    end if;
+    execute format('drop policy if exists member_store_rw on public.%I;', tbl);
+    execute format('drop policy if exists money_store_rw on public.%I;', tbl);
+    execute format($f$
+      create policy money_store_rw on public.%I
+        for all
+        to authenticated
+        using (store_id = app_auth.my_store_id() and app_auth.can_see_money())
+        with check (store_id = app_auth.my_store_id() and app_auth.can_see_money());
+    $f$, tbl);
+  end loop;
+end $$;
+
+-- payment via its vendor (payments can exist without an invoice, e.g. a deposit or
+-- prepayment), falling back to the invoice link for legacy rows without vendor_id.
+drop policy if exists member_store_rw on public.payment;
+drop policy if exists money_store_rw on public.payment;
+create policy money_store_rw on public.payment
+  for all
+  to authenticated
+  using (app_auth.can_see_money() and (
+    exists (
+      select 1 from public.vendor v
+      where v.id = payment.vendor_id and v.store_id = app_auth.my_store_id())
+    or exists (
+      select 1 from public.invoice i
+      where i.id = payment.invoice_id and i.store_id = app_auth.my_store_id())))
+  with check (app_auth.can_see_money() and (
+    exists (
+      select 1 from public.vendor v
+      where v.id = payment.vendor_id and v.store_id = app_auth.my_store_id())
+    or exists (
+      select 1 from public.invoice i
+      where i.id = payment.invoice_id and i.store_id = app_auth.my_store_id())));
+
+-- payment_allocation via its payment's vendor or invoice. A write also needs the invoice it
+-- settles to be in the member's store, so a payment cannot be allocated across stores.
+drop policy if exists member_store_rw on public.payment_allocation;
+drop policy if exists money_store_rw on public.payment_allocation;
+create policy money_store_rw on public.payment_allocation
+  for all
+  to authenticated
+  using (app_auth.can_see_money() and exists (
+    select 1 from public.payment p
+    left join public.vendor v on v.id = p.vendor_id
+    left join public.invoice i on i.id = p.invoice_id
+    where p.id = payment_allocation.payment_id
+      and coalesce(v.store_id, i.store_id) = app_auth.my_store_id()))
+  with check (app_auth.can_see_money() and exists (
+    select 1 from public.payment p
+    left join public.vendor v on v.id = p.vendor_id
+    left join public.invoice i on i.id = p.invoice_id
+    where p.id = payment_allocation.payment_id
+      and coalesce(v.store_id, i.store_id) = app_auth.my_store_id())
+    and exists (
+    select 1 from public.invoice ai
+    where ai.id = payment_allocation.invoice_id and ai.store_id = app_auth.my_store_id()));
+
+-- pay_rate via its employee. Pay, and PIPEDA personal data besides.
+drop policy if exists member_store_rw on public.pay_rate;
+drop policy if exists money_store_rw on public.pay_rate;
+create policy money_store_rw on public.pay_rate
+  for all
+  to authenticated
+  using (app_auth.can_see_money() and exists (
+    select 1 from public.employee e
+    where e.id = pay_rate.employee_id and e.store_id = app_auth.my_store_id()))
+  with check (app_auth.can_see_money() and exists (
+    select 1 from public.employee e
+    where e.id = pay_rate.employee_id and e.store_id = app_auth.my_store_id()));
+
+-- receiving_line via its receiving_event. Staff save captures, so any member of the store may
+-- add a line, unit cost included (it comes off the invoice in their hand), but only a money
+-- role reads, changes or removes one. Capture inserts without asking for the row back, so the
+-- insert needs no read.
+drop policy if exists member_store_rw on public.receiving_line;
+drop policy if exists money_store_rw on public.receiving_line;
+drop policy if exists member_store_insert on public.receiving_line;
+create policy money_store_rw on public.receiving_line
+  for all
+  to authenticated
+  using (app_auth.can_see_money() and exists (
+    select 1 from public.receiving_event e
+    where e.id = receiving_line.receiving_event_id and e.store_id = app_auth.my_store_id()))
+  with check (app_auth.can_see_money() and exists (
+    select 1 from public.receiving_event e
+    where e.id = receiving_line.receiving_event_id and e.store_id = app_auth.my_store_id()));
+create policy member_store_insert on public.receiving_line
+  for insert
+  to authenticated
+  with check (exists (
+    select 1 from public.receiving_event e
+    where e.id = receiving_line.receiving_event_id and e.store_id = app_auth.my_store_id()));
+
+-- The three money-free views. Each reads through a definer function that returns only the
+-- caller's own store, so the view runs as the caller and is never itself a definer view.
+-- The functions live in app_auth, which the API does not expose, so nobody calls them directly.
+--   vendor_directory    every vendor column except the minimum order (Capture, Ask)
+--   invoice_due         which invoices are open and when they fall due (the bell)
+--   insurance_renewal   policy names and renewal dates (the bell)
+create or replace function app_auth.vendor_directory_rows()
+returns table (
+  id uuid, store_id uuid, department_id uuid, name text, rep_name text, phone text, email text,
+  products_we_carry text, default_terms text, status text, notes text,
+  summer_order_timeline text, order_location text[], order_location_other text,
+  reorder_status text, reorder_comments text, specializes_in text,
+  created_at timestamptz, voided_at timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select v.id, v.store_id, v.department_id, v.name, v.rep_name, v.phone, v.email,
+         v.products_we_carry, v.default_terms, v.status, v.notes, v.summer_order_timeline,
+         v.order_location, v.order_location_other, v.reorder_status, v.reorder_comments,
+         v.specializes_in, v.created_at, v.voided_at
+  from public.vendor v
+  where v.store_id = app_auth.my_store_id();
+$$;
+
+create or replace function app_auth.invoice_due_rows()
+returns table (id uuid, store_id uuid, vendor_id uuid, due_date date, status text, voided_at timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select i.id, i.store_id, i.vendor_id, i.due_date, i.status, i.voided_at
+  from public.invoice i
+  where i.store_id = app_auth.my_store_id();
+$$;
+
+create or replace function app_auth.insurance_renewal_rows()
+returns table (id uuid, store_id uuid, name text, renewal_date date, voided_at timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p.id, p.store_id, p.name, p.renewal_date, p.voided_at
+  from public.insurance_policy p
+  where p.store_id = app_auth.my_store_id();
+$$;
+
+revoke execute on function app_auth.vendor_directory_rows(), app_auth.invoice_due_rows(),
+  app_auth.insurance_renewal_rows() from public, anon;
+grant execute on function app_auth.vendor_directory_rows(), app_auth.invoice_due_rows(),
+  app_auth.insurance_renewal_rows() to authenticated;
+
+create or replace view public.vendor_directory with (security_invoker = true) as
+  select * from app_auth.vendor_directory_rows();
+create or replace view public.invoice_due with (security_invoker = true) as
+  select * from app_auth.invoice_due_rows();
+create or replace view public.insurance_renewal with (security_invoker = true) as
+  select * from app_auth.insurance_renewal_rows();
+
+revoke all on public.vendor_directory, public.invoice_due, public.insurance_renewal
+  from anon, authenticated;
+grant select on public.vendor_directory, public.invoice_due, public.insurance_renewal
+  to authenticated;
 
 -- 4. Link Supabase Auth accounts to app_user rows BY EMAIL. Run this AFTER you create each
 -- account in Authentication, Users with the same email as the app_user row (the demo emails are
