@@ -55,6 +55,27 @@ The handover written to the standard, 2026-10-24:
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
   store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
 
+What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICATION.md):
+- docs/PLATFORM.md "What leaves Canada": one row per flow (the four Anthropic routes, the
+  Resend due-date email, the Slack autopilot) with what it sends, region and retention, each
+  cited to the provider's page as read today. CAPABILITIES item 68 is done; its line saying
+  Messages API content is not retained was wrong (30 days by default) and is corrected there.
+- docs/owner-notes/store-app-infrastructure.html told the owner that only invoice images reach
+  the AI and staff details never do. Corrected: it now lists what each AI feature sends, the
+  30-day deletion, the screenshot path and the daily email, and the services table and the
+  four-pieces card name screenshot reading. After a fact-check the same day: the AI block
+  lists five uses (screenshot reading and the Slack builder added), the services table has
+  Slack, and two statements the code does not back were removed (one under "What protects
+  it", and an "AI never reads staff records" line). The watchdog now reads as a Slack message.
+- The PLATFORM.md Slack builder row says the request text is in the public run log for 90
+  days and the build leaves a branch, draft pull request and ledger entries in the repository.
+- The Suggestions screenshot picker now says under the field: "Screenshots are read by an AI
+  service in the United States. Leave out pay, schedules and staff details."
+- docs/ARCHITECTURE.md section 7 restated the old claim; its PIPEDA and Canadian regions
+  bullets now describe the screenshot and knowledge-note paths and point at the PLATFORM.md
+  table.
+- Open: the owner's published page changes only when the developer republishes it.
+
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
   the order to move each one to the store, with the full list of secrets and variables and
