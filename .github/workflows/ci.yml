@@ -66,6 +66,13 @@ jobs:
           npx tsc -p scripts/aiusage-check/tsconfig.json
           cp scripts/aiusage-check/check.js scripts/aiusage-check/out/
           node scripts/aiusage-check/out/check.js
+      # Schedule names and export paging: a shared or shortened name never lands shifts on
+      # the wrong person, and the archive export never drops or repeats a row mid-read.
+      - name: Import and export checks
+        run: |
+          npx tsc -p scripts/importexport-check/tsconfig.json
+          cp scripts/importexport-check/check.js scripts/importexport-check/out/
+          node scripts/importexport-check/out/check.js
       # The automation's own rules, checked like any other code. These are the two
       # decisions nothing else can catch: which changes may merge themselves, and when the
       # watchdog should speak rather than repeat itself.
