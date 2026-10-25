@@ -152,6 +152,43 @@ begin
   grant execute on function public.ai_call_finish(uuid, text, text, text, integer, integer, integer, integer, integer) to authenticated;
 end $$;
 
+-- department_field (3a, its own block): store-scoped like the tables above but kept out of
+-- that array, which lets every member write. Every member reads the choices because every
+-- vendor and invoice form needs them; only managers and owners change them, and only for a
+-- department of their own store. No delete policy: a choice is changed, never removed.
+-- supabase/department_field.sql applies the same policies to a live database with login on.
+do $$
+begin
+  if to_regclass('public.department_field') is null then
+    raise notice 'auth_setup: table department_field not found, skipping (rerun after creating it)';
+    return;
+  end if;
+  drop policy if exists member_read on public.department_field;
+  create policy member_read on public.department_field
+    for select
+    to authenticated
+    using (store_id = app_auth.my_store_id());
+  drop policy if exists manager_insert on public.department_field;
+  create policy manager_insert on public.department_field
+    for insert
+    to authenticated
+    with check (
+      store_id = app_auth.my_store_id()
+      and app_auth.my_role() in ('manager','owner')
+      and exists (select 1 from public.department d
+                  where d.id = department_field.department_id and d.store_id = department_field.store_id));
+  drop policy if exists manager_update on public.department_field;
+  create policy manager_update on public.department_field
+    for update
+    to authenticated
+    using (store_id = app_auth.my_store_id() and app_auth.my_role() in ('manager','owner'))
+    with check (
+      store_id = app_auth.my_store_id()
+      and app_auth.my_role() in ('manager','owner')
+      and exists (select 1 from public.department d
+                  where d.id = department_field.department_id and d.store_id = department_field.store_id));
+end $$;
+
 -- 3b. Child tables with no store_id of their own. Scope through the parent so a member only
 -- reaches rows that roll up to their store. Membership is enforced at the parent.
 

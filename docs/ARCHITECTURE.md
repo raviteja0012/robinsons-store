@@ -300,10 +300,14 @@ stamps it; child tables scope through their parent [R .claude/skills/robinsons-s
 At the database, 14 tables carry their own `store_id` policy [R supabase/auth_setup.sql:107-126];
 `payment` scopes through its vendor (or legacy invoice), `payment_allocation` through its
 payment, and `receiving_line`, `inventory_count_line`, `pay_rate`, `shift`, `retail_price`
-through their parents [R supabase/auth_setup.sql:135-232]. `ai_call`, the AI usage log, is
+through their parents [R supabase/auth_setup.sql:192-293]. `ai_call`, the AI usage log, is
 store-scoped in its own block: the owner reads it, and nobody writes it except through its
-two functions [R supabase/auth_setup.sql:131-152]. It is the last script in the run order
-[R supabase/run-order.txt:26]. A new table needs a policy in
+two functions [R supabase/auth_setup.sql:131-152]. `department_field`, the Department fields
+screen's ticks, is store-scoped in its own block too: every member reads it, only owners and
+managers insert or update it, for a department of their own store, and nothing deletes it
+[R supabase/auth_setup.sql:155-190]. Its migration applies the same policies itself when
+login is on [R supabase/department_field.sql:36-67] and is the last script in the run order
+[R supabase/run-order.txt:27]. A new table needs a policy in
 `schema.sql`, in `auth_setup.sql` section 3a, and in a migration for live databases
 [R CLAUDE.md:31-32].
 

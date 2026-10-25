@@ -25,7 +25,11 @@ node scripts/vendorfields-check/out/check.js
 
 Adjust `outDir` in the tsconfig if you want the output somewhere else. Nothing here is a
 project dependency and it is not wired into the commit gates: run it when you touch
-`vendorFields.ts`.
+`vendorFields.ts`, `fieldChoices.ts` or `departments.ts`. Since 2026-10-25 it also proves
+the Department fields screen's rules: no rows means the code list, a tick or an untick beats
+it except on the locked questions (name, status) and the money gate, the add-every-question
+button still adds every one, and a section (Clothing, Gifts, Garden Center) is asked exactly
+what its department is.
 
 ## The three rules it proves
 

@@ -123,7 +123,13 @@ Run in this order; skip nothing (each is safe to re-run):
    the two functions that reserve and finish each call. The cap and the log work as soon as
    this runs. Only the owner can read the rows once login is on; with enforced login, rerun
    `auth_setup.sql` after it to give the owner that read.
-10. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
+10. `department_field.sql`: the table behind the Department fields screen. One row per box
+   somebody changed: this department, this form (vendor or invoice), this question, asked or
+   not. An empty table means every form asks its usual questions, so running it changes no
+   screen. With enforced login it applies its own policies (every member reads, only owners
+   and managers write, nobody deletes), so the screen works without rerunning
+   `auth_setup.sql`.
+11. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 
 ## What each remaining file is

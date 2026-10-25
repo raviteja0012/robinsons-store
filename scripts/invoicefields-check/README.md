@@ -25,5 +25,9 @@ cp scripts/invoicefields-check/check.js scripts/invoicefields-check/out/
 node scripts/invoicefields-check/out/check.js
 ```
 
-Not wired into the commit gates; run it whenever `invoiceFields.ts` or `departments.ts`
-changes. The department matrix at the top of check.js is the contract.
+Not wired into the commit gates; run it whenever `invoiceFields.ts`, `departments.ts` or
+`fieldChoices.ts` changes. The department matrix at the top of check.js is the contract, and
+with no rows from the Department fields screen it must still hold exactly. The assertions
+added on 2026-10-25 pin what that screen may change (delivery, PO number, property work,
+terms) and what it may not (number, date, amount, tax, freight, filing, due date, status),
+and that a section takes its department's invoice shape.
