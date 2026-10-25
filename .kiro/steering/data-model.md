@@ -98,7 +98,8 @@ When working on SQL files (schema, seeds, migrations, auth policies), follow the
 - Read through signed URLs (src/lib/docs.ts), never getPublicUrl directly
 
 ## Seed Data Rules
-- seed.sql: departments, curated vendors, demo accounts (one per role)
-- seed_bookings.sql: full real ledger (125 vendors), generated and validated against sheet totals
+- seed.sql: departments, curated vendors with made-up contact details, demo accounts (one per role)
+- seed_bookings.sql and seed_schedule.sql: written locally by scripts/generate-seed-bookings.mjs and scripts/generate-seed-schedule.ts from the store's workbooks; git-ignored, never committed
+- Contact details in committed files (phones, emails, rep names) are made up; real store data never goes in the repository
 - Set store_id inline on inserts, not only in a backfill
 - Mark illustrative seed data as illustrative

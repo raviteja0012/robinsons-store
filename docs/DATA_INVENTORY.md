@@ -1,6 +1,6 @@
 # Data Inventory: Owner's Google Drive "StoreApplication" Folder
 
-Source: Google Drive, owner raviteja.potluru@gmail.com, root folder StoreApplication (id 1liGWxXw_dgQygF9NhNGiuBFObdrhmBz8). Crawled via the Drive MCP server on 2026-05-30. Sizes are bytes as reported by Drive. Samples are short excerpts of real content; full files were not copied. Binary files (PDF, JPEG, PNG, MP4) were inventoried by metadata and name; their purpose is inferred from name and folder.
+Source: Google Drive, owned by the developer's Google account, root folder StoreApplication (id 1liGWxXw_dgQygF9NhNGiuBFObdrhmBz8). Crawled via the Drive MCP server on 2026-05-30. Sizes are bytes as reported by Drive. Samples are short excerpts of real content; full files were not copied. Binary files (PDF, JPEG, PNG, MP4) were inventoried by metadata and name; their purpose is inferred from name and folder.
 
 This inventory maps the store's real paperwork to the app's Postgres tables (see supabase/schema.sql: vendor, item, receiving_event, receiving_line, invoice, payment, retail_price, inventory_count, inventory_count_line, purchase_order, knowledge_note, licence, maintenance_asset, maintenance_task, insurance_policy, employee).
 
@@ -208,6 +208,7 @@ Top-level files:
 | Insurance | (none found in this Drive folder) | insurance_policy | No insurance documents present; gap. |
 | HR / employees / pay | (none found in this Drive folder) | employee, pay_rate, shift | No HR documents present; gap. |
 | Utilities / recurring services | Utilities.docx (Hydro One, Bell, Vnet); Orgill SBD/ADV; Moor Propane, Orkin, etc. in Vendorlist | vendor / knowledge_note | Utility accounts listed only in docx; could seed recurring-bill vendors. |
+| AI call log (made by the app, not from Drive) | (none; written on every AI call) | ai_call | No Drive source. One row per call: store, route (extract, ask, reorder, feedback-triage), model, input, output and cache token counts, outcome (pending while in flight, then ok, refused, cut_off, failed; or capped), duration, timestamp. Never the question, the invoice image, the store data sent, or the answer. No personal data beyond the store id. Owner-only read under enforced login; append-only, no void columns. Feeds the daily per-store cap (AI_DAILY_CAP_PER_STORE, default 100). |
 | Storage documents (catalogs, manuals, photos, video) | Planogram catalogs/manuals; Referencess shelf photos; FutureOrders ShelfSheets.jpg; the .MP4 | storage document / knowledge_note | Large binaries (catalogs, manuals, photos, a video) are references; keep as linked storage documents, not parsed. |
 
 ## Notes

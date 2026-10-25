@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "rootDir": "../..",
+    "outDir": "out/live",
+    "baseUrl": "../..",
+    "paths": { "@/*": ["src/*"] },
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": ["node"]
+  },
+  "include": ["live.ts", "../../src/app/api/extract/route.ts", "../../src/app/api/ask/route.ts"]
+}

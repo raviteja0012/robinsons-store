@@ -94,7 +94,7 @@ two months.
 7. **The rules are tested.** `classify-change.test.mjs` pins 94 cases across all tiers,
    including every rule above and the parsing of git's output, and runs in CI
    [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 94 passed, 0 failed]
-   [R `.github/workflows/ci.yml:49`].
+   [R `.github/workflows/ci.yml:82`].
 
 ## Conditions
 
@@ -105,9 +105,11 @@ two months.
    Actions may create pull requests (the loop already needs this) and that workflow
    permissions allow read and write. Approving pull requests is not needed: nothing here
    approves.
-3. If main is protected with required reviews, tier A cannot merge and fails closed. Either
-   accept that (labels only) or exempt the Actions bot. That is the developer's call
-   [Q: the developer].
+3. Main takes changes only through a pull request, with no required approvals and no required
+   status checks [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`,
+   2026-10-25], so tier A merging its own pull request is allowed. If approvals are ever
+   required, tier A cannot merge and fails closed. Either accept that (labels only) or exempt
+   the Actions bot. That is the developer's call [Q: the developer].
 4. The first live tier A request is watched end to end: CI starts, the pull request merges,
    the card says merged, and the watchdog runs. Until then the merge path is SCAFFOLDED.
 5. Before the Jira autopilot is ever woken, its own merge step
@@ -164,7 +166,8 @@ dispatched CI run wakes the post-deploy watch. The decision does not rest on eit
 the merge step fails closed when CI does not start. Sources: this repository, the `gh` CLI, git.
 
 **Amended 2026-10-24, before merge: decisions 1, 2, 3, 5 and 7 tightened, decision 6 added.
-11 further claims checked, 11 confirmed, 0 killed, 1 source added (GitHub's documentation).**
+12 further claims checked, 12 confirmed, 0 killed, 1 source added (GitHub's documentation).**
+Condition 3 re-read on 2026-10-25 against the ruleset main gained that day.
 Confirmed by running the classifier tests (94 passed); the classifier on this branch (tier C);
 the classifier end to end on a scratch repository (a binary `.md`, an executable `.md` and a
 link named `.md` rate B, a `CLAUDE.md` under a folder with a non-ASCII name rates C, an

@@ -30,10 +30,9 @@ The full plan with evidence, pricing, and citations is in robinsons_store_build_
 robinsons-store/
   README.md
   supabase/schema.sql        full data model, plus the dev row-level security and the documents storage policy
-  supabase/seed.sql          departments, a curated set of real vendors, demo accounts (one per role)
-  supabase/seed_bookings.sql the full real ledger (125 vendors), generated and validated against the sheet totals
+  supabase/seed.sql          departments, a curated set of vendors with made-up contact details, demo accounts (one per role)
   supabase/auth_setup.sql    the production cutover: auth_id, email auto-link, per-store per-role policies, storage lockdown
-  scripts/generate-seed-bookings.mjs  regenerate seed_bookings.sql from the bookings .xlsx; self-checks against printed totals
+  scripts/generate-seed-bookings.mjs  write the full ledger load (125 vendors) from the bookings .xlsx on your machine; self-checks against printed totals; the output is git-ignored, never committed
   src/app/page.tsx           role-driven home: Today dashboard (manager/owner) or staff Today + feed
   src/app/capture/page.tsx   capture, extract, confirm, save (uploads the document to storage)
   src/app/dashboard, reports, overdue, vendors, vendors/[id], inventory, reorder,
@@ -74,7 +73,7 @@ Every screen is a client component that reads through useActiveStore() and filte
 - API routes: `/api/extract` (Claude vision), `/api/ask` (context answer), `/api/reorder` (suggestions + summary), `/api/alerts` (daily due-date email, Resend, cron-guarded by x-cron-secret), `/api/import` (auto-detects bookings, schedule, or inventory workbooks), `/api/export` (full workbook export, owner and manager), `/api/admin/users` (service-role user management, owner and manager only, store-scoped). All of them resolve the caller through src/lib/serverMember.ts: enforced mode requires a signed-in member and queries run as the caller so RLS applies.
 
 ## Conventions
-Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as `numeric` dollars (BUILT: every amount column in supabase/schema.sql); integer cents is a TARGET that has not been done, so do not describe it as current.
+Data model rules and the entity list are in references/data-model.md. The short version: snake_case, audit on every write through activity_log plus created_by, a confidence value on every extracted line, low-confidence dollar fields never auto-post, money as `numeric` dollars (BUILT: every amount column in supabase/schema.sql); integer cents is not planned (decided 2026-10-24).
 
 App conventions to apply on every screen:
 - Multi-store: read through useActiveStore() and filter every query by the active store_id; stamp store_id on every insert. All chrome lives in AppShell: managers and owners get the grouped sidebar (Today, Money, Store, People, Property, Admin) from src/lib/nav.ts plus a topbar with View as, the bell, and Capture; staff get a four-item list; phones get a bottom tab bar and a More sheet. Screens never draw their own nav.
@@ -194,7 +193,7 @@ break:
 - Keep secrets out of the repo and out of chat. Env values go straight into Supabase and Vercel.
 
 ## Build sequence
-Phases 1-6 plus property, HR, compliance, multi-store, the auth cutover, signed-URL document storage, and the hard low-confidence gate are shipped; see docs/STATUS.md. Deferred: pgvector at scale, ML reorder, SMS, integer-cents money.
+Phases 1-6 plus property, HR, compliance, multi-store, the auth cutover, signed-URL document storage, and the hard low-confidence gate are shipped; see docs/STATUS.md. Deferred: pgvector at scale, ML reorder, SMS. Money stays numeric dollars; integer cents is not planned.
 
 ## Documents, decisions and reviews
 The full standard is references/standards.md; read it before writing anything in docs/ or reviewing a change. The short form:

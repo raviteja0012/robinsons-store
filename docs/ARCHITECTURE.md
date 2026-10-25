@@ -92,7 +92,7 @@ flowchart LR
   UI -- "upload invoice file" --> ST
   UI -- "bearer token + request" --> API
   CRON -- "GET /api/alerts" --> API
-  API -- "queries as the caller" --> DB
+  API -- "queries as the caller, logs each AI call" --> DB
   API -- "extract, ask, reorder, triage" --> AN
   GHA -- "run-order.txt scripts" --> DB
   GHA -- "GET /api/health" --> API
@@ -121,6 +121,22 @@ AI routes: default model `claude-sonnet-5`, `ANTHROPIC_MODEL` overrides; no temp
 sent, on purpose, because current models reject non-default sampling; text answers go
 through `plainText()` [R src/app/api/ask/route.ts:39, 152, 166] [R src/app/api/reorder/route.ts:23, 110]
 [R src/app/api/feedback-triage/route.ts:38, 86]. BUILT.
+
+AI usage log and daily cap. BUILT: every model call goes through `callClaude`
+[R src/lib/anthropic.ts:66], which reserves a row in `ai_call` before the model is asked and
+records how it ended afterwards [R src/lib/anthropic.ts:70, 152, 158], through the database
+functions `ai_call_begin` and `ai_call_finish` [R supabase/ai_call.sql:37-69, 73-108]. A row
+holds the store, route, model, token counts, duration and outcome, never the prompt, the store
+data sent with it or the answer [R supabase/ai_call.sql:4-8, 11-24]. Each store may make
+`AI_DAILY_CAP_PER_STORE` calls per Ontario calendar day, default 100
+[R src/lib/aiUsage.ts:24-28] [R supabase/ai_call.sql:55-58]; past that the call is refused
+before it reaches the model and logged as `capped` [R supabase/ai_call.sql:59-62]. If the log
+cannot be reached the call still goes through: the cap protects the monthly bill, not the
+store's data [R src/lib/aiUsage.ts:10-13]. Reading the rows is PARTIAL: the owner-only read
+policy lives in `auth_setup.sql` [R supabase/auth_setup.sql:144-148], which migrate does not
+run [R supabase/run-order.txt:10-16], so it applies only when that file is rerun by hand in
+the SQL editor. Whether it has been rerun on the live database since `ai_call` was added:
+[Q: the developer].
 
 Region: every route asks for Montreal (`yul1`) in code, and the developer set Function Region to Montreal in the Vercel dashboard on 2026-08-17 [R docs/STATUS.md:101-102]. BUILT:
 production runs in Montreal [V-run, `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health`, `x-vercel-id: cle1::yul1::...`, 2026-10-24].
@@ -273,18 +289,21 @@ which is how a single cheque settles several invoices.
 - Every amount column is `numeric` dollars: `invoice.amount`, `hst_amount`,
   `freight_charges`, `payment.amount`, `payment_allocation.amount`,
   `credit_note.credit_amount`, `purchase_order.order_amount`. BUILT
-  [R supabase/schema.sql:141-143, 179, 198, 213, 522]. The header comment still says to
-  move to cents before production [R supabase/schema.sql:3]; see ARCH-09.
+  [R supabase/schema.sql:141-143, 179, 198, 213, 522]. The header comment says the same, and integer cents is
+  not planned [R supabase/schema.sql:3]; ARCH-09 is closed.
 - Nothing in `schema.sql` uses vectors; the only extension created is `pgcrypto`
   [R supabase/schema.sql:5]. pgvector for Ask the store is TARGET, deferred until the data
-  outgrows one prompt [R docs/PLATFORM.md:123].
+  outgrows one prompt [R docs/PLATFORM.md:176].
 
 The store-scoping rule. BUILT: every read filters by the active `store_id` and every insert
 stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:122].
 At the database, 14 tables carry their own `store_id` policy [R supabase/auth_setup.sql:107-126];
 `payment` scopes through its vendor (or legacy invoice), `payment_allocation` through its
 payment, and `receiving_line`, `inventory_count_line`, `pay_rate`, `shift`, `retail_price`
-through their parents [R supabase/auth_setup.sql:135-232]. A new table needs a policy in
+through their parents [R supabase/auth_setup.sql:135-232]. `ai_call`, the AI usage log, is
+store-scoped in its own block: the owner reads it, and nobody writes it except through its
+two functions [R supabase/auth_setup.sql:131-152]. It is the last script in the run order
+[R supabase/run-order.txt:26]. A new table needs a policy in
 `schema.sql`, in `auth_setup.sql` section 3a, and in a migration for live databases
 [R CLAUDE.md:31-32].
 
@@ -310,7 +329,7 @@ flowchart LR
   AP -- "opens" --> PR
   PR -- "runs" --> CI
   CI -- "green" --> HUM
-  HUM -- "push to main" --> VD
+  HUM -- "merges the pull request" --> VD
   HUM -- "if supabase/ changed" --> MIG
   VD -- "CI completes on main" --> WD
   WD -- "on change of health" --> SLK
@@ -325,16 +344,16 @@ asks the live site whether it is healthy and tells Slack when that changes.
 |---|---|---|---|
 | Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request; merges only tier A (see below) | BUILT | [R .github/workflows/slack-autopilot.yml:7-31, 57, 167, 179-195] |
 | Status card | Updates the Slack thread through review, checks, merge and live, for `claude/slack-*` branches only | BUILT | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] |
-| Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-75] [R .github/workflows/slack-autopilot.yml:197-282] [R .github/workflows/ci.yml:49] |
+| Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-75] [R .github/workflows/slack-autopilot.yml:197-282] [R .github/workflows/ci.yml:82] |
 | Tier A self-merge | Starts CI on the head commit, waits, reads the pull request again (open, same commit, same base), merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:284-343] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own | BUILT | [R docs/LOOP_ENGINEERING.md:65-103] |
+| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
 | Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose | BUILT | [R .github/workflows/migrate.yml:33-39, 131] [R supabase/run-order.txt:10-16] |
 | Watchdog | After CI completes on main and every two hours, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
 | Dev site and promotion | `promote.yml` merges `develop` into `main` when a person runs it; inert because no `develop` branch exists | SCAFFOLDED, switch is creating `develop` and the dev Supabase project | [R .github/workflows/promote.yml:16-24, 47-53] [V-run, git ls-remote --heads origin, 2026-10-24: main and two claude/ branches, no develop] |
-| Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 100] |
+| Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
 
 Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
@@ -373,13 +392,21 @@ not yet at the database (ARCH-03).
   `/api/alerts`, `/api/health` [R src/app/api/admin/users/route.ts:32]
   [R src/app/api/import/route.ts:417] [R src/app/api/alerts/route.ts:35]
   [R src/app/api/health/route.ts:112].
-- PIPEDA and staff data: the AI routes read notes, vendors, invoices and orders, never
-  employee, pay or shift tables [R src/app/api/ask/route.ts:44-50]
-  [R src/app/api/reorder/route.ts:44-46]. BUILT.
-- Canadian regions: records and invoice images live in Toronto; invoice images go to
-  Anthropic in the US to be read; the owner was told this in writing
-  [R docs/owner-notes/store-app-infrastructure.html:470-517]. Function processing runs in
-  Montreal (section 2; ARCH-01 closed 2026-10-24).
+- PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
+  reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-51]
+  [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
+  content: feedback triage sends the attached screenshot as an image, so a screenshot of the
+  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
+  and knowledge notes, typed freely by staff, go into every Ask prompt
+  [R src/app/api/ask/route.ts:45, 64-67]. The screenshot picker says so before anything is attached
+  [R src/app/suggestions/page.tsx:275-277]. BUILT.
+- Canadian regions: records and stored files live in Toronto, and the API routes run in
+  Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
+  which stores it in the US, and the due-date email goes through Resend, which stores its
+  records in the US; what each flow sends, its region and its retention are in
+  [R docs/PLATFORM.md:91-142]. The owner was told in writing, corrected 2026-10-24
+  [R docs/owner-notes/store-app-infrastructure.html:516-532]; the owner's published copy
+  changes only when the developer republishes it.
 
 ## 8. What is deliberately not here
 
@@ -393,12 +420,12 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 
 | Capability | State | Evidence |
 |---|---|---|
-| pgvector for Ask the store | TARGET, deferred | [R docs/PLATFORM.md:123] |
+| pgvector for Ask the store | TARGET, deferred | [R docs/PLATFORM.md:176] |
 | GPT-4o fallback, AWS Textract | TARGET, deferred | [R .claude/skills/robinsons-store/SKILL.md:23] |
 | SMS alerts | TARGET | No SMS code exists [V-run, grep -ril "twilio\|sms" src/, 2026-10-24: no matches] |
 | Email invoice intake (AgentMail) | Installed, not wired | [R docs/PLATFORM.md:82] |
-| Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:121-122] |
-| Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:112-114] |
+| Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:174-175] |
+| Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:165-167] |
 
 ## 9. Open items
 
@@ -412,7 +439,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
-| ARCH-09 | `schema.sql:3` still says move to integer cents before production; production runs `numeric`. Keep or migrate? [Q: the developer] | The developer | No |
+| ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | ~~Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop~~ Closed 2026-10-24 by ADR-002: wired, off until `AUTOMERGE_TIER_A` is set | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
 

@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/hopeful-brahmagupta-vdnnwq, stacked on claude/review-pending-requests-43g9hk (latest: tier A self-merge wired into the Slack loop, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-25, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
@@ -27,6 +27,47 @@ Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10
   whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
   ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
   `--auto`; replace that step before waking it (ADR-002 condition 5).
+
+Architecture record of the AI usage log and the main ruleset, 2026-10-25:
+- docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes
+  the daily per-store cap (default 100 calls a day, `AI_DAILY_CAP_PER_STORE`); section 5 lists
+  the table. Reading the log is PARTIAL until `auth_setup.sql` is rerun by hand, because
+  migrate does not run that file.
+- Section 6 now records that main accepts changes only through a pull request (no direct
+  push, force-push or deletion), read live from the repository ruleset.
+- Docs only; no code, schema, policy or workflow change.
+
+Money type and region record, 2026-10-24:
+- Money is numeric dollars and stays that way; integer cents is no longer planned. The
+  schema.sql header, ARCHITECTURE.md, the skill, data-model.md and the Deferred list below
+  now all say so, and ARCH-09 in ARCHITECTURE.md is closed with that decision. Comment and
+  doc change only; no column changed.
+- Montreal: confirmed the same day and recorded in the handover entry below and in
+  VERIFICATION.md (function region yul1).
+
+Data loads kept out of the repository, 2026-10-24 (branch keep-data-loads-local):
+- `supabase/seed_bookings.sql` and `supabase/seed_schedule.sql` are no longer committed. The
+  generators (`scripts/generate-seed-bookings.mjs`, `scripts/generate-seed-schedule.ts`) write
+  them on the developer's machine from the store's workbooks, and `.gitignore` keeps them out.
+  Neither was ever in `supabase/run-order.txt`, so no workflow applied them and the live
+  database is unchanged.
+- `supabase/seed.sql` keeps its curated vendors with made-up phone numbers (705-555-01NN) and
+  no email addresses.
+- RUNBOOK Step 2, the store skill's file map and the Kiro data-model notes say how to generate
+  the loads locally.
+
+Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
+- `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
+  and `debugging` tool groups: documentation search, logs and advisors.
+- CI checks it: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails if
+  a hosted Supabase URL drops `read_only=true`, has no `features` list, or gives production
+  any group beyond those two. Fourteen new cases, plus the committed file.
+- Pull requests required on `main`: one branch ruleset (pull request with no required
+  approvals or status checks, no force pushes, no deletion), applied 2026-10-24 as a
+  repository setting. `gh api 'repos/{owner}/{repo}/rules/branches/main' --jq '[.[].type]'`
+  returns `["deletion","non_fast_forward","pull_request"]`.
+- docs/LOOP_ENGINEERING.md, CAPABILITIES item 9 and its Supabase MCP row, and the Kiro coding
+  conventions (model failures return a non-2xx status) now match.
 
 The handover written to the standard, 2026-10-24:
 - docs/HANDOVER.md now names exactly what the store will own and under which names (team,
@@ -54,6 +95,27 @@ The handover written to the standard, 2026-10-24:
   database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
   store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
+
+What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICATION.md):
+- docs/PLATFORM.md "What leaves Canada": one row per flow (the four Anthropic routes, the
+  Resend due-date email, the Slack autopilot) with what it sends, region and retention, each
+  cited to the provider's page as read today. CAPABILITIES item 68 is done; its line saying
+  Messages API content is not retained was wrong (30 days by default) and is corrected there.
+- docs/owner-notes/store-app-infrastructure.html told the owner that only invoice images reach
+  the AI and staff details never do. Corrected: it now lists what each AI feature sends, the
+  30-day deletion, the screenshot path and the daily email, and the services table and the
+  four-pieces card name screenshot reading. After a fact-check the same day: the AI block
+  lists five uses (screenshot reading and the Slack builder added), the services table has
+  Slack, and two statements the code does not back were removed (one under "What protects
+  it", and an "AI never reads staff records" line). The watchdog now reads as a Slack message.
+- The PLATFORM.md Slack builder row says the request text is in the public run log for 90
+  days and the build leaves a branch, draft pull request and ledger entries in the repository.
+- The Suggestions screenshot picker now says under the field: "Screenshots are read by an AI
+  service in the United States. Leave out pay, schedules and staff details."
+- docs/ARCHITECTURE.md section 7 restated the old claim; its PIPEDA and Canadian regions
+  bullets now describe the screenshot and knowledge-note paths and point at the PLATFORM.md
+  table.
+- Open: the owner's published page changes only when the developer republishes it.
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
@@ -481,15 +543,82 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
-  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  Left for later: an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
+  items above are done. Ask withholds any answer that names a vendor not in the store data or
+  the app guide, and shows "Not confirmed" with a plain message instead
+  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question never vouches
+  for a name: it only excuses one in an answer with no digits ("Costco is not on file"). The
+  model wraps vendor names in [[ ]] for the check; the brackets never reach the screen.
+  Unwrapped names are caught only with a legal suffix or after "vendor", "supplier", or
+  "order from", so an unwrapped made-up vendor with neither still gets through. Ask now
+  caches its prompt: the rules and app guide (roughly 1,600 to 2,000 tokens, over the 1,024
+  minimum for claude-sonnet-5) and the store data, which repeats for the same store and role
+  until a record changes. The function log carries cache_creation_input_tokens and
+  cache_read_input_tokens. Left: confirm reads are non-zero on a preview with two questions a
+  minute apart.
+- One of the left-for-later items above is built, not yet run: the golden-case evals,
+  2026-10-24 (branch ai-golden-evals, see VERIFICATION.md). 24 made-up cases in
+  scripts/aievals-check, 11 invoices for extract and 13 questions for ask, scored by fixed
+  rules (field match with a one-cent tolerance; facts that must and must not appear; for the
+  money and store cases, the prompt itself). The scorer tests are a step in ci.yml and use no
+  model. `npm run eval:ai` sends the cases through the real routes and src/lib/anthropic.ts
+  and prints a pass rate per case. It spends the API key (72 calls by default, 24 with
+  `-- --runs 1`), so it never runs in CI and has not been run yet: the first run is the
+  owner's call. One case is marked as a known gap and is expected to fail until it is fixed:
+  Ask lists a partly paid invoice at its full total as what is owed
+  (ask-owed-partial-payment).
+- Capture amber rule, 2026-10-24 (branch capture-staff-cost, see VERIFICATION.md): an amber
+  (low-confidence) line now clears only when a person retypes its unit cost; fixing the
+  description or qty leaves it amber, and the box covers the rest. Staff never see the cost, so
+  their amber lines are saved with no unit cost and the confidence as read, for the owner to
+  enter. Rules in src/lib/captureLines.ts, checked by scripts/extractvalidate-check in CI. No
+  schema or trigger change. The owner enters that cost from the feed (next item).
+- Cost entry for lines saved without one, 2026-10-24 (branch receiving-cost-entry, see
+  VERIFICATION.md): for roles that see money (owner, manager, lead) the feed opens with a
+  "Needs a cost" list of every receiving line in the store that has no unit cost, newest
+  delivery first, up to 50 deliveries. A feed row with such a line carries a "Needs a cost"
+  marker and its subtotal reads "subtotal so far". Saving a typed cost sets unit_cost and
+  confidence 1 (a person checked it), so enforce_line_confidence passes without the event's
+  acknowledgement. The update fills a blank cost only, on a delivery that is still live and in
+  the active store, goes through the existing receiving_line policy, and logs cost_entered on
+  the line under the person who typed it. With no known person nothing saves; if the log row
+  fails the cost is put back, and if that fails too a notice stays until dismissed. The cost
+  must be above 0 and at most $100,000 a unit; 0 is refused because the invoice reader writes
+  0 for a cost it could not read. A comma reads only as a thousands separator, so "12,50" and
+  "0,500" are refused, not saved as 1250 or 500. Staff never load the list or see the marker.
+  No schema, RLS or trigger change. Screen part in src/components/NeedsCost.tsx; the input
+  rule is costEntry() in src/lib/captureLines.ts.
+- AI call log and daily cap, 2026-10-24 (branch ai-usage-cap, see VERIFICATION.md): every AI
+  call reserves an ai_call row before the model is asked and fills it in after (store, route,
+  model, token counts, outcome, duration; never content). Once the store has made
+  AI_DAILY_CAP_PER_STORE calls today (Ontario day, default 100) the call is refused without
+  reaching the model: 429 and a plain message. The reservation counts under a per-store lock,
+  so parallel requests cannot overshoot the cap. Fails open: no table, a slow database or an
+  error logs a warning and the call goes ahead. Owner action: supabase/ai_call.sql applies
+  itself on merge and the cap works from then; rerun auth_setup.sql after it so the owner can
+  read the rows. Not built: a screen for the owner to read the log (Supabase for now).
+- Import and export integrity, 2026-10-24 (branch import-export-integrity, see VERIFICATION.md):
+  the schedule import no longer guesses who a name is. A name two employees share, or a name
+  that may be a Staff full name ("Amy" beside "Amy Robinson"), is named in the import result
+  and its shifts are not loaded until someone renames one in Staff or writes the full name in
+  the schedule; nobody new is created for it. Exact matches and new names load as before, and
+  an employee read error now stops the import instead of re-creating everyone. The duplicate
+  shift check reads past 1000 shifts. The full export reads every table in pages keyed on id,
+  so a shift deleted or a row added while it runs cannot make the archive drop or repeat
+  another row; the README tab names the start time. The export also stopped ordering
+  tax_rules by province, a column that table does not have in schema.sql (not checked against
+  the live database). Left for later: a schedule full name beside a shorter Staff name
+  ("Amy Robinson" in the schedule, only "Amy" in Staff) still creates a new employee, and so
+  do two new names in one file that may be one person.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
 4. Seed: set store_id inline on the original inserts, not only the backfill, so a partial re-run still scopes store one.
 5. Second store: seed a few maintenance, HR, and compliance rows so its screens are not empty.
-6. Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.
+6. ~~Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.~~ Reversed 2026-10-24 by PR #58: every AI route returns a non-2xx status on a model failure (502, or 422 for a refusal on Ask) with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`.
 7. Decide whether the Acting-as user list stays store-wide or scopes per store.
 8. Storage policy scopes to the bucket, not the store: a signed-in member of store two could read store one's documents. Fine while both stores are the same owner; scope object paths by store before onboarding an outside store.
 9. View as previews navigation and home, not money hiding; verifying what staff see still needs signing in as (or acting as) a staff member.
@@ -509,7 +638,7 @@ A seven-dimension audit (store scoping, money gating, actor and audit integrity,
 - The owner command dashboard cancels stale queries on store switch and surfaces query errors instead of rendering zeros.
 
 ## Deferred (by design)
-- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; integer-cents money (before production hardening); the enterprise stack (see build spec section 8).
+- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; the enterprise stack (see build spec section 8).
 
 ## Run and deploy
 See RUNBOOK.md. Pushing to main auto-deploys to Vercel; each pull request gets a preview. The verification record and re-verification rules are in docs/VERIFICATION.md.
