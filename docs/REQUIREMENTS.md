@@ -145,7 +145,7 @@ QUEUED (agreed, not built):
   progress).
 - Sheets sync phase 2 (service-account pull from the live sheets) and phase 3 (FromApp
   push tabs): docs/SYNC_PLAN.md. Blocked on sharing the live sheets with
-  raviteja.potluru@gmail.com.
+  the developer's Google account.
 - QuickBooks export of invoices/payments; POS sales import (margin, shrinkage, demand-based
   reorder). Owner confirmed the store runs a POS and QuickBooks.
 - Three-way match (PO vs receiving vs invoice) before payment.

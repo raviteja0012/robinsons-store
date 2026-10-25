@@ -1,6 +1,6 @@
 # Data Inventory: Owner's Google Drive "StoreApplication" Folder
 
-Source: Google Drive, owner raviteja.potluru@gmail.com, root folder StoreApplication (id 1liGWxXw_dgQygF9NhNGiuBFObdrhmBz8). Crawled via the Drive MCP server on 2026-05-30. Sizes are bytes as reported by Drive. Samples are short excerpts of real content; full files were not copied. Binary files (PDF, JPEG, PNG, MP4) were inventoried by metadata and name; their purpose is inferred from name and folder.
+Source: Google Drive, owned by the developer's Google account, root folder StoreApplication (id 1liGWxXw_dgQygF9NhNGiuBFObdrhmBz8). Crawled via the Drive MCP server on 2026-05-30. Sizes are bytes as reported by Drive. Samples are short excerpts of real content; full files were not copied. Binary files (PDF, JPEG, PNG, MP4) were inventoried by metadata and name; their purpose is inferred from name and folder.
 
 This inventory maps the store's real paperwork to the app's Postgres tables (see supabase/schema.sql: vendor, item, receiving_event, receiving_line, invoice, payment, retail_price, inventory_count, inventory_count_line, purchase_order, knowledge_note, licence, maintenance_asset, maintenance_task, insurance_policy, employee).
 

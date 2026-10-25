@@ -356,7 +356,7 @@ Decisions from this discussion, all shipped the same day unless marked:
   sync (pull deltas from the sheets, push app data back) until full migration or a
   permanent hybrid. Design and phases: docs/SYNC_PLAN.md. Phase 1 (importer refresh of
   existing vendors' info fields from the sheet) shipped; Phase 2 needs the two live sheets
-  shared with raviteja.potluru@gmail.com and a service account.
+  shared with the developer's Google account and a service account.
 - Cross-linking: vendor names on Due and overdue and on both payout lists now open the
   vendor ledger; Today's KPI tiles open the screen where each number is acted on; the
   vendor header shows the latest order and latest cleared payment at the top right.

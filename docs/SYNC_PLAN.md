@@ -62,7 +62,7 @@ The header-driven importer (importBookingsV2) is the pull mechanism:
 
 ## Blockers and asks (current)
 
-- Share the two live sheets with raviteja.potluru@gmail.com (Viewer) so Phase 2 design can
+- Share the two live sheets with the developer's Google account (Viewer) so Phase 2 design can
   be validated against real tabs (the Drive connector sees only that account's files; the
   live sheets are owned by the store's Google account).
 - Phase 2 needs a Google Cloud service account (free) and one env var in Vercel.

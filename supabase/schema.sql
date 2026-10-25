@@ -1,6 +1,6 @@
 -- Robinsons General Store, v1 schema
 -- Run this first in the Supabase SQL editor, then seed.sql.
--- Money is stored as numeric in dollars for the demo. Move to integer cents before production.
+-- Money is stored as numeric in dollars, in production and everywhere else. Integer cents is not planned.
 
 create extension if not exists pgcrypto;
 

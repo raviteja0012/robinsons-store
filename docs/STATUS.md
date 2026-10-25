@@ -2,7 +2,15 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/gifted-meitner-jhfql6 (latest: the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Money type and region record, 2026-10-24:
+- Money is numeric dollars and stays that way; integer cents is no longer planned. The
+  schema.sql header, ARCHITECTURE.md, the skill, data-model.md and the Deferred list below
+  now all say so, and ARCH-09 in ARCHITECTURE.md is closed with that decision. Comment and
+  doc change only; no column changed.
+- Montreal: confirmed the same day and recorded in the handover entry below and in
+  VERIFICATION.md (function region yul1).
 
 Data loads kept out of the repository, 2026-10-24 (branch keep-data-loads-local):
 - `supabase/seed_bookings.sql` and `supabase/seed_schedule.sql` are no longer committed. The
@@ -597,7 +605,7 @@ A seven-dimension audit (store scoping, money gating, actor and audit integrity,
 - The owner command dashboard cancels stale queries on store switch and surfaces query errors instead of rendering zeros.
 
 ## Deferred (by design)
-- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; integer-cents money (before production hardening); the enterprise stack (see build spec section 8).
+- ML reorder forecasting until a clean season of sales data exists; pgvector for ask-your-store at scale; SMS alerts; the enterprise stack (see build spec section 8).
 
 ## Run and deploy
 See RUNBOOK.md. Pushing to main auto-deploys to Vercel; each pull request gets a preview. The verification record and re-verification rules are in docs/VERIFICATION.md.

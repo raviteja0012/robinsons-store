@@ -273,8 +273,8 @@ which is how a single cheque settles several invoices.
 - Every amount column is `numeric` dollars: `invoice.amount`, `hst_amount`,
   `freight_charges`, `payment.amount`, `payment_allocation.amount`,
   `credit_note.credit_amount`, `purchase_order.order_amount`. BUILT
-  [R supabase/schema.sql:141-143, 179, 198, 213, 522]. The header comment still says to
-  move to cents before production [R supabase/schema.sql:3]; see ARCH-09.
+  [R supabase/schema.sql:141-143, 179, 198, 213, 522]. The header comment says the same, and integer cents is
+  not planned [R supabase/schema.sql:3]; ARCH-09 is closed.
 - Nothing in `schema.sql` uses vectors; the only extension created is `pgcrypto`
   [R supabase/schema.sql:5]. pgvector for Ask the store is TARGET, deferred until the data
   outgrows one prompt [R docs/PLATFORM.md:176].
@@ -419,7 +419,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
-| ARCH-09 | `schema.sql:3` still says move to integer cents before production; production runs `numeric`. Keep or migrate? [Q: the developer] | The developer | No |
+| ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
 
