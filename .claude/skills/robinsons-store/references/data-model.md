@@ -29,7 +29,7 @@
 ## Conventions
 - snake_case everywhere.
 - Audit on every write: created_by on records, plus an activity_log row for actions that matter.
-- Money: numeric in dollars for the demo, integer cents before production.
+- Money: numeric in dollars. Integer cents is not planned.
 - Confidence: every extracted receiving_line carries a confidence value 0 to 1. Below 0.7 is flagged in the UI and must be confirmed by a human. Never auto-post low-confidence dollar amounts.
 - Row-level security: the dev policies in schema.sql allow the anon key for the demo, on every public table and on the documents storage bucket. auth_setup.sql replaces them with per-store, per-role policies and an authenticated-only storage policy when login is turned on. Field-level control so floor staff can be limited to quantities while lead, manager, and owner see costs. When you add a table to schema.sql, you must also add it to auth_setup.sql or it denies everyone under enforced auth.
 - Store original documents in the documents bucket. Move to signed URLs if invoices contain anything sensitive.
