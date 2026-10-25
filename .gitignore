@@ -7,4 +7,4 @@ node_modules
 next-env.d.ts
 source_data/
 *.tsbuildinfo
-scripts/*/out/
+scripts/*-check/out/

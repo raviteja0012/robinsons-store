@@ -86,6 +86,12 @@ have limits, and a loop that can edit its own reviewer has no reviewer.** The au
 not allowed to modify the automation. Changing what the autopilot may do requires a human
 merging a pull request, every time.
 
+**`main` takes changes only through pull requests.** A repository ruleset on `main` requires
+a pull request for every change and blocks force pushes and deletion, so the Slack loop,
+`promote.yml` and a person at a terminal all reach production the same way. It requires no
+approvals and no status checks: the tier classifier decides what may merge, and
+`docs/CAPABILITIES.md` item 9 says why a required check waits.
+
 ### 4. Watch: catching what we broke
 
 `.github/workflows/post-deploy-watch.yml` runs after every deploy to main and every two
@@ -194,11 +200,20 @@ They were read before being committed, because a skill runs with the agent's per
 Both are documentation only: 208K of markdown, no scripts of any kind, nothing executable.
 Re-check that after any update, because it is the property that makes them safe to keep.
 
-The Supabase MCP server is a separate thing and is NOT enabled by this. It needs an
-interactive sign-in that a headless run cannot do, and it would give an agent live access to
-the production database, which is a bigger decision than reading documentation. These skills
-make the agent better at writing SQL a person still applies; the MCP server would let it
-reach the store's real data.
+The Supabase MCP server is configured separately, in `.mcp.json`, and it is read-only and
+limited to two tool groups: `docs` (searching Supabase's documentation) and `debugging` (the
+project's logs and its security and performance advisors). `read_only=true` runs any SQL as
+a read-only Postgres user and hides every tool that writes; the `features` list leaves the
+database, development, functions, branching and account groups off, so it does not query
+the store's tables. It needs an interactive sign-in, so a headless run cannot use it.
+
+CI holds it there: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails
+if a hosted Supabase URL drops `read_only=true`, has no `features` list (the server would
+then turn on its defaults, database included), or gives production any group beyond those
+two. The file is kept rather than deleted because the vendored `supabase` skill writes a new
+one with no parameters when it finds none, and that one would fail the same check. These
+skills make the agent better at writing SQL a person still applies; the MCP server reads
+documentation, logs and advisors.
 
 ## How these standards travel (and why they are not a plugin)
 

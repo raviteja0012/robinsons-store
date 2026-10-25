@@ -46,6 +46,20 @@ jobs:
           npx tsc -p scripts/extractvalidate-check/tsconfig.json
           cp scripts/extractvalidate-check/check.js scripts/extractvalidate-check/out/
           node scripts/extractvalidate-check/out/check.js
+      # Ask answers: every vendor the answer names must be in what the prompt carried.
+      - name: Ask grounding checks
+        run: |
+          npx tsc -p scripts/askgrounding-check/tsconfig.json
+          cp scripts/askgrounding-check/check.js scripts/askgrounding-check/out/
+          node scripts/askgrounding-check/out/check.js
+      # The golden cases for the invoice reader and Ask: the scorers against hand-written
+      # samples, and the cases themselves. No model and no key. The live run (npm run
+      # eval:ai) spends the API key and refuses to run here.
+      - name: AI eval scorers
+        run: |
+          npx tsc -p scripts/aievals-check/tsconfig.json
+          cp scripts/aievals-check/check.js scripts/aievals-check/out/
+          node scripts/aievals-check/out/check.js
       # Schedule names and export paging: a shared or shortened name never lands shifts on
       # the wrong person, and the archive export never drops or repeats a row mid-read.
       - name: Import and export checks
