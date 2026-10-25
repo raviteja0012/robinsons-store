@@ -435,7 +435,7 @@
       <div class="layer">
         <span class="role">The reading and answering</span>
         <span class="name">Anthropic (Claude)</span>
-        <span class="note">Reads invoice photos, answers questions about the store, writes the reorder summary.</span>
+        <span class="note">Reads invoice photos and suggestion screenshots, answers questions about the store, writes the reorder summary.</span>
       </div>
       <div class="arrow" aria-hidden="true">&darr;</div>
       <div class="layer">
@@ -471,7 +471,7 @@
           </tr>
           <tr>
             <td class="k">Anthropic</td>
-            <td class="v">Reads invoices, answers store questions, drafts reorder summaries</td>
+            <td class="v">Reads invoices and suggestion screenshots, answers store questions, drafts reorder summaries</td>
             <td class="v">United States</td>
           </tr>
           <tr>
@@ -511,11 +511,16 @@
       This matters for a Canadian business, so it was chosen deliberately rather than by
       default.
     </p>
+    <p>
+      Corrected 24 October 2026. An earlier version of this section said only invoice photos
+      go to the AI and that staff details never do. Both were wrong. This is the full list.
+    </p>
     <ul class="plain">
-      <li><strong>All store records stay in Canada.</strong> Vendors, orders, invoices, payments, staff records and every uploaded invoice photo live in the Toronto data centre.</li>
-      <li><strong>Invoice images are sent to the US to be read.</strong> When an invoice is photographed, the image goes to Anthropic in the United States, comes back as text, and the record is saved in Toronto. Vendor invoices are business documents, not personal information, so this is a reasonable trade for the accuracy.</li>
-      <li><strong>Staff personal information never leaves Canada.</strong> Pay rates, schedules and employee details are never sent to the AI. Canadian privacy law (PIPEDA) covers this data and the design keeps it in the Canadian services.</li>
-      <li><strong>Your data is not used to train the AI.</strong> That is off by default on the plan the app uses.</li>
+      <li><strong>The store's records are kept in Canada.</strong> Vendors, orders, invoices, payments, staff records and every uploaded photo are stored in the Toronto data centre.</li>
+      <li><strong>Each AI feature sends some of it to the United States.</strong> The AI is run by Anthropic, a US company, and it only sees what a feature sends when someone uses it. Reading an invoice sends the photo. Asking the store sends the question, the knowledge notes staff have typed, vendor names, phone numbers and notes, and, for anyone allowed to see money, invoice amounts and due dates. The reorder summary sends vendors, orders with their amounts, and reorder notes. A suggestion with a screenshot sends the screenshot and the note, so the AI can describe it. A change to the app requested in the store's Slack channel sends the request text along with the app's code.</li>
+      <li><strong>Anthropic deletes what it receives within 30 days.</strong> It keeps it longer only if something is flagged as misuse or the law requires it. Its business terms do not allow it to train the AI on the store's data.</li>
+      <li><strong>Staff details can reach the AI through a screenshot.</strong> The AI never reads the staff, pay or schedule records on its own. A screenshot of those screens is a different matter: it goes as a picture, so leave pay, schedules and staff details out of any screenshot you attach. The Suggestions page now says this under the screenshot box. Personal details typed into a knowledge note also go to the AI whenever someone asks a question.</li>
+      <li><strong>The daily email goes through the United States too.</strong> When it is switched on, Resend sends vendor names, invoice numbers and amounts owed. Resend has no Canadian location and keeps its records for 30 days.</li>
       <li><strong>Records are kept for six years,</strong> which is the Canadian requirement for business records.</li>
     </ul>
   </section>

@@ -273,7 +273,8 @@ export default function Suggestions() {
           </div>
           <div>
             <label className="label" htmlFor="fb-shot">Screenshot (optional)</label>
-            <input id="fb-shot" ref={shotInput} className="input" type="file" accept="image/*" onChange={(e) => setShot(e.target.files?.[0] || null)} />
+            <input id="fb-shot" ref={shotInput} className="input" type="file" accept="image/*" aria-describedby="fb-shot-help" onChange={(e) => setShot(e.target.files?.[0] || null)} />
+            <p id="fb-shot-help" className="help" style={{ margin: "4px 0 0" }}>Screenshots are read by an AI service in the United States. Leave out pay, schedules and staff details.</p>
           </div>
         </div>
         <div>
