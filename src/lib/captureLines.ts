@@ -31,3 +31,27 @@ export function linesToSave(lines: LineItem[], showMoney: boolean, threshold: nu
     };
   });
 }
+
+// The update for a cost typed later onto a saved line that has none (the feed's "Needs a cost"
+// list). Typing it is the same check as retyping it at capture, so confidence goes to 1 and the
+// database confidence trigger passes without the event's acknowledgement. Takes "12.50",
+// "$12.50" or "1,234.50". Anything else comes back as an error to show under the box:
+// - A comma counts only as a thousands separator after a non-zero digit, so "12,50" and
+//   "0,500" are refused rather than saved as 1250 or 500.
+// - Zero is refused: the invoice reader writes 0 for a cost it could not read, so a typed 0
+//   would mark a missing cost as checked.
+// - Above MAX_UNIT_COST, or too long to be a real number, is refused as a typing slip.
+export const MAX_UNIT_COST = 100000;
+
+export function costEntry(text: string): { unit_cost: number; confidence: number } | { error: string } {
+  const cleaned = text.trim().replace(/^\$\s*/, "");
+  if (!/^([1-9]\d{0,2}(,\d{3})+|\d+)(\.\d*)?$|^\.\d+$/.test(cleaned)) {
+    return { error: "Type the unit cost as a number, like 12.50." };
+  }
+  const n = Number(cleaned.replace(/,/g, ""));
+  if (!Number.isFinite(n) || n > MAX_UNIT_COST) {
+    return { error: "That is more than $100,000 for one unit. Check the invoice and retype it." };
+  }
+  if (n === 0) return { error: "A cost of 0 cannot be saved here. Type the cost from the invoice." };
+  return { unit_cost: n, confidence: 1 };
+}

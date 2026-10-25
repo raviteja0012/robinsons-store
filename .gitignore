@@ -8,3 +8,6 @@ next-env.d.ts
 source_data/
 *.tsbuildinfo
 scripts/*-check/out/
+# Generated data loads are store data: the generators write them locally and they stay out of git.
+supabase/seed_bookings.sql
+supabase/seed_schedule.sql

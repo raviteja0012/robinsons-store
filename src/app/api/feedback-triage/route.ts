@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     const db = resolved.client;
     const { data: row, error } = await db
       .from("feedback")
-      .select("id, screenshot_path, body, page")
+      .select("id, store_id, screenshot_path, body, page")
       .eq("id", feedbackId)
       .maybeSingle();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
 
     const result = await callClaude({
       route: "feedback-triage",
+      // The note's own store: under enforced login the read above only returns the caller's.
+      scope: { db, storeId: resolved.member?.store_id || row.store_id || null },
       max_tokens: 500,
       messages: [{
         role: "user",
@@ -73,7 +75,7 @@ export async function POST(req: NextRequest) {
       }]
     });
     if (!result.ok) {
-      return NextResponse.json({ error: failureMessage(result.kind) }, { status: 502 });
+      return NextResponse.json({ error: failureMessage(result.kind) }, { status: result.kind === "capped" ? 429 : 502 });
     }
     const summary = plainText(result.text);
     if (!summary) return NextResponse.json({ message: "model returned nothing" });

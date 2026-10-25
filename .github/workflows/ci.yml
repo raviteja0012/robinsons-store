@@ -60,6 +60,12 @@ jobs:
           npx tsc -p scripts/aievals-check/tsconfig.json
           cp scripts/aievals-check/check.js scripts/aievals-check/out/
           node scripts/aievals-check/out/check.js
+      # The AI call log and daily cap, through the real client with fetch and Supabase mocked.
+      - name: AI usage cap checks
+        run: |
+          npx tsc -p scripts/aiusage-check/tsconfig.json
+          cp scripts/aiusage-check/check.js scripts/aiusage-check/out/
+          node scripts/aiusage-check/out/check.js
       # Schedule names and export paging: a shared or shortened name never lands shifts on
       # the wrong person, and the archive export never drops or repeats a row mid-read.
       - name: Import and export checks
