@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
     // A prefix under a model's minimum is simply not cached; nothing fails.
     const result = await callClaude({
       route: "ask",
+      scope: { db, storeId },
       max_tokens: 1024,
       system: [
         { type: "text", text: rules },
@@ -175,7 +176,10 @@ export async function POST(req: NextRequest) {
       }]
     });
     if (!result.ok) {
-      return NextResponse.json({ error: failureMessage(result.kind) }, { status: result.kind === "refusal" ? 422 : 502 });
+      // The issue row was written before the model call, so say so whatever the failure;
+      // otherwise the person files it again from Suggestions.
+      const msg = failureMessage(result.kind) + (loggedIssue ? " Your issue was still logged in Suggestions." : "");
+      return NextResponse.json({ error: msg }, { status: result.kind === "capped" ? 429 : result.kind === "refusal" ? 422 : 502 });
     }
 
     // A vendor the answer names must be in the store data or the app guide. If one is not,

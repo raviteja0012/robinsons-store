@@ -1,4 +1,5 @@
-// Generate supabase/seed_bookings.sql from the real 2026 bookings workbook.
+// Generate supabase/seed_bookings.sql from the 2026 bookings workbook. The output is store data:
+// .gitignore keeps it out of the repository; generate it on your machine and never commit it.
 //
 // Usage: NODE_PATH=node_modules node scripts/generate-seed-bookings.mjs <in.xlsx> <out.sql>
 //

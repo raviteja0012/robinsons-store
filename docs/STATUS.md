@@ -4,6 +4,17 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Data loads kept out of the repository, 2026-10-24 (branch keep-data-loads-local):
+- `supabase/seed_bookings.sql` and `supabase/seed_schedule.sql` are no longer committed. The
+  generators (`scripts/generate-seed-bookings.mjs`, `scripts/generate-seed-schedule.ts`) write
+  them on the developer's machine from the store's workbooks, and `.gitignore` keeps them out.
+  Neither was ever in `supabase/run-order.txt`, so no workflow applied them and the live
+  database is unchanged.
+- `supabase/seed.sql` keeps its curated vendors with made-up phone numbers (705-555-01NN) and
+  no email addresses.
+- RUNBOOK Step 2, the store skill's file map and the Kiro data-model notes say how to generate
+  the loads locally.
+
 Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
 - `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
   and `debugging` tool groups: documentation search, logs and advisors.
@@ -43,6 +54,27 @@ The handover written to the standard, 2026-10-24:
   database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
   store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
+
+What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICATION.md):
+- docs/PLATFORM.md "What leaves Canada": one row per flow (the four Anthropic routes, the
+  Resend due-date email, the Slack autopilot) with what it sends, region and retention, each
+  cited to the provider's page as read today. CAPABILITIES item 68 is done; its line saying
+  Messages API content is not retained was wrong (30 days by default) and is corrected there.
+- docs/owner-notes/store-app-infrastructure.html told the owner that only invoice images reach
+  the AI and staff details never do. Corrected: it now lists what each AI feature sends, the
+  30-day deletion, the screenshot path and the daily email, and the services table and the
+  four-pieces card name screenshot reading. After a fact-check the same day: the AI block
+  lists five uses (screenshot reading and the Slack builder added), the services table has
+  Slack, and two statements the code does not back were removed (one under "What protects
+  it", and an "AI never reads staff records" line). The watchdog now reads as a Slack message.
+- The PLATFORM.md Slack builder row says the request text is in the public run log for 90
+  days and the build leaves a branch, draft pull request and ledger entries in the repository.
+- The Suggestions screenshot picker now says under the field: "Screenshots are read by an AI
+  service in the United States. Leave out pay, schedules and staff details."
+- docs/ARCHITECTURE.md section 7 restated the old claim; its PIPEDA and Canadian regions
+  bullets now describe the screenshot and knowledge-note paths and point at the PLATFORM.md
+  table.
+- Open: the owner's published page changes only when the developer republishes it.
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
@@ -470,7 +502,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
-  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  Left for later: an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
@@ -518,6 +550,15 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   "0,500" are refused, not saved as 1250 or 500. Staff never load the list or see the marker.
   No schema, RLS or trigger change. Screen part in src/components/NeedsCost.tsx; the input
   rule is costEntry() in src/lib/captureLines.ts.
+- AI call log and daily cap, 2026-10-24 (branch ai-usage-cap, see VERIFICATION.md): every AI
+  call reserves an ai_call row before the model is asked and fills it in after (store, route,
+  model, token counts, outcome, duration; never content). Once the store has made
+  AI_DAILY_CAP_PER_STORE calls today (Ontario day, default 100) the call is refused without
+  reaching the model: 429 and a plain message. The reservation counts under a per-store lock,
+  so parallel requests cannot overshoot the cap. Fails open: no table, a slow database or an
+  error logs a warning and the call goes ahead. Owner action: supabase/ai_call.sql applies
+  itself on merge and the cap works from then; rerun auth_setup.sql after it so the owner can
+  read the rows. Not built: a screen for the owner to read the log (Supabase for now).
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
