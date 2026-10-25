@@ -3,6 +3,8 @@
 // Run: NODE_PATH=node_modules node --experimental-strip-types \
 //        scripts/generate-seed-schedule.ts <in.xlsx> supabase/seed_schedule.sql
 //
+// The output is store data: .gitignore keeps supabase/seed_schedule.sql out of the repository.
+//
 // Uses the same parser as the in-app upload route (src/lib/importSchedule.ts), so the loaded
 // data and an uploaded file produce identical rows. Idempotent: employees by name, shifts by
 // (employee, date, start, end), so it is safe to run on top of seed.sql and safe to re-run.

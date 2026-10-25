@@ -277,7 +277,7 @@ which is how a single cheque settles several invoices.
   not planned [R supabase/schema.sql:3]; ARCH-09 is closed.
 - Nothing in `schema.sql` uses vectors; the only extension created is `pgcrypto`
   [R supabase/schema.sql:5]. pgvector for Ask the store is TARGET, deferred until the data
-  outgrows one prompt [R docs/PLATFORM.md:123].
+  outgrows one prompt [R docs/PLATFORM.md:176].
 
 The store-scoping rule. BUILT: every read filters by the active `store_id` and every insert
 stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:122].
@@ -333,7 +333,7 @@ asks the live site whether it is healthy and tells Slack when that changes.
 | Watchdog | After CI completes on main and every two hours, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
 | Dev site and promotion | `promote.yml` merges `develop` into `main` when a person runs it; inert because no `develop` branch exists | SCAFFOLDED, switch is creating `develop` and the dev Supabase project | [R .github/workflows/promote.yml:16-24, 47-53] [V-run, git ls-remote --heads origin, 2026-10-24: main and two claude/ branches, no develop] |
-| Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 100] |
+| Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
 
 Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
@@ -372,13 +372,21 @@ not yet at the database (ARCH-03).
   `/api/alerts`, `/api/health` [R src/app/api/admin/users/route.ts:32]
   [R src/app/api/import/route.ts:417] [R src/app/api/alerts/route.ts:35]
   [R src/app/api/health/route.ts:112].
-- PIPEDA and staff data: the AI routes read notes, vendors, invoices and orders, never
-  employee, pay or shift tables [R src/app/api/ask/route.ts:44-50]
-  [R src/app/api/reorder/route.ts:44-46]. BUILT.
-- Canadian regions: records and invoice images live in Toronto; invoice images go to
-  Anthropic in the US to be read; the owner was told this in writing
-  [R docs/owner-notes/store-app-infrastructure.html:470-517]. Function processing runs in
-  Montreal (section 2; ARCH-01 closed 2026-10-24).
+- PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
+  reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-51]
+  [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
+  content: feedback triage sends the attached screenshot as an image, so a screenshot of the
+  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
+  and knowledge notes, typed freely by staff, go into every Ask prompt
+  [R src/app/api/ask/route.ts:45, 64-67]. The screenshot picker says so before anything is attached
+  [R src/app/suggestions/page.tsx:275-277]. BUILT.
+- Canadian regions: records and stored files live in Toronto, and the API routes run in
+  Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
+  which stores it in the US, and the due-date email goes through Resend, which stores its
+  records in the US; what each flow sends, its region and its retention are in
+  [R docs/PLATFORM.md:91-142]. The owner was told in writing, corrected 2026-10-24
+  [R docs/owner-notes/store-app-infrastructure.html:516-532]; the owner's published copy
+  changes only when the developer republishes it.
 
 ## 8. What is deliberately not here
 
@@ -392,12 +400,12 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 
 | Capability | State | Evidence |
 |---|---|---|
-| pgvector for Ask the store | TARGET, deferred | [R docs/PLATFORM.md:123] |
+| pgvector for Ask the store | TARGET, deferred | [R docs/PLATFORM.md:176] |
 | GPT-4o fallback, AWS Textract | TARGET, deferred | [R .claude/skills/robinsons-store/SKILL.md:23] |
 | SMS alerts | TARGET | No SMS code exists [V-run, grep -ril "twilio\|sms" src/, 2026-10-24: no matches] |
 | Email invoice intake (AgentMail) | Installed, not wired | [R docs/PLATFORM.md:82] |
-| Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:121-122] |
-| Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:112-114] |
+| Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:174-175] |
+| Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:165-167] |
 
 ## 9. Open items
 

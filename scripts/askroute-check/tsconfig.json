@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": "out",
+    "rootDir": "../../src",
+    "baseUrl": "../..",
+    "paths": { "@/*": ["src/*"] },
+    "lib": ["es2020", "dom"]
+  },
+  "files": ["../../src/app/api/ask/route.ts"]
+}

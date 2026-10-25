@@ -118,7 +118,12 @@ Run in this order; skip nothing (each is safe to re-run):
 
 8. `edit_delete.sql` — soft-delete columns and the inventory line notes (older databases
    only; harmless if already applied).
-9. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
+9. `ai_call.sql`: the AI call log behind the daily per-store cap. One row per AI call
+   (store, screen, model, token counts, how it ended), never the question or the answer, and
+   the two functions that reserve and finish each call. The cap and the log work as soon as
+   this runs. Only the owner can read the rows once login is on; with enforced login, rerun
+   `auth_setup.sql` after it to give the owner that read.
+10. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 
 ## What each remaining file is
@@ -133,4 +138,6 @@ Run in this order; skip nothing (each is safe to re-run):
   (AI features), ANTHROPIC_MODEL (optional; defaults to claude-sonnet-5),
   NEXT_PUBLIC_REQUIRE_AUTH ("true" for enforced login), SUPABASE_SERVICE_ROLE_KEY (imports
   in demo mode), plus Resend/CRON values if the daily email is wanted.
+- Optional: AI_DAILY_CAP_PER_STORE, how many AI calls one store may make in a day (Ontario
+  time) before the AI helpers pause until midnight. Unset means 100.
 - Redeploy after env changes; NEXT_PUBLIC_ values are baked at build time.

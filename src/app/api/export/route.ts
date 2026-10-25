@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { resolveMember } from "@/lib/serverMember";
+import { readTable } from "@/lib/exportPaging";
 
 export const runtime = "nodejs";
 // Run in Montreal, not the default iad1 (Washington DC). The Supabase project is in
@@ -56,22 +57,9 @@ const TABLES: TableSpec[] = [
   { name: "activity_log", scope: "parent", parent: { table: "app_user", column: "actor_id" }, what: "Audit trail of every write", links: "actor_id -> app_user.id" },
 ];
 
-// Supabase caps a select at 1000 rows; page until a short page comes back.
-async function fetchAll(db: any, table: string, filter: (q: any) => any): Promise<any[]> {
-  const out: any[] = [];
-  const page = 1000;
-  for (let from = 0; ; from += page) {
-    // A stable ORDER BY makes multi-page reads consistent; without it Postgres may
-    // repeat or drop rows across pages and the archival workbook silently lies.
-    const orderCol = table === "tax_rules" ? "province" : "id";
-    const { data, error } = await filter(db.from(table).select("*").order(orderCol)).range(from, from + page - 1);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    const rows = (data as any[]) || [];
-    out.push(...rows);
-    if (rows.length < page) break;
-  }
-  return out;
-}
+// Every table is read through readTable (src/lib/exportPaging.ts): keyset pages on id, so a
+// shift deleted or a row added while the export runs cannot make the archive drop or repeat
+// another row. scripts/importexport-check runs it against a fake that refuses offset paging.
 
 export async function GET(req: NextRequest) {
   try {
@@ -88,6 +76,9 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "No store selected." }, { status: 400 });
     }
 
+    // Taken before the first read. The README names it so the archive says which moment it
+    // describes: rows written while the export ran may or may not be in it.
+    const startedAt = new Date().toISOString();
     const wb = XLSX.utils.book_new();
     const readme: any[] = [];
     const parentIds = new Map<string, string[]>();
@@ -95,18 +86,18 @@ export async function GET(req: NextRequest) {
     for (const spec of TABLES) {
       let rows: any[] = [];
       if (spec.scope === "self") {
-        rows = await fetchAll(db, spec.name, (q) => q.eq("id", storeId));
+        rows = await readTable(db, spec.name, (q) => q.eq("id", storeId));
       } else if (spec.scope === "store") {
-        rows = await fetchAll(db, spec.name, (q) => q.eq("store_id", storeId));
+        rows = await readTable(db, spec.name, (q) => q.eq("store_id", storeId));
       } else if (spec.scope === "global") {
-        rows = await fetchAll(db, spec.name, (q) => q);
+        rows = await readTable(db, spec.name, (q) => q);
       } else if (spec.scope === "parent" && spec.parent) {
         const ids = parentIds.get(spec.parent.table) || [];
         if (ids.length) {
           // .in() has practical URL-length limits; chunk the id list.
           for (let i = 0; i < ids.length; i += 200) {
             const chunk = ids.slice(i, i + 200);
-            rows.push(...await fetchAll(db, spec.name, (q) => q.in(spec.parent!.column, chunk)));
+            rows.push(...await readTable(db, spec.name, (q) => q.in(spec.parent!.column, chunk)));
           }
         }
       }
@@ -124,12 +115,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const intro = XLSX.utils.json_to_sheet(readme);
+    const intro = XLSX.utils.aoa_to_sheet([
+      ["Export started", startedAt],
+      ["", "Time is UTC. Changes made while the export was running may or may not be included."],
+      []
+    ]);
+    XLSX.utils.sheet_add_json(intro, readme, { origin: "A4" });
     XLSX.utils.book_append_sheet(wb, intro, "README");
     // Move README to the front so it opens first.
     wb.SheetNames.unshift(wb.SheetNames.pop() as string);
 
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = startedAt.slice(0, 10);
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
     return new Response(new Uint8Array(buf), {
       headers: {

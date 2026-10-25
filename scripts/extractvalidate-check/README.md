@@ -1,9 +1,18 @@
-# Checking the invoice reader's value checks
+# Checking the invoice reader's value checks and the capture line rules
 
 `src/lib/extractValidate.ts` checks the values the invoice reader returns. The schema fixes
 the shape; this fixes the values: confidence in 0 to 1, non-negative finite amounts, real
 calendar dates. Anything it has to coerce gets confidence 0 so it goes through the amber
 acknowledgement instead of being saved quietly.
+
+`src/lib/captureLines.ts` holds the capture screen's line rules. Only a retyped unit cost
+that is a real number clears an amber line; fixing a description or qty, emptying the cost
+box, or typing something that is not a number does not. When the role cannot see money,
+an amber line is saved with no unit cost, so staff never post a cost they could not check.
+`costEntry` reads the cost an owner or manager types later on the feed's "Needs a cost" list:
+a number above 0 and up to $100,000, with an optional dollar sign and thousands commas, saved
+with confidence 1. "12,50" and "0,500" are refused rather than read as 1250 or 500. Zero is
+refused because the invoice reader writes 0 for a cost it could not read.
 
 ## Running it
 
@@ -13,4 +22,5 @@ cp scripts/extractvalidate-check/check.js scripts/extractvalidate-check/out/
 node scripts/extractvalidate-check/out/check.js
 ```
 
-Runs in CI after the build. The module has no imports, so no path rewriting is needed.
+Runs in CI after the build. Neither module has a runtime import (captureLines imports a type
+only, which compiles away), so no path rewriting is needed.

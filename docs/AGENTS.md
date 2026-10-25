@@ -44,6 +44,7 @@ builds and the capture screen still offers Enter manually.
 | **Typecheck stop hook** | Refuses to end a Claude Code turn while TypeScript is broken; fails open if it cannot run | `.claude/hooks/gate-typecheck.sh` [R `:2`], wired in `.claude/settings.json` | Claude Code sessions | BUILT |
 | **Skills** | `robinsons-store` (domain, invariants, playbooks, and the documentation and review standard in `references/standards.md`), `supabase` and `supabase-postgres-best-practices` (vendor guidance) | `.claude/skills/` | Claude Code sessions | BUILT |
 | **Jira autopilot** | The board-driven version of the Slack autopilot | `.github/workflows/jira-autopilot.yml` | Parked since 2026-08-12; tests still run in CI | SCAFFOLDED |
+| **Golden-case evals** | Sends 24 made-up invoices and questions through the real invoice reader and Ask routes and scores the answers by fixed rules, with a pass rate per case | `scripts/aievals-check`, run with `npm run eval:ai` [R `package.json:11`] | The developer's machine, on whatever `ANTHROPIC_API_KEY` is in `.env.local` or the shell; exits at once in CI [R `scripts/aievals-check/live.ts:55`]. Its scorer tests use no model and are a step in `.github/workflows/ci.yml` | PARTIAL (built and checked offline; not yet run against the model) |
 
 **What the build agents can never do on their own:** merge money, access, database or
 automation changes (tier C), run `auth_setup.sql`, or promote to production; promotion is a
@@ -74,3 +75,5 @@ docs/HANDOVER.md. The rules every agent works under: CLAUDE.md and
 Each `[R]` above was read from the named file and line in this repository this session, plus
 the subagent and settings files read whole. One stale rule found and corrected (AG-01); one state killed on review: the tier classifier was first recorded as BUILT and is PARTIAL, because only the parked Jira loop calls it.
 Source: this repository.
+The Golden-case evals row was added on branch ai-golden-evals (2026-10-24): 2 claims, both
+read at the named lines that session.

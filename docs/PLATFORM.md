@@ -73,8 +73,8 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 |---|---|---|---|
 | **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby, see risk 1** | Project `robinsons-store`. Preview deploys per PR are how the practice site works |
 | **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free, confirmed 2026-10-18, see risk 2** | ca-central Toronto. RLS per store per role. A second project is planned for dev per ENVIRONMENTS.md |
-| **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | US-hosted. Default model claude-sonnet-5. $5 to $40 a month by volume |
-| **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set |
+| **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | Stores in the US; what each route sends is in "What leaves Canada" below. Default model claude-sonnet-5. $5 to $40 a month by volume |
+| **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set. No Canadian region, see "What leaves Canada" |
 | **Vianet** | Domain robinsonsgeneralstore.ca, 5 of 10 mailboxes, store internet | About $10/mo | Domain expires 2026-10-16, auto-renew on. No self-serve DNS editor, changes are a phone call |
 | **GitHub** | Code, and eleven Actions workflows | Free | `ci`, `migrate`, `post-deploy-watch`, `promote`, `rls-audit`, `slack-announce`, `slack-autopilot`, `slack-lifecycle`, `vercel-diagnose`, `vercel-protect`, and `jira-autopilot` (parked) |
 | **Slack** | Build requests in, watchdog and migration messages out | Free | Bot app from docs/slack-app-manifest.yml plus an incoming webhook. See docs/SLACK_AUTOPILOT.md |
@@ -87,6 +87,59 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 - **Preview deployments.** Every PR gets one; this is the practice site in ENVIRONMENTS.md.
 - **Custom domain.** `app.robinsonsgeneralstore.ca`, live and verified 2026-08-11.
 - **DDoS mitigation.** On by default on all plans, nothing to configure.
+
+## What leaves Canada
+
+Checked 2026-10-24 against the code on main and each provider's published terms. The
+database and the stored files are in Supabase in Toronto, and the API routes run in Montreal
+(ARCHITECTURE.md section 2). Each row says what one flow sends outside Canada, where it goes,
+and how long the provider keeps it.
+
+| Route or job | What it sends | Provider | Region | Retention |
+|---|---|---|---|---|
+| `/api/extract` (Capture) | The invoice photo or PDF, and a fixed reading prompt | Anthropic API | US (a) | 30 days (b) |
+| `/api/ask` (Ask the store) | The question as typed. Every knowledge note (department, topic, body, tags), which staff type freely. Every vendor's name, department, terms, status, phone, notes and ordering profile. Each vendor's minimum order, and each non-voided invoice's vendor, invoice total (amount, freight and HST, as `invoiceTotal()` computes it; paid invoices included, nothing subtracted), status, due date and terms: for money roles (lead, manager, owner) when sign-in is on, for every caller when it is off. The app guide text | Anthropic API | US (a) | 30 days (b) |
+| `/api/reorder` (Reorder summary) | Every vendor's name, department, status, terms, notes and ordering profile, minimum order included. Every purchase order's vendor, season, amount, ship date and status. Knowledge notes tagged `reorder` (topic, body). Money roles only when sign-in is on | Anthropic API | US (a) | 30 days (b) |
+| `/api/feedback-triage` (Suggestions) | The attached screenshot, plus the note and screen name typed with it. The screenshot is whatever was on screen, which can be the HR, pay rate or schedule screen. The Suggestions page warns about this under the picker | Anthropic API | US (a) | 30 days (b) |
+| `/api/alerts` (daily due-date email; off until the Resend keys are set) | For each unpaid invoice overdue or due within 7 days: vendor name, invoice number, amount left to pay, due date, store name, with the counts and total owed in the subject. Sent to the `ALERT_EMAIL_TO` addresses | Resend | Account data, email metadata and logs in the US; the sending region is picked when the domain is added, and none is in Canada (c) | 30 days on Free, Pro and Scale (d) |
+| `slack-autopilot.yml` (build requests from Slack) | The request text typed in the store's Slack channel, and the repository files the agent reads while building. Sent with the same Anthropic key from a GitHub-hosted runner. The request text also appears in the run log, which is public because the repository is. The build writes a branch, a draft pull request and entries in docs/STATUS.md and docs/VERIFICATION.md into this public repository | Anthropic API, through GitHub Actions on Azure (region not published, e) | US (a) | Anthropic 30 days (b). The public run log 90 days (f). The branch, pull request and ledger entries stay in the repository until someone removes them. The request stays in Slack, which deletes it after one year on Free (g) |
+
+`git grep -n 'callClaude(' src/app/api` lists the four Anthropic routes above; a fifth match
+means this table is out of date. Where the `ai_call` usage log is present
+(`supabase/ai_call.sql`), its rows sit in the Toronto database and hold the route, model,
+token counts, duration and outcome of each call, never the prompt, the store data sent with
+it, or the answer.
+
+Sources, read 2026-10-24:
+
+- (a) Anthropic stores API data in the US: workspace geo `us` is the only one offered. Where
+  the model runs is a separate setting. The app sends no `inference_geo`, so each call
+  follows the workspace's default inference geo, and the API default `global` may run in any
+  available geography. https://platform.claude.com/docs/en/manage-claude/data-residency
+- (b) Anthropic commercial retention, updated 2026-07-01: inputs and outputs are deleted from
+  the backend within 30 days; up to 2 years if flagged under the Usage Policy, with
+  classifier scores up to 7 years. This is the default unless a zero data retention agreement
+  is signed; none is recorded in this repo.
+  https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data.
+  Commercial Terms section B, effective 2025-06-17: "Anthropic may not train models on
+  Customer Content from Services." https://www.anthropic.com/legal/commercial-terms. Capture's
+  structured output caches only the JSON schema, up to 24 hours, and the schema holds no
+  store data. https://platform.claude.com/docs/en/manage-claude/api-and-data-retention
+- (c) Four sending regions (North Virginia, Ireland, Sao Paulo, Tokyo); "All account data,
+  including email metadata, logs, and API records, is stored in the United States".
+  https://resend.com/docs/dashboard/domains/regions
+- (d) Data retention row of the plan comparison. https://resend.com/pricing
+- (e) "GitHub hosts Linux and Windows runners on virtual machines in Microsoft Azure", no
+  region stated. https://docs.github.com/en/actions/concepts/runners/github-hosted-runners
+- (f) The default; a public repository can set 1 to 90 days.
+  https://docs.github.com/en/organizations/managing-organization-settings/configuring-the-retention-period-for-github-actions-artifacts-and-logs-in-your-organization
+- (g) Free plan: 90 days of visible history, content older than a year deleted.
+  https://slack.com/help/articles/7050776459923-Pricing-changes-for-the-Pro-plan-and-updates-to-the-Free-plan
+
+**The rule for a new flow.** A change that sends store data to a new provider, or sends a new
+kind of data to an existing one, adds or edits its row here in the same pull request, and
+updates the data section of docs/owner-notes/store-app-infrastructure.html if the owner's
+picture changes.
 
 ## Worth adopting, each tied to a real requirement
 

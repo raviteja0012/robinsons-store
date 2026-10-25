@@ -9,6 +9,7 @@ import { useActiveStore } from "@/lib/store";
 import { REQUIRE_AUTH, authHeader, canSeeMoney, useEffectiveActor } from "@/lib/auth";
 import type { AppUser, Department, Draft, LineItem } from "@/lib/types";
 import { prepareForExtraction, readableSize } from "@/lib/imagePrep";
+import { editLine, linesToSave } from "@/lib/captureLines";
 
 type VendorLite = { id: string; name: string; department_id: string | null; default_terms: string | null };
 type POLite = { vendor_id: string | null; order_amount: number | null };
@@ -119,7 +120,7 @@ export default function Capture() {
       const resp = await fetch("/api/extract", {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ imageBase64: prepared.base64, mediaType: prepared.mediaType })
+        body: JSON.stringify({ imageBase64: prepared.base64, mediaType: prepared.mediaType, store_id: storeId })
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "extraction failed");
@@ -147,10 +148,9 @@ export default function Capture() {
   function updateLine(i: number, patch: Partial<LineItem>) {
     if (!draft) return;
     const next = [...draft.line_items];
-    // A human retyping the description, qty, or unit cost IS the verification, so the
-    // edit clears the line's low-confidence flag.
-    const humanKeyed = "description" in patch || "qty" in patch || "unit_cost" in patch;
-    next[i] = { ...next[i], ...patch, ...(humanKeyed ? { confidence: 1 } : {}) };
+    // Only a person retyping the unit cost clears the line's low-confidence flag (see
+    // lib/captureLines). Fixing the description or qty leaves the line amber.
+    next[i] = editLine(next[i], patch);
     setDraft({ ...draft, line_items: next });
   }
 
@@ -181,9 +181,11 @@ export default function Capture() {
   const hasDiscrepancy = showMoney && discrepancy != null && Math.abs(discrepancy) >= 0.01;
 
   // The hard low-confidence gate: any line still flagged amber blocks the save until the
-  // person either fixes it (editing clears the flag) or explicitly confirms they checked it.
-  // The acknowledgement is stored on the event, and the database trigger refuses a
-  // low-confidence dollar line whose event lacks it, so the rule holds outside this screen too.
+  // person either retypes its unit cost (that clears the flag) or explicitly confirms they
+  // checked it. Staff never see the cost, so their amber lines are saved without one for the
+  // owner to enter. The acknowledgement is stored on the event, and the database trigger
+  // refuses a low-confidence dollar line whose event lacks it, so the rule holds outside
+  // this screen too.
   const lowLines = draft ? draft.line_items.filter((l) => l.confidence !== null && l.confidence < LOW_CONFIDENCE).length : 0;
   const hasLowFlags = lowLines > 0;
 
@@ -223,14 +225,7 @@ export default function Capture() {
 
       const eventId = ev.data.id as string;
       if (draft.line_items.length) {
-        const lines = draft.line_items.map((l) => ({
-          receiving_event_id: eventId,
-          description: l.description,
-          qty: l.qty,
-          unit_cost: l.unit_cost,
-          retail_price_note: l.retail_price_note,
-          confidence: l.confidence
-        }));
+        const lines = linesToSave(draft.line_items, showMoney, LOW_CONFIDENCE).map((l) => ({ receiving_event_id: eventId, ...l }));
         const li = await supabase.from("receiving_line").insert(lines);
         if (li.error) throw new Error(`lines: ${li.error.message}`);
       }
@@ -373,8 +368,10 @@ export default function Capture() {
             <div className="card" style={{ padding: 12, background: "var(--warning-tint)", borderColor: "var(--warning-base)" }}>
               <span className="chip chip-warning">&#9888; Uncertain fields</span>
               <p className="help" style={{ marginTop: 8, color: "var(--text-primary)" }}>
-                {lowLines === 1 ? "1 line was" : `${lowLines} lines were`} read with low confidence and {lowLines === 1 ? "is" : "are"} shown in amber.
-                Retype anything wrong (that clears the flag), then confirm you checked the rest.
+                {lowLines === 1 ? "1 line was" : `${lowLines} lines were`} read with low confidence and {lowLines === 1 ? "is" : "are"} shown in amber.{" "}
+                {showMoney
+                  ? "Retyping the unit cost clears a line. Tick the box once you have checked the rest."
+                  : "Amber lines are saved without a cost, for the owner to enter. Check the description and qty, then tick the box."}
               </p>
               <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 13 }}>
                 <input type="checkbox" checked={lowAck} onChange={(e) => setLowAck(e.target.checked)} />
