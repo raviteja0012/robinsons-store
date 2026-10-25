@@ -75,7 +75,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: resolved.message }, { status: resolved.status });
     }
 
-    const { imageBase64, mediaType } = await req.json();
+    const { imageBase64, mediaType, store_id } = await req.json();
+    // Whose daily AI allowance this read counts against: a signed-in member's own store,
+    // whatever the body says; in demo mode, the store picked on the screen.
+    const storeId: string | null = resolved.member?.store_id || store_id || null;
     if (!imageBase64 || !mediaType) {
       return NextResponse.json({ error: "imageBase64 and mediaType are required" }, { status: 400 });
     }
@@ -97,6 +100,7 @@ export async function POST(req: NextRequest) {
 
     const result = await callClaude({
       route: "extract",
+      scope: { db: resolved.client, storeId },
       // Was 2000, which a long delivery could exceed. Running out of room mid-answer
       // truncates the JSON, and the store was then told "could not parse model output"
       // for what was really a full invoice with too many lines to fit.
@@ -124,7 +128,7 @@ export async function POST(req: NextRequest) {
           { status: 422 }
         );
       }
-      return NextResponse.json({ error: `${failureMessage(result.kind)} You can also use Enter manually.` }, { status: 502 });
+      return NextResponse.json({ error: `${failureMessage(result.kind)} You can also use Enter manually.` }, { status: result.kind === "capped" ? 429 : 502 });
     }
 
     // Structured outputs should make the fence strip unnecessary, since the response is
