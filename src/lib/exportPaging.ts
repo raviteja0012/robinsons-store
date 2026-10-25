@@ -1,6 +1,7 @@
 // Read every row of a query in pages, keyed on a unique column, so a long read stays exact
-// while people keep working. Used by the full export (src/app/api/export/route.ts) and by the
-// schedule import's duplicate-shift check.
+// while people keep working. Used by the full export (readTable below, called per table by
+// src/app/api/export/route.ts) and by the schedule import's duplicate-shift check
+// (src/lib/scheduleLoad.ts).
 //
 // Offset pages (rows 0-999, then 1000-1999) shift under concurrent writes: a delete before
 // the cursor slides a row past the next page's start and it is never read; an insert before
@@ -43,5 +44,18 @@ export async function fetchAllByKey<Row extends Record<string, unknown>>(
     after = rows[rows.length - 1][key];
     // Without the key the next page would repeat this one forever.
     if (after === undefined || after === null) throw new Error(`rows have no ${key} to page by`);
+  }
+}
+
+// One export table: every row `filter` allows, paged on id. The export route calls this once
+// per table (and once per parent-id chunk). The filter runs on every page, so a store-scoped
+// read stays store-scoped on page two. Every exported table has a uuid primary key id.
+// db is typed any like the routes' clients: the installed supabase-js generics do not fit a
+// table name chosen at run time.
+export async function readTable(db: any, table: string, filter: (q: any) => any): Promise<any[]> {
+  try {
+    return await fetchAllByKey<any>(() => filter(db.from(table).select("*")), "id");
+  } catch (err: any) {
+    throw new Error(`${table}: ${err?.message || err}`);
   }
 }

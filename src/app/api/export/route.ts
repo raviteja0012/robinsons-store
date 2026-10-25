@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { resolveMember } from "@/lib/serverMember";
-import { fetchAllByKey } from "@/lib/exportPaging";
+import { readTable } from "@/lib/exportPaging";
 
 export const runtime = "nodejs";
 // Run in Montreal, not the default iad1 (Washington DC). The Supabase project is in
@@ -57,16 +57,9 @@ const TABLES: TableSpec[] = [
   { name: "activity_log", scope: "parent", parent: { table: "app_user", column: "actor_id" }, what: "Audit trail of every write", links: "actor_id -> app_user.id" },
 ];
 
-// Supabase caps a select at 1000 rows, so every table is read in keyset pages on its id
-// (src/lib/exportPaging.ts): a shift deleted or a row added while the export runs cannot
-// make the archive drop or repeat another row. Every table here has a uuid primary key id.
-async function fetchAll(db: any, table: string, filter: (q: any) => any): Promise<any[]> {
-  try {
-    return await fetchAllByKey<any>(() => filter(db.from(table).select("*")), "id");
-  } catch (err: any) {
-    throw new Error(`${table}: ${err?.message || err}`);
-  }
-}
+// Every table is read through readTable (src/lib/exportPaging.ts): keyset pages on id, so a
+// shift deleted or a row added while the export runs cannot make the archive drop or repeat
+// another row. scripts/importexport-check runs it against a fake that refuses offset paging.
 
 export async function GET(req: NextRequest) {
   try {
@@ -93,18 +86,18 @@ export async function GET(req: NextRequest) {
     for (const spec of TABLES) {
       let rows: any[] = [];
       if (spec.scope === "self") {
-        rows = await fetchAll(db, spec.name, (q) => q.eq("id", storeId));
+        rows = await readTable(db, spec.name, (q) => q.eq("id", storeId));
       } else if (spec.scope === "store") {
-        rows = await fetchAll(db, spec.name, (q) => q.eq("store_id", storeId));
+        rows = await readTable(db, spec.name, (q) => q.eq("store_id", storeId));
       } else if (spec.scope === "global") {
-        rows = await fetchAll(db, spec.name, (q) => q);
+        rows = await readTable(db, spec.name, (q) => q);
       } else if (spec.scope === "parent" && spec.parent) {
         const ids = parentIds.get(spec.parent.table) || [];
         if (ids.length) {
           // .in() has practical URL-length limits; chunk the id list.
           for (let i = 0; i < ids.length; i += 200) {
             const chunk = ids.slice(i, i + 200);
-            rows.push(...await fetchAll(db, spec.name, (q) => q.in(spec.parent!.column, chunk)));
+            rows.push(...await readTable(db, spec.name, (q) => q.in(spec.parent!.column, chunk)));
           }
         }
       }

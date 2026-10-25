@@ -10,5 +10,5 @@
     "paths": { "@/*": ["src/*"] },
     "lib": ["es2020"]
   },
-  "include": ["../../src/lib/importSchedule.ts", "../../src/lib/exportPaging.ts"]
+  "include": ["../../src/lib/importSchedule.ts", "../../src/lib/exportPaging.ts", "../../src/lib/scheduleLoad.ts"]
 }
