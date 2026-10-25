@@ -66,7 +66,7 @@ Six commits with all of this paperwork are waiting, not yet on GitHub.
 - [ ] 3.2 If it shows expired or pending: stop and call Vianet, 1-800-788-0363 ext 5214. If
       it shows a new expiry date: write that date in docs/DOMAIN_EMAIL.md (closes HO-01).
 - [ ] 3.3 **RAVI** (Vianet): set the account's contact email to admin@.
-- [ ] 3.4 **YOU** (GitHub, raviteja0012): repository, Settings, Secrets and variables,
+- [x] 3.4 **YOU** (GitHub, raviteja0012): repository, Settings, Secrets and variables,
       Actions, **Variables** tab, New repository variable: name `PRODUCTION_URL`, value
       `https://app.robinsonsgeneralstore.ca`.
 
@@ -74,15 +74,18 @@ Six commits with all of this paperwork are waiting, not yet on GitHub.
 
 Do not move the project. Change who owns the organization it already sits in.
 
-- [ ] 4.1 **YOU** (normal window): sign in to Supabase with your personal account. Open
+2026-10-25: 4.1 to 4.5 reported done by the developer. Still to confirm on the Team page: admin@
+shows role **Owner**, and two-factor is on for admin@.
+
+- [x] 4.1 **YOU** (normal window): sign in to Supabase with your personal account. Open
       https://supabase.com/dashboard/org/idijiwqgwlsebgpkfzry/team
-- [ ] 4.2 **YOU**: click **Invite**, enter `admin@robinsonsgeneralstore.ca`, role **Owner**
+- [x] 4.2 **YOU**: click **Invite**, enter `admin@robinsonsgeneralstore.ca`, role **Owner**
       (not Administrator: only an Owner can add owners), send.
-- [ ] 4.3 **ADMIN** (private window): in the admin@ inbox, open the Supabase invite and click
+- [x] 4.3 **ADMIN** (private window): in the admin@ inbox, open the Supabase invite and click
       its link.
-- [ ] 4.4 **ADMIN**: create the Supabase account there with admin@. New password into the
+- [x] 4.4 **ADMIN**: create the Supabase account there with admin@. New password into the
       vault. Turn on two-factor (Account, Security).
-- [ ] 4.5 **ADMIN**: accept the invite. You should now see organization `robinsons-store`.
+- [x] 4.5 **ADMIN**: accept the invite. You should now see organization `robinsons-store`.
 - [ ] 4.6 **ADMIN**: open https://supabase.com/dashboard/org/idijiwqgwlsebgpkfzry/billing.
       Add the store card, choose **Pro**, set the billing email to admin@.
 - [ ] 4.7 **YOU**: stay Owner for now. You step down to Developer at close-out (Task 12).
@@ -93,8 +96,15 @@ Do not move the project. Change who owns the organization it already sits in.
 
 Do this before Vercel, so Vercel is reconnected once, to the repository's final home.
 
-- [ ] 5.1 **ADMIN** (private window): https://github.com/signup with admin@. Username
+2026-10-25: the repository moved to admin@'s **user** `robinsons-store`, not to an
+organization, so 5.3 to 5.5 were skipped and YOU now hold Write, not Owner. A user account
+cannot have a second owner (ADR-001 condition 2); moving it on into an organization later is
+open in docs/HANDOVER.md (HO-08). Steps that need repository admin now belong to ADMIN.
+
+- [x] 5.1 **ADMIN** (private window): https://github.com/signup with admin@. Username
       `robinsons-store-admin`. Verify the email from the inbox. Password into the vault.
+      Done 2026-10-25 as username **`robinsons-store`**; use that name wherever this list
+      says `robinsons-store-admin`.
 - [ ] 5.2 **ADMIN**: Settings, Password and authentication, turn on **two-factor**. Recovery
       codes into the vault.
 - [ ] 5.3 **ADMIN**: https://github.com/account/organizations/new?plan=free. Organization
@@ -104,22 +114,27 @@ Do this before Vercel, so Vercel is reconnected once, to the repository's final 
       **Owner**. You need this to move the repository in.
 - [ ] 5.5 **YOU** (normal window, raviteja0012): accept the invitation from the GitHub
       notification or email.
-- [ ] 5.6 **YOU**: open https://github.com/raviteja0012/robinsons-store/settings, scroll to
+- [x] 5.6 **YOU**: open https://github.com/raviteja0012/robinsons-store/settings, scroll to
       Danger Zone, **Transfer**. New owner: the store's organization. Type the repository
-      name to confirm.
-- [ ] 5.7 **YOU**: on your laptop, point your clone at the new address:
-      `git remote set-url origin https://github.com/<store org>/robinsons-store.git`
-- [ ] 5.8 **YOU**: in the moved repository, Settings, Secrets and variables, Actions. Compare
+      name to confirm. Done 2026-10-25 to `robinsons-store/robinsons-store`.
+- [x] 5.7 **YOU**: on your laptop, point your clone at the new address:
+      `git remote set-url origin https://github.com/robinsons-store/robinsons-store.git`
+- [x] 5.8 **YOU**: in the moved repository, Settings, Secrets and variables, Actions. Compare
       the names against the register in docs/HANDOVER.md. Re-add anything missing, including
-      the `PRODUCTION_URL` variable from 3.4.
-- [ ] 5.9 **YOU**: Settings, Actions, General, Workflow permissions: tick **Allow GitHub
-      Actions to create and approve pull requests**. Save.
+      the `PRODUCTION_URL` variable from 3.4. All eight secrets and `PRODUCTION_URL` came
+      across; nothing was missing. `CRON_SECRET` was never set and still waits for 7.16.
+- [ ] 5.9 **ADMIN** (needs repository admin): Settings, Actions, General, Workflow
+      permissions: tick **Allow GitHub Actions to create and approve pull requests**. Save.
 - [ ] 5.10 **ADMIN**: install the Claude GitHub app on the organization (GitHub, Settings,
       Applications, or from claude.ai/connect-github) and give it the `robinsons-store`
       repository, so the Slack autopilot and future Claude sessions can reach it.
-- [ ] 5.11 Write the organization name actually used in docs/HANDOVER.md.
+- [x] 5.11 Write the organization name actually used in docs/HANDOVER.md.
 
 ## Task 6. Vercel: the hosting (25 minutes)
+
+2026-10-25: 6.5 done by 16:04 UTC; the project is gone from the personal team and the site
+still answers from yul1. Until 6.4 is done, only ADMIN can read the 6.6 checks. Vercel built
+no preview for pull request #70, so 6.7 is needed before any merge is expected to deploy.
 
 - [ ] 6.1 **ADMIN** (private window): https://vercel.com/signup, continue with email, admin@,
       code from the inbox. Turn on two-factor.
@@ -128,7 +143,7 @@ Do this before Vercel, so Vercel is reconnected once, to the repository's final 
 - [ ] 6.3 **ADMIN**: the new team, Settings, Members, invite your personal Vercel account as
       **Member**, so the project can be moved into a team you belong to.
 - [ ] 6.4 **YOU** (normal window): accept the team invite.
-- [ ] 6.5 **YOU**: open the project `robinsons-store`, Settings, General, scroll to **Transfer
+- [x] 6.5 **YOU**: open the project `robinsons-store`, Settings, General, scroll to **Transfer
       Project**, choose the store's team. If it offers a transfer link or code instead, open
       it in the private window as ADMIN and accept.
 - [ ] 6.6 **ADMIN**: in the store team's copy of the project, check each one and note it here:
@@ -138,7 +153,9 @@ Do this before Vercel, so Vercel is reconnected once, to the repository's final 
   - [ ] Cron Jobs lists `/api/alerts`
 - [ ] 6.7 **ADMIN**: Settings, Git: connect the repository at its **new** GitHub address,
       production branch `main`. Install the Vercel GitHub app on the store's organization
-      when asked.
+      when asked. Today that address is `robinsons-store/robinsons-store`, so install the app
+      on the `robinsons-store` user account; if the repository later moves into an
+      organization (HO-08), connect it once more there.
 - [ ] 6.8 **YOU**: merge any small change to main. **CLAUDE**: confirm a production deploy is
       Ready on the store's team.
 - [ ] 6.9 If a deploy shows as blocked because its author is not a team member: add whoever
@@ -249,6 +266,11 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
 - [ ] RAVI: answer vendor decision (b), whether the minimum order is asked on every edit, and
       whether to add a "not answered yet" vendor list.
 - [ ] Upload Departments&WorkFlow.xlsx so the payment-record fields can be checked.
+
+**Basis of the 2026-10-25 ticks: 6 claims checked this session (2026-10-25), 6 confirmed, 0
+killed, 3 sources.** 3.4, 5.1, 5.6, 5.8 and the PR #70 note from the GitHub API; 6.5 from the
+Vercel API; 5.7 from `git ls-remote` against the new address. 4.1 to 4.5 are `[D]`, reported
+by the developer.
 
 **Basis: 4 claims checked this session (2026-10-24), 4 confirmed, 0 killed, 2 sources.** The
 Supabase organization id and Owner-only rights (Supabase API and docs), the Vianet support

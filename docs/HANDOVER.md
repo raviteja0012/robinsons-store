@@ -34,10 +34,10 @@ A step is done when its check passes, not when the button is clicked.
 | 0. Store admin mailbox | **BUILT** 2026-10-18 [D: Vianet mailbox list, as shared by the developer; Ravi Kiran to confirm in the panel] | Listed on Vianet, 1000MB quota |
 | 0. Store password vault, two-factor on every account | TARGET | Every login and recovery code below is in the vault |
 | 1. Domain renewal confirmed | TARGET, overdue since 2026-10-16 | New expiry date written in docs/DOMAIN_EMAIL.md |
-| 1. Watchdog checks the store's domain | TARGET | GitHub variable `PRODUCTION_URL` = `https://app.robinsonsgeneralstore.ca` |
-| 2. Supabase owned by admin@, on Pro | TARGET. Plan is `free` today [V-run, Supabase get_organization, 2026-10-24] | Organization plan reads `pro`; a backup is listed the next day |
-| 3. Vercel project on the store's team, on Pro | TARGET. Project is on the developer's personal team today [V-run, Vercel get_project `accountId`, 2026-10-24] | Project `accountId` is the store team's id; a production deploy is Ready there |
-| 4. Repository in the store's GitHub organization | TARGET | Repository URL is under the store's organization; Vercel builds from it |
+| 1. Watchdog checks the store's domain | **BUILT** 2026-10-25. Variable set [V-run, `gh variable list`, 2026-10-25]; the domain answered `ok: true` from `cle1::yul1` the same day [V-run, curl of `/api/health`] | GitHub variable `PRODUCTION_URL` = `https://app.robinsonsgeneralstore.ca` |
+| 2. Supabase owned by admin@, on Pro | **PARTIAL**. admin@ is in organization `robinsons-store` with its role assigned [D: the developer, 2026-10-25; the role is not readable from the Supabase API used here, so read it on the Team page]. Plan still `free` [V-run, Supabase get_organization, 2026-10-25] | Organization plan reads `pro`; a backup is listed the next day |
+| 3. Vercel project on the store's team, on Pro | **PARTIAL**. The project left the developer's personal team [V-run, Vercel get_project by id and old team id: not found, 2026-10-25 16:04 UTC] and the site still answers `ok: true` from `cle1::yul1` [V-run, curl]. The store team, its plan, domains, variables, region and cron are not readable from here: the developer's Vercel account is not a member of it [V-run, list_teams]. Pull request #70, opened 16:03 UTC, got no Vercel preview after 90 seconds, where #69 got one in 5 [V-run, GitHub statuses and deployments]; the Git connection probably needs reconnecting on the store team (checklist 6.7) [J-open, kill condition: a preview appears on #70 or the next pull request] | Project `accountId` is the store team's id; a production deploy is Ready there |
+| 4. Repository in the store's GitHub organization | **PARTIAL**. Moved to `robinsons-store/robinsons-store`, owned by admin@'s user, not an organization (HO-08). All eight secrets, `PRODUCTION_URL`, the ruleset "main: pull requests only" and the open pull requests came across; the developer holds Write [V-run, GitHub API, 2026-10-25 16:16 UTC]. Vercel does not build from it yet (Step 3) | Repository URL is under the store's organization; Vercel builds from it |
 | 5. Keys reissued under the store | TARGET | Old Anthropic key and old `VERCEL_TOKEN` revoked |
 | 6. Dev environment on the store's accounts | TARGET | `develop` branch exists; dev migration gate prints a non-zero length |
 
@@ -52,7 +52,7 @@ fallback is in brackets; record the name actually used in the last column.
 | Password vault | Bitwarden or 1Password organization **"Robinson's General Store"** [Q: Ravi Kiran, which product] | admin@ | Store card | None | |
 | Supabase | Keep organization **`robinsons-store`** (id `idijiwqgwlsebgpkfzry`), project **`robinsons-store`** (ref `mhcjreqvvhnrtgwtuwvr`, Canada Central) [V-run, list_projects, 2026-10-24] | admin@ as **Owner** | Pro, $25 a month, store card, billing email admin@ | **Developer**: reads the organization, works in the project, cannot change settings or billing [V-src, supabase.com/docs/guides/platform/access-control, 2026-10-24] | (keeps its name) |
 | Vercel | New team **"Robinson's General Store"**, slug `robinsons-general-store` (`robinsons-store-team`); project `robinsons-store` (id `prj_sDGCXtpmypc0d3qw0ylbO1rnWqeo`) moves in | admin@ as **Owner** | Pro, $20 per seat a month, store card | **Member** while work continues, then removed | |
-| GitHub | New user **`robinsons-store-admin`** for admin@, which creates organization **`robinsons-general-store`** (`robinsonsgeneralstore`); repository `robinsons-store` moves in | admin@'s GitHub user as **Owner** | Free, billing email admin@ | **Owner** only for the transfer, then **outside collaborator, Write** | |
+| GitHub | New user **`robinsons-store-admin`** for admin@, which creates organization **`robinsons-general-store`** (`robinsonsgeneralstore`); repository `robinsons-store` moves in | admin@'s GitHub user as **Owner** | Free, billing email admin@ | **Owner** only for the transfer, then **outside collaborator, Write** | User **`robinsons-store`** [V-run, GitHub API, created 2026-10-25 15:49 UTC; D: the developer, it is admin@'s] owns the repository directly: `robinsons-store/robinsons-store`. No organization (HO-08) [V-run, 2026-10-25 16:16 UTC] |
 | Anthropic | Console organization **"Robinson's General Store"** | admin@ | Store card, monthly spend limit [Q: Ravi Kiran, the limit] | None | |
 | Slack | Workspace **robinsonsgeneralstore.slack.com** [R `docs/DOMAIN_EMAIL.md:18`]; the bot app from `docs/slack-app-manifest.yml` | admin@ as **Primary Owner** of the workspace [Q: the developer, who is Primary Owner today] and a collaborator on the app | Free | Member | |
 | Resend | New account, domain robinsonsgeneralstore.ca verified | admin@ | Free tier | None | |
@@ -241,6 +241,7 @@ Every name the code and workflows read [V-run, search of `process.env` in `src/`
 | HO-05 | The store Google account's address | Ravi Kiran | No |
 | HO-06 | Second store-controlled GitHub owner (ADR-001 condition 2) | Ravi Kiran | No, until close-out |
 | HO-07 | The handover commits sit on a branch not yet pushed, because the session's GitHub connection is not the developer's personal account | The developer | No |
+| HO-08 | The repository sits on admin@'s GitHub user, which cannot have a second owner (ADR-001 condition 2). Create organization `robinsons-general-store` as that user and transfer the repository into it, or record the exception in ADR-001. Moving it again means reconnecting Vercel's Git link again | Ravi Kiran | No, until close-out |
 
 ## How this maps to the rest of the docs
 
@@ -257,3 +258,12 @@ the default model (`src/app/api/extract/route.ts:80`). One claim from the 2026-1
 that environment variables and domains travel with a Vercel project, could not be confirmed
 from the documentation reachable here and is now `[J-open]` with a check in Step 3. Sources:
 Supabase Management API, Vercel API, Supabase documentation, Vercel documentation.
+
+**Basis of the 2026-10-25 progress update: 9 claims checked this session (2026-10-25), 9
+confirmed, 0 killed, 4 sources.** Confirmed: `PRODUCTION_URL` set; the domain answering from
+yul1; Supabase plan still `free`; the Vercel project gone from the personal team; the
+developer's Vercel account not in the store team; no Vercel preview on pull request #70; the
+repository at `robinsons-store/robinsons-store` with its secrets, variable, ruleset and pull
+requests; user `robinsons-store` created 2026-10-25; no store organization. admin@'s
+Supabase role stays `[D]` and the Vercel Git link stays `[J-open]`. Sources: GitHub API,
+Vercel API, Supabase Management API, the live site.
