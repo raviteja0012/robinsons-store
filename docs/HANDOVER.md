@@ -40,6 +40,7 @@ A step is done when its check passes, not when the button is clicked.
 | 4. Repository in the store's GitHub organization | TARGET | Repository URL is under the store's organization; Vercel builds from it |
 | 5. Keys reissued under the store | TARGET | Old Anthropic key and old `VERCEL_TOKEN` revoked |
 | 6. Dev environment on the store's accounts | TARGET | `develop` branch exists; dev migration gate prints a non-zero length |
+| Miro architecture board on the store's account | **BUILT** 2026-10-25 [V-run, Miro dashboard and board read in the browser signed in as admin@, 2026-10-25] | Board "Robinsons store architecture" shows the six diagrams of docs/ARCHITECTURE.md, in a team owned by admin@ |
 
 ## The target: what the store will own, and under which names
 
@@ -56,6 +57,7 @@ fallback is in brackets; record the name actually used in the last column.
 | Anthropic | Console organization **"Robinson's General Store"** | admin@ | Store card, monthly spend limit [Q: Ravi Kiran, the limit] | None | |
 | Slack | Workspace **robinsonsgeneralstore.slack.com** [R `docs/DOMAIN_EMAIL.md:18`]; the bot app from `docs/slack-app-manifest.yml` | admin@ as **Primary Owner** of the workspace [Q: the developer, who is Primary Owner today] and a collaborator on the app | Free | Member | |
 | Resend | New account, domain robinsonsgeneralstore.ca verified | admin@ | Free tier | None | |
+| Miro | Team holding the board **"Robinsons store architecture"**, opened with admin@ from the start, so nothing moves [V-run, Miro dashboard and board read in the browser signed in as admin@, 2026-10-25] | admin@, by emailed sign-in link (no password) | Free, 3 editable boards | None; invite the developer as a member only when a diagram needs redrawing | Robinsongeneralstore Team (Miro's default; renaming it "Robinson's General Store" is optional) |
 | Google | The store's existing Google account, which owns the live sheets [R `docs/SYNC_PLAN.md:67`] | [Q: Ravi Kiran, the account's address] | Unchanged | Viewer on the shared sheets only | (already the store's) |
 
 ## The order, and why

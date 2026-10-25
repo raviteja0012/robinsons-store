@@ -2,7 +2,16 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-25, on branch claude/architecture-ai-call-ruleset (latest: the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-25, on branch claude/handover-miro-board (latest: the architecture board on the store's Miro account, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+The architecture board on the store's Miro account, 2026-10-25:
+- A Miro account opened with admin@robinsonsgeneralstore.ca holds one board, "Robinsons
+  store architecture", with the six diagrams of docs/ARCHITECTURE.md, each built from the
+  same Mermaid and captioned with its question and its plain flow. The store owns it from
+  the start, so it is not a step to move later; docs/HANDOVER.md lists it.
+- docs/ARCHITECTURE.md stays the source. When a diagram changes there, the board is redrawn
+  from it; the board is never edited first.
+- Docs only; no code, schema, policy or workflow change.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
 - docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes
