@@ -470,7 +470,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
-  Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
+  Left for later: an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - AI call log and daily cap, 2026-10-24 (branch ai-usage-cap, see VERIFICATION.md): every AI

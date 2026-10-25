@@ -42,8 +42,9 @@ type CallOptions = {
   output_config?: unknown;
   timeoutMs?: number;
   // The caller's database client and store, for the ai_call log and the daily cap
-  // (src/lib/aiUsage.ts). Left out, the call is neither logged to the table nor capped.
-  scope?: AiUsageScope;
+  // (src/lib/aiUsage.ts). Required so a route cannot drop it without tsc noticing; null,
+  // the call is neither logged nor capped.
+  scope: AiUsageScope | null;
 };
 
 // 429 is rate limited, 529 is overloaded, the 5xx are transient on the API side. A 400 or
@@ -63,7 +64,6 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms + Math.floor(M
 
 export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
   const model = claudeModel();
-  const started = Date.now();
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, kind: "no_key", detail: "ANTHROPIC_API_KEY is not set", model, ms: 0 };
   const slot = await reserveAiCall(opts.scope, opts.route, model);
@@ -72,6 +72,8 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
     logCall(opts.route, capped);
     return capped;
   }
+  // Started after the reservation, so ms is the model's time and not the database's.
+  const started = Date.now();
 
   const body = JSON.stringify({
     model,
@@ -117,7 +119,19 @@ export async function callClaude(opts: CallOptions): Promise<ClaudeResult> {
       break;
     }
 
-    const data = await resp.json();
+    // The model has already run and billed by now, so an unreadable body is a failure, not a
+    // retry: a second attempt would pay twice. Read here rather than thrown, the reserved
+    // ai_call row is still finished below.
+    let data: any;
+    try {
+      data = await resp.json();
+    } catch (err: any) {
+      last =
+        err?.name === "TimeoutError" || err?.name === "AbortError"
+          ? { kind: "timeout", detail: "answer body not received in time" }
+          : { kind: "upstream", detail: "answer was not JSON" };
+      break;
+    }
     const ms = Date.now() - started;
     // A refusal and a cut-off both arrive as HTTP 200, so they have to be read from
     // stop_reason rather than the status code.
@@ -159,7 +173,7 @@ function logCall(route: string, r: ClaudeResult) {
 export function failureMessage(kind: ClaudeFailure): string {
   switch (kind) {
     case "no_key":
-      return "The AI helper is off. The owner can turn it on in the settings.";
+      return "The AI helper is off. Tell the owner.";
     case "timeout":
       return "The AI helper took too long to answer. Try again in a minute.";
     case "overloaded":
@@ -169,7 +183,7 @@ export function failureMessage(kind: ClaudeFailure): string {
     case "max_tokens":
       return "The answer was too long to finish. Ask a narrower question.";
     case "capped":
-      return "The AI helper has used today's limit for this store. It starts again tomorrow, and the owner can raise the limit in the settings.";
+      return "The AI helper has used today's limit for this store and starts again tomorrow. If it is needed sooner, the owner can raise the limit in Vercel and redeploy.";
     case "bad_request":
     case "upstream":
     default:

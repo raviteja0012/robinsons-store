@@ -10,8 +10,9 @@ import type { ClaudeResult } from "./anthropic";
 // after (public.ai_call_finish fills in how it ended). Both fail open: a missing function (the
 // migration has not run), a slow database, or an error logs a warning and lets the call
 // through. The cap protects the monthly bill, not the store's data, and an invoice read at the
-// receiving door matters more than one uncounted call. A route that passes no scope, or no
-// store, skips both, so a blank env never touches a database.
+// receiving door matters more than one uncounted call. A reservation the database saves after
+// the timeout leaves a pending row with no tokens, which still counts. A route that passes no
+// scope, or no store, skips both, so a blank env never touches a database.
 
 export type AiUsageScope = { db: SupabaseClient; storeId: string | null };
 
@@ -26,6 +27,10 @@ export type AiCallSlot = { capped: boolean; id: string | null };
 // raises or lowers it; anything that is not a whole number above zero falls back to this.
 export const DEFAULT_DAILY_CAP = 100;
 
+// The cap travels as a Postgres integer. A bigger value would make every reservation fail
+// and, failing open, switch off both the cap and the log; this is far above any real day.
+export const MAX_DAILY_CAP = 100000;
+
 // Both database calls sit in front of, or just after, a model call the person is waiting on,
 // so a hung database costs them at most twice this. Extract already waits up to 45s on the
 // model against a 45s client timeout, which leaves little room.
@@ -33,7 +38,7 @@ const DB_TIMEOUT_MS = 1500;
 
 export function dailyCap(): number {
   const n = Number(process.env.AI_DAILY_CAP_PER_STORE);
-  return Number.isInteger(n) && n > 0 ? n : DEFAULT_DAILY_CAP;
+  return Number.isInteger(n) && n > 0 ? Math.min(n, MAX_DAILY_CAP) : DEFAULT_DAILY_CAP;
 }
 
 export function outcomeOf(r: ClaudeResult): AiCallOutcome {
@@ -50,7 +55,7 @@ function warn(route: string, outcome: string, err: any) {
 
 // Reserve this call against the store's allowance for today, or learn it is used up. A
 // refused call is recorded as capped by the same database call.
-export async function reserveAiCall(scope: AiUsageScope | undefined, route: string, model: string): Promise<AiCallSlot> {
+export async function reserveAiCall(scope: AiUsageScope | null | undefined, route: string, model: string): Promise<AiCallSlot> {
   const open: AiCallSlot = { capped: false, id: null };
   if (!scope?.storeId) return open;
   try {
@@ -70,7 +75,7 @@ const count = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Mat
 // Fill in how a reserved call ended. usage is the provider's raw usage object, read here
 // rather than from the result so a refusal or a cut-off, which still bill their tokens, are
 // recorded with them.
-export async function finishAiCall(scope: AiUsageScope | undefined, id: string | null, route: string, r: ClaudeResult, usage: any): Promise<void> {
+export async function finishAiCall(scope: AiUsageScope | null | undefined, id: string | null, route: string, r: ClaudeResult, usage: any): Promise<void> {
   if (!scope || !id) return;
   const outcome = outcomeOf(r);
   try {

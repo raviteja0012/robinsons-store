@@ -13,10 +13,13 @@ cp scripts/aiusage-check/check.js scripts/aiusage-check/out/
 node scripts/aiusage-check/out/check.js
 ```
 
-Runs in CI after the build. No network, no database, no model call. Covers the cap value
-and its env override, the capped path making no model call, what reaches the database
-(metadata only), every outcome, and failing open on a missing function, a refused finish
-or a hung database. The hung-database case takes about 1.5 seconds on purpose.
+Runs in CI after the build. No network, no database, no model call. Covers the cap value,
+its env override and its ceiling, the capped path making no model call, what reaches the
+database (metadata only), every outcome including a 200 whose body cannot be read, that the
+recorded duration excludes the reservation, failing open on a missing function, a refused
+finish or a hung database, and the Ask route through its real POST handler (the member's
+store wins over the body's, 429 when capped, and a logged issue is still reported). The
+hung-database case takes about 1.5 seconds on purpose.
 
 ## The SQL, on a throwaway Postgres
 
@@ -30,5 +33,6 @@ container, stubs the parts of Supabase the scripts use (`auth.uid()`, `auth.user
 runs `schema.sql` and `ai_call.sql`, the per-store lock (a second caller must wait for the
 first and then be refused the last slot), a burst of 20 simultaneous reservations against a
 cap of 5 (pgbench), `auth_setup.sql` and both scripts again, then the live path: an
-enforced database that has never had the table. Every check prints `| t`; any `| f` or
-error is a failure.
+enforced database that has never had the table. Every check prints `| t`. The script exits
+non-zero on any SQL error, any `| f`, or a count of passing checks and notices other than
+the one it expects, so a check that silently printed nothing also fails.

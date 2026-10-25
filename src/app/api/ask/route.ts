@@ -156,8 +156,10 @@ ${question}
 </question>` }]
     });
     if (!result.ok) {
-      if (result.kind === "capped") return NextResponse.json({ error: failureMessage("capped") }, { status: 429 });
-      return NextResponse.json({ error: failureMessage(result.kind) }, { status: result.kind === "refusal" ? 422 : 502 });
+      // The issue row was written before the model call, so say so whatever the failure;
+      // otherwise the person files it again from Suggestions.
+      const msg = failureMessage(result.kind) + (loggedIssue ? " Your issue was still logged in Suggestions." : "");
+      return NextResponse.json({ error: msg }, { status: result.kind === "capped" ? 429 : result.kind === "refusal" ? 422 : 502 });
     }
     return NextResponse.json({ answer: plainText(result.text) });
   } catch (err: any) {

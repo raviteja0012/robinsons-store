@@ -50,7 +50,7 @@ The daily payment alert emails a summary of invoices overdue or due within 7 day
    - `SUPABASE_SERVICE_ROLE_KEY` = the service_role key (Project Settings, API). Server-side only. Powers the in-app Team page (create and remove staff logins). Optional: skip it and add staff in the Supabase dashboard instead.
    - `ANTHROPIC_API_KEY` = your Anthropic key
    - `ANTHROPIC_MODEL` = current Sonnet id
-   - `AI_DAILY_CAP_PER_STORE` = optional. How many AI calls one store may make in a day before the AI helpers pause until midnight. Leave unset for 100
+   - `AI_DAILY_CAP_PER_STORE` = optional. How many AI calls one store may make in a day before the AI helpers pause until midnight. Leave unset for 100. To change it, edit the value in Vercel Environment Variables, then redeploy
    - `RESEND_API_KEY`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO`, `CRON_SECRET` (only if you did Step 3)
 4. Deploy. After import, every push to the branch redeploys automatically.
 5. The daily alert cron is in `vercel.json` (runs `/api/alerts` once a day). Vercel registers it on deploy. To test it now, open `/api/alerts` with the `x-cron-secret` header set to your `CRON_SECRET`.

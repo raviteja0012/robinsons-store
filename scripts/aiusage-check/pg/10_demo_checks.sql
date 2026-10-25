@@ -13,6 +13,11 @@ select 'dev_all on ai_call' as check, count(*) = 1 as ok
 insert into ai_call (store_id, route, outcome, created_at)
 values ('11111111-1111-1111-1111-111111111111', 'ask', 'ok',
         (date_trunc('day', now() at time zone 'America/Toronto') at time zone 'America/Toronto') - interval '1 second');
+-- One from just after Ontario midnight today, which must count (catches a UTC-day window
+-- when the check runs in the Toronto evening).
+insert into ai_call (store_id, route, outcome, created_at)
+values ('22222222-2222-2222-2222-222222222222', 'ask', 'ok',
+        (date_trunc('day', now() at time zone 'America/Toronto') at time zone 'America/Toronto') + interval '1 second');
 
 -- As anon (the demo server's key). Cap 3: three reservations, then refused.
 set role anon;
@@ -25,6 +30,8 @@ select 'fourth is refused (yesterday row not counted)' as check,
 select 'refusal recorded as capped' as check, count(*) = 1 as ok from ai_call where outcome = 'capped';
 select 'capped rows do not count: cap 4 still has room' as check,
        (public.ai_call_begin('11111111-1111-1111-1111-111111111111', 'ask', 'claude-sonnet-5', 4))->>'allowed' = 'true' as ok;
+select 'after-midnight row counts: store B cap 1 refused' as check,
+       (public.ai_call_begin('22222222-2222-2222-2222-222222222222', 'ask', 'claude-sonnet-5', 1))->>'allowed' = 'false' as ok;
 select 'store B has its own allowance' as check,
        (public.ai_call_begin('22222222-2222-2222-2222-222222222222', 'ask', 'claude-sonnet-5', 3))->>'allowed' = 'true' as ok;
 
