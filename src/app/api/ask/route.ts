@@ -178,10 +178,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: failureMessage(result.kind) }, { status: result.kind === "refusal" ? 422 : 502 });
     }
 
-    // A vendor the answer names must be in what the prompt carried. If one is not, the
-    // whole answer is withheld: a made-up vendor beside a real phone number or dollar
-    // figure reads as fact, and dropping one sentence can leave the rest pointing at it.
-    const grounding = checkVendorGrounding(plainText(result.text), { vendorNames, texts: [storeData, APP_GUIDE, question] });
+    // A vendor the answer names must be in the store data or the app guide. If one is not,
+    // the whole answer is withheld: a made-up vendor beside a real phone number or dollar
+    // figure reads as fact, and dropping one sentence can leave the rest pointing at it. The
+    // question only excuses a name in an answer with no figures ("Costco is not on file").
+    const grounding = checkVendorGrounding(plainText(result.text), { vendorNames, texts: [storeData, APP_GUIDE], question });
     if (!grounding.ok) {
       // Metadata only, like the client's own log: a count, never the names or the answer.
       console.warn(JSON.stringify({ ai_call: "ask", outcome: "unconfirmed_vendor", count: grounding.unsupported.length }));
