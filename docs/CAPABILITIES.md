@@ -123,7 +123,7 @@ Cost is stated as a fact and left there. Effort uses the same units as the rest 
 
 **8. Actions environments.** Move `SUPABASE_DB_URL` out of repository secrets and into a `production` environment scoped to `migrate.yml`, and the dev URL into a `dev` environment. As a plain repository secret it is readable by every workflow, including the 45-minute autopilot job where a model is writing code.
 
-**9. Repository rulesets.** A push ruleset restricting `.github/**`, `.claude/**` and `supabase/**`, plus blocking force-push and deletion on `main`. Put yourself on the bypass list. Read item 51 in the next section before adding a required status check, because `promote.yml` opens its pull request with `GITHUB_TOKEN` and checks will not start from that event.
+**9. Repository rulesets.** A branch ruleset on `main` that requires a pull request for every change, with no required approvals, and blocks force-push and deletion. A push ruleset restricting `.github/**`, `.claude/**` and `supabase/**` is the second half of this item. Add no required status check yet: `promote.yml` opens its pull request with `GITHUB_TOKEN`, checks do not start from that event, and a required check would hold the promotion forever. Read the GitHub Apps row in the next section before adding one.
 
 **10. Publishable and secret API keys.** The legacy anon and service_role JWTs stop working December 31, 2026, and this app runs on both. Both systems work in parallel today, so this is a calm afternoon now or an outage later. `sb_secret` keys are also rejected from browsers with a 401, which is a backstop against the service-role key ever reaching client code. Remember that `NEXT_PUBLIC_` values need a redeploy, in two Vercel projects.
 
@@ -265,7 +265,7 @@ Nothing here is refused. Each one is a decision already made, waiting on a condi
 | Full-text search | Supabase | The owner asks to find an invoice or a note by words | Searching the store's own records instead of hunting Gmail subject lines | days; free |
 | Generated columns | Supabase | The next time a money select is caught missing tax_mode | The store stops being one forgotten column away from a wrong amount owed | days; free |
 | CLI type generation | Supabase | The next schema change | A column added in SQL but forgotten in the app fails the build, not the screen | hours; free |
-| Supabase MCP server, read-only | Supabase | Confirm .mcp.json points at dev, not production | A build session pulls advisors and logs itself instead of asking for screenshots | minutes; free |
+| Supabase MCP server, read-only | Supabase | In use for docs and debugging only (`.mcp.json`, checked in CI). The database group waits until it points at dev, not production | A build session pulls advisors and logs itself instead of asking for screenshots | minutes; free |
 | Supabase Cron (pg_cron) | Supabase | Scheduled work outgrows the single Vercel Hobby cron entry | Post-dated reconciliation runs without anyone opening a payments screen | minutes; free |
 | Supabase Vault | Supabase | Something inside the database has to call out and needs a credential | One place for a database-side token, if one ever exists | hours; free |
 | Compute add-ons | Supabase | A screen gets slow and Reports says compute is the cause | Headroom, bought only when measured | minutes; Micro $10/mo, covered by the Pro credit |
