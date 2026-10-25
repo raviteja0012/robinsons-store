@@ -2,7 +2,16 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-24, on branch claude/gifted-meitner-jhfql6 (latest: the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-25, on branch claude/architecture-ai-call-ruleset (latest: the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Architecture record of the AI usage log and the main ruleset, 2026-10-25:
+- docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes
+  the daily per-store cap (default 100 calls a day, `AI_DAILY_CAP_PER_STORE`); section 5 lists
+  the table. Reading the log is PARTIAL until `auth_setup.sql` is rerun by hand, because
+  migrate does not run that file.
+- Section 6 now records that main accepts changes only through a pull request (no direct
+  push, force-push or deletion), read live from the repository ruleset.
+- Docs only; no code, schema, policy or workflow change.
 
 Money type and region record, 2026-10-24:
 - Money is numeric dollars and stays that way; integer cents is no longer planned. The

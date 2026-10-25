@@ -92,7 +92,7 @@ flowchart LR
   UI -- "upload invoice file" --> ST
   UI -- "bearer token + request" --> API
   CRON -- "GET /api/alerts" --> API
-  API -- "queries as the caller" --> DB
+  API -- "queries as the caller, logs each AI call" --> DB
   API -- "extract, ask, reorder, triage" --> AN
   GHA -- "run-order.txt scripts" --> DB
   GHA -- "GET /api/health" --> API
@@ -121,6 +121,22 @@ AI routes: default model `claude-sonnet-5`, `ANTHROPIC_MODEL` overrides; no temp
 sent, on purpose, because current models reject non-default sampling; text answers go
 through `plainText()` [R src/app/api/ask/route.ts:39, 152, 166] [R src/app/api/reorder/route.ts:23, 110]
 [R src/app/api/feedback-triage/route.ts:38, 86]. BUILT.
+
+AI usage log and daily cap. BUILT: every model call goes through `callClaude`
+[R src/lib/anthropic.ts:66], which reserves a row in `ai_call` before the model is asked and
+records how it ended afterwards [R src/lib/anthropic.ts:70, 152, 158], through the database
+functions `ai_call_begin` and `ai_call_finish` [R supabase/ai_call.sql:37-69, 73-108]. A row
+holds the store, route, model, token counts, duration and outcome, never the prompt, the store
+data sent with it or the answer [R supabase/ai_call.sql:4-8, 11-24]. Each store may make
+`AI_DAILY_CAP_PER_STORE` calls per Ontario calendar day, default 100
+[R src/lib/aiUsage.ts:24-28] [R supabase/ai_call.sql:55-58]; past that the call is refused
+before it reaches the model and logged as `capped` [R supabase/ai_call.sql:59-62]. If the log
+cannot be reached the call still goes through: the cap protects the monthly bill, not the
+store's data [R src/lib/aiUsage.ts:10-13]. Reading the rows is PARTIAL: the owner-only read
+policy lives in `auth_setup.sql` [R supabase/auth_setup.sql:144-148], which migrate does not
+run [R supabase/run-order.txt:10-16], so it applies only when that file is rerun by hand in
+the SQL editor. Whether it has been rerun on the live database since `ai_call` was added:
+[Q: the developer].
 
 Region: every route asks for Montreal (`yul1`) in code, and the developer set Function Region to Montreal in the Vercel dashboard on 2026-08-17 [R docs/STATUS.md:101-102]. BUILT:
 production runs in Montreal [V-run, `curl -sD- -o /dev/null https://app.robinsonsgeneralstore.ca/api/health`, `x-vercel-id: cle1::yul1::...`, 2026-10-24].
@@ -284,7 +300,10 @@ stamps it; child tables scope through their parent [R .claude/skills/robinsons-s
 At the database, 14 tables carry their own `store_id` policy [R supabase/auth_setup.sql:107-126];
 `payment` scopes through its vendor (or legacy invoice), `payment_allocation` through its
 payment, and `receiving_line`, `inventory_count_line`, `pay_rate`, `shift`, `retail_price`
-through their parents [R supabase/auth_setup.sql:135-232]. A new table needs a policy in
+through their parents [R supabase/auth_setup.sql:135-232]. `ai_call`, the AI usage log, is
+store-scoped in its own block: the owner reads it, and nobody writes it except through its
+two functions [R supabase/auth_setup.sql:131-152]. It is the last script in the run order
+[R supabase/run-order.txt:26]. A new table needs a policy in
 `schema.sql`, in `auth_setup.sql` section 3a, and in a migration for live databases
 [R CLAUDE.md:31-32].
 
@@ -310,7 +329,7 @@ flowchart LR
   AP -- "opens" --> PR
   PR -- "runs" --> CI
   CI -- "green" --> HUM
-  HUM -- "push to main" --> VD
+  HUM -- "merges the pull request" --> VD
   HUM -- "if supabase/ changed" --> MIG
   VD -- "CI completes on main" --> WD
   WD -- "on change of health" --> SLK
@@ -327,7 +346,7 @@ asks the live site whether it is healthy and tells Slack when that changes.
 | Status card | Updates the Slack thread through review, checks, merge and live, for `claude/slack-*` branches only | BUILT | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] |
 | Tier classifier | Script that sorts a diff into A (words, may self-merge), B (app, person merges), C (money, access, database, automation; never merges). Only the parked Jira autopilot calls it; the live Slack loop does not, so nothing self-merges today | PARTIAL | [R .github/scripts/classify-change.mjs:8-12] [R .github/workflows/jira-autopilot.yml:184-199] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges. Changes under `.github/` and `.claude/` never merge on their own | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] |
+| Merge | A person merges. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
 | Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose | BUILT | [R .github/workflows/migrate.yml:33-39, 131] [R supabase/run-order.txt:10-16] |
 | Watchdog | After CI completes on main and every two hours, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 54] |
