@@ -145,3 +145,64 @@ export function looksLikeSchedule(sheets: { name: string; rows: any[][] }[]): bo
   }
   return false;
 }
+
+export type ScheduleNameMap = {
+  ids: Map<string, string>;                  // schedule name as written -> employee id (one exact match)
+  newNames: string[];                        // matches nobody: create these, one per spelling
+  held: { name: string; message: string }[]; // shifts for these names are not loaded, with the reason
+};
+
+// Lowercase words, spaces collapsed, the dot after an initial dropped ("Amy R." reads "amy r").
+const nameWords = (s: string) => String(s || "").toLowerCase().replace(/\./g, " ").split(/\s+/).filter(Boolean);
+
+// Whether a schedule name could be a shorter way of writing a Staff full name. A lone first
+// name must be the whole first word ("Amy" for "Amy Robinson", but "Jo" is not "John Smith");
+// after that the last word may be an initial or a shortening ("Amy R." for "Amy Robinson").
+function couldBe(short: string[], full: string[]): boolean {
+  if (!short.length || short.length > full.length) return false;
+  const last = short.length - 1;
+  for (let i = 0; i < last; i++) if (short[i] !== full[i]) return false;
+  return last === 0 ? short[0] === full[0] : full[last].startsWith(short[last]);
+}
+
+// Decide which employee each schedule name belongs to. A name that matches exactly one person
+// attaches; a name that matches nobody, not even as a shortening, is a new person to create.
+// Anything in between is held back with a sentence for the owner: a name two people share
+// would otherwise land every shift on whichever row came last, and "Amy" beside "Amy Robinson"
+// would otherwise create a second Amy with no pay rate.
+//
+// `employees` is the route's set: this store's employees that are not deleted (voided_at
+// null). A deleted person is not matched, so a name only they carried counts as new.
+export function mapScheduleNames(employees: { id: string; full_name: string }[], names: string[]): ScheduleNameMap {
+  const staff = employees.map((e) => ({ id: e.id, fullName: String(e.full_name || "").trim(), words: nameWords(e.full_name) }));
+  const ids = new Map<string, string>();
+  const newNames: string[] = [];
+  const held: { name: string; message: string }[] = [];
+  const decided = new Set<string>();
+
+  for (const name of names) {
+    const words = nameWords(name);
+    const key = words.join(" ");
+    if (!key) continue;
+    const exact = staff.filter((s) => s.words.join(" ") === key);
+    if (exact.length === 1) {
+      ids.set(name, exact[0].id);
+      continue;
+    }
+    // One report and one new employee per name, however the schedule capitalizes it.
+    if (decided.has(key)) continue;
+    decided.add(key);
+    if (exact.length > 1) {
+      held.push({ name, message: `${name} matches ${exact.length} employees. Rename one in Staff, or write the full name in the schedule.` });
+      continue;
+    }
+    const maybe = [...new Set(staff.filter((s) => couldBe(words, s.words)).map((s) => s.fullName))].sort();
+    if (maybe.length) {
+      const who = maybe.length === 1 ? maybe[0] : `${maybe.slice(0, -1).join(", ")} or ${maybe[maybe.length - 1]}`;
+      held.push({ name, message: `${name} may be ${who}. Rename one in Staff to match, or write the full name in the schedule.` });
+      continue;
+    }
+    newNames.push(name);
+  }
+  return { ids, newNames, held };
+}

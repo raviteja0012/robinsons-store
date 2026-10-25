@@ -2,7 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import { parseWorkbook } from "@/lib/importBookings";
 import { parseWorkbookV2, looksLikeBookingsV2 } from "@/lib/importBookingsV2";
-import { parseSchedule, looksLikeSchedule } from "@/lib/importSchedule";
+import { parseSchedule, looksLikeSchedule, mapScheduleNames } from "@/lib/importSchedule";
+import { fetchAllByKey } from "@/lib/exportPaging";
 import { parseInventory } from "@/lib/importInventory";
 import { REQUIRE_AUTH_SERVER } from "@/lib/serverMember";
 
@@ -62,9 +63,10 @@ async function insertChunks(
   return inserted;
 }
 
-// Load the weekly schedule workbook: upsert employees by name, then shifts deduped by
-// (employee, date, start, end). Idempotent, so re-uploading the same week changes nothing and
-// a changed cell adds the new shift without duplicating the unchanged ones.
+// Load the weekly schedule workbook: match employees by name (mapScheduleNames decides who is
+// who, and holds back names it cannot be sure of), then shifts deduped by (employee, date,
+// start, end). Idempotent, so re-uploading the same week changes nothing and a changed cell
+// adds the new shift without duplicating the unchanged ones.
 async function importScheduleFlow(
   sb: any,
   sheets: { name: string; rows: any[][] }[],
@@ -78,37 +80,44 @@ async function importScheduleFlow(
 
   const parsed = parseSchedule(sheets, deptMap);
 
-  // Employees: insert those not already on file (by name), then build a name -> id map.
-  const readEmployees = async () => {
-    const { data } = await sb.from("employee").select("id, full_name").eq("store_id", storeId).is("voided_at", null);
-    const m = new Map<string, string>();
-    for (const e of (data as any[]) || []) m.set(String(e.full_name || "").toLowerCase(), e.id);
-    return m;
+  // Employees: this store's, not deleted, the same set as before. A read error stops the
+  // import: an empty list would make every name look new and create everyone again.
+  const readEmployees = async (): Promise<{ id: string; full_name: string }[]> => {
+    const { data, error } = await sb.from("employee").select("id, full_name").eq("store_id", storeId).is("voided_at", null);
+    if (error) throw new Error(`employee: ${error.message}`);
+    return (data as any[]) || [];
   };
-  let byName = await readEmployees();
-  const newEmpNames = parsed.employees.filter((n) => !byName.has(n.toLowerCase()));
+  // Create only names that match nobody, then map again so the new people attach too. Names
+  // that are shared or may be someone already in Staff stay held, and their shifts are skipped.
+  let names = mapScheduleNames(await readEmployees(), parsed.employees);
+  const newEmpNames = names.newNames;
   if (newEmpNames.length) {
     const rows = newEmpNames.map((full_name) => ({ store_id: storeId, full_name, status: "active" }));
     const { error } = await sb.from("employee").insert(rows);
     if (error) return Response.json({ ok: false, message: `employee: ${error.message}` }, { status: 200 });
-    byName = await readEmployees();
+    names = mapScheduleNames(await readEmployees(), parsed.employees);
   }
 
-  // Dedupe shifts against what is already on file for these employees.
-  const empIds = [...byName.values()];
+  // Dedupe shifts against what is already on file for these employees. Paged, because a
+  // season of shifts passes the 1000-row cap and a capped read would load the rest twice.
+  const empIds = [...new Set(names.ids.values())];
   const existingKeys = new Set<string>();
   if (empIds.length) {
-    const { data: ex } = await sb.from("shift").select("employee_id, work_date, start_time, end_time").in("employee_id", empIds);
-    for (const s of (ex as any[]) || []) {
+    const ex = await fetchAllByKey<any>(
+      () => sb.from("shift").select("id, employee_id, work_date, start_time, end_time").in("employee_id", empIds),
+      "id"
+    );
+    for (const s of ex) {
       existingKeys.add(`${s.employee_id}|${s.work_date}|${String(s.start_time).slice(0, 5)}|${String(s.end_time).slice(0, 5)}`);
     }
   }
 
   const shiftRows: any[] = [];
   let skipped = 0;
+  let heldShifts = 0;
   for (const s of parsed.shifts) {
-    const empId = byName.get(s.employeeName.toLowerCase());
-    if (!empId) { skipped++; continue; }
+    const empId = names.ids.get(s.employeeName);
+    if (!empId) { heldShifts++; continue; }
     const key = `${empId}|${s.workDate}|${s.startTime}|${s.endTime}`;
     if (existingKeys.has(key)) { skipped++; continue; }
     existingKeys.add(key);
@@ -127,10 +136,16 @@ async function importScheduleFlow(
   return Response.json({
     ok: true,
     kind: "schedule",
-    message: `Loaded ${newEmpNames.length} new employees and ${insertedShifts} shifts across ${parsed.summary.weeks} weeks. Skipped ${skipped} shifts already on file.`,
+    message:
+      `Loaded ${newEmpNames.length} new employees and ${insertedShifts} shifts across ${parsed.summary.weeks} weeks. Skipped ${skipped} shifts already on file.` +
+      (heldShifts
+        ? ` ${heldShifts} shift${heldShifts === 1 ? " was" : "s were"} not loaded. ${names.held.map((h) => h.message).join(" ")} Then upload the same file again.`
+        : ""),
     summary: { weeks: parsed.summary.weeks, employees: parsed.summary.employees, shifts: parsed.summary.shifts, firstDate: parsed.summary.firstDate, lastDate: parsed.summary.lastDate },
     inserted: { employees: newEmpNames.length, shifts: insertedShifts },
-    skippedShifts: skipped
+    skippedShifts: skipped,
+    heldShifts,
+    heldNames: names.held
   });
 }
 

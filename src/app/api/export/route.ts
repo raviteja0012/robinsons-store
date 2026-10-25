@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { resolveMember } from "@/lib/serverMember";
+import { fetchAllByKey } from "@/lib/exportPaging";
 
 export const runtime = "nodejs";
 // Run in Montreal, not the default iad1 (Washington DC). The Supabase project is in
@@ -56,21 +57,15 @@ const TABLES: TableSpec[] = [
   { name: "activity_log", scope: "parent", parent: { table: "app_user", column: "actor_id" }, what: "Audit trail of every write", links: "actor_id -> app_user.id" },
 ];
 
-// Supabase caps a select at 1000 rows; page until a short page comes back.
+// Supabase caps a select at 1000 rows, so every table is read in keyset pages on its id
+// (src/lib/exportPaging.ts): a shift deleted or a row added while the export runs cannot
+// make the archive drop or repeat another row. Every table here has a uuid primary key id.
 async function fetchAll(db: any, table: string, filter: (q: any) => any): Promise<any[]> {
-  const out: any[] = [];
-  const page = 1000;
-  for (let from = 0; ; from += page) {
-    // A stable ORDER BY makes multi-page reads consistent; without it Postgres may
-    // repeat or drop rows across pages and the archival workbook silently lies.
-    const orderCol = table === "tax_rules" ? "province" : "id";
-    const { data, error } = await filter(db.from(table).select("*").order(orderCol)).range(from, from + page - 1);
-    if (error) throw new Error(`${table}: ${error.message}`);
-    const rows = (data as any[]) || [];
-    out.push(...rows);
-    if (rows.length < page) break;
+  try {
+    return await fetchAllByKey<any>(() => filter(db.from(table).select("*")), "id");
+  } catch (err: any) {
+    throw new Error(`${table}: ${err?.message || err}`);
   }
-  return out;
 }
 
 export async function GET(req: NextRequest) {
@@ -88,6 +83,9 @@ export async function GET(req: NextRequest) {
       return Response.json({ error: "No store selected." }, { status: 400 });
     }
 
+    // Taken before the first read. The README names it so the archive says which moment it
+    // describes: rows written while the export ran may or may not be in it.
+    const startedAt = new Date().toISOString();
     const wb = XLSX.utils.book_new();
     const readme: any[] = [];
     const parentIds = new Map<string, string[]>();
@@ -124,12 +122,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const intro = XLSX.utils.json_to_sheet(readme);
+    const intro = XLSX.utils.aoa_to_sheet([
+      ["Export started", startedAt],
+      ["", "Time is UTC. Changes made while the export was running may or may not be included."],
+      []
+    ]);
+    XLSX.utils.sheet_add_json(intro, readme, { origin: "A4" });
     XLSX.utils.book_append_sheet(wb, intro, "README");
     // Move README to the front so it opens first.
     wb.SheetNames.unshift(wb.SheetNames.pop() as string);
 
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = startedAt.slice(0, 10);
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
     return new Response(new Uint8Array(buf), {
       headers: {
