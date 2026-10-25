@@ -512,10 +512,12 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   acknowledgement. The update fills a blank cost only, on a delivery that is still live and in
   the active store, goes through the existing receiving_line policy, and logs cost_entered on
   the line under the person who typed it. With no known person nothing saves; if the log row
-  fails the cost is put back. A comma reads only as a thousands separator, so "12,50" is
-  refused, not saved as 1250. Staff never load the list or see the marker. No schema, RLS or
-  trigger change. Screen part in src/components/NeedsCost.tsx; the input rule is costEntry()
-  in src/lib/captureLines.ts.
+  fails the cost is put back, and if that fails too a notice stays until dismissed. The cost
+  must be above 0 and at most $100,000 a unit; 0 is refused because the invoice reader writes
+  0 for a cost it could not read. A comma reads only as a thousands separator, so "12,50" and
+  "0,500" are refused, not saved as 1250 or 500. Staff never load the list or see the marker.
+  No schema, RLS or trigger change. Screen part in src/components/NeedsCost.tsx; the input
+  rule is costEntry() in src/lib/captureLines.ts.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
