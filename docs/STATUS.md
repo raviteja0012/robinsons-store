@@ -2,7 +2,79 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-08-17, on branch claude/pull-main-branches-atztoh (latest: the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
+- `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
+  and `debugging` tool groups: documentation search, logs and advisors.
+- CI checks it: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails if
+  a hosted Supabase URL drops `read_only=true`, has no `features` list, or gives production
+  any group beyond those two. Fourteen new cases, plus the committed file.
+- Pull requests required on `main`: one branch ruleset (pull request with no required
+  approvals or status checks, no force pushes, no deletion), applied 2026-10-24 as a
+  repository setting. `gh api 'repos/{owner}/{repo}/rules/branches/main' --jq '[.[].type]'`
+  returns `["deletion","non_fast_forward","pull_request"]`.
+- docs/LOOP_ENGINEERING.md, CAPABILITIES item 9 and its Supabase MCP row, and the Kiro coding
+  conventions (model failures return a non-2xx status) now match.
+
+The handover written to the standard, 2026-10-24:
+- docs/HANDOVER.md now names exactly what the store will own and under which names (team,
+  organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
+  progress table and open items HO-01 to HO-07. ADR-001 records the decision itself for
+  Ravi Kiran to approve. Nothing has moved yet: read live today, Supabase is still on Free and
+  the Vercel project is still on the developer's personal team.
+- docs/AGENTS.md registers every agent: four inside the app for staff (invoice reader, Ask the
+  store, reorder summary, suggestion screenshot reader) and the build side (Slack autopilot,
+  lifecycle, tier classifier, watchdog, two reviewer agents, the stop hook, parked Jira).
+- ONBOARDING.md holds the forms for the next team member: what we need from them, the access
+  each service grants and why, and their first week.
+- The documentation and review standard now lives inside the existing `robinsons-store`
+  skill as references/standards.md, rather than as a new skill. Applying it found five stale
+  statements, now fixed: the skill described the login cutover as still to do, gave 1062 Main
+  St, described money as integer cents, listed three agents of four, and CLAUDE.md said AI
+  routes run at low temperature when none sets a temperature.
+- docs/owner-notes/handover-call-agenda.md is the run sheet for the handover call.
+- docs/ARCHITECTURE.md rebuilt to the standard: numbered sections, nine routes not four,
+  context and container diagrams with the automation and the custom domain, the capture
+  sequence corrected (the file uploads before the database writes, and the writes are
+  separate requests, not one transaction), the four invoice statuses as the payment engine
+  derives them, and an open items table. It found two access gaps to close before staff
+  logins are made: dollar amounts are hidden from staff by the app and API only, because the
+  database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
+  are readable by any signed-in member of any store (ARCH-04, harmless while there is one
+  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
+
+The handover is prepared, 2026-10-18:
+- docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
+  the order to move each one to the store, with the full list of secrets and variables and
+  the checks that prove the move worked. The store already owns its domain; hosting,
+  database, code, the AI key and the Slack app are still on accounts the developer opened.
+- Read live the same day, not copied from older docs: Supabase is on **Free** (no backups;
+  PLATFORM.md risk 2 is now confirmed, not suspected), Vercel is on a personal **Hobby** team
+  (risk 1), and the last production deploy was the merge of PR #54 on 2026-09-01, Ready.
+- Two gates turned out to be done already, read from the live database: `edit_delete.sql`
+  is applied, and so is the login cutover in `auth_setup.sql` (locked per-store policies,
+  private documents bucket). One login account exists; staff logins are still to be made.
+- Stale records corrected: SLACK_WEBHOOK_URL was listed as still needed though it has posted
+  to Slack since 2026-08-17; the CNAME for the custom domain was still listed as an action
+  though it has been live since 2026-08-11; PLATFORM.md still listed five workflows and an
+  active Jira board; RUNBOOK.md still named a deleted branch.
+- Open and urgent: the domain was due to renew 2026-10-16 and nobody has seen it renew. The
+  watchdog would not catch a lapse while `PRODUCTION_URL` is unset. Check the Vianet panel.
+- The dev environment is still not stood up (no `develop` branch). HANDOVER.md Step 6 builds
+  it straight onto the store's accounts, so it is done after the move, not before.
+
+The dev guard, 2026-09-01 (PR #54, recorded here late):
+- Before any script runs against dev, `.github/scripts/distinct-databases.mjs` compares
+  which Supabase project each connection string belongs to and stops the run if they are
+  the same one. A pasted string in the wrong box would otherwise put invented DEV vendors
+  into the store's real directory and run every dev migration on the live ledger, silently.
+- Where it cannot tell, it says it did not check rather than claiming a match. The case that
+  matters most is the same project written two ways (session pooler on one side, direct
+  connection on the other): different text, same database. Sixteen cases pin it.
+- The same branch ran the whole dev chain on a real Postgres 16 for the first time:
+  schema.sql, seed.sql and seed_dev.sql apply clean, seed_dev.sql is safe to re-run, and all
+  nine migrations in run-order.txt converge with the fresh-install path.
 
 Production deploys stopped on 2026-08-13, found 2026-08-17:
 - Pushes to main have produced no production deployment since 2026-08-13. The live site is
@@ -351,9 +423,14 @@ Cross-cutting
 - Reads scoped and writes stamped by the active store. Every write records who and when in activity_log. CAD throughout, Ontario 13 percent HST from a tax table. Daily Resend email of due invoices (off until the key is set). Auth ships behind `NEXT_PUBLIC_REQUIRE_AUTH` with per-store per-role policies in auth_setup.sql; demo mode stays open with the Acting-as picker. Money fields hidden from staff in both modes.
 
 ## Gates before the product is real (in order)
-1. Owner: run `supabase/edit_delete.sql`, then merge PR #8.
-2. Owner: turn on login (RUNBOOK.md "Turn on login", about five minutes).
-3. Owner: set the Resend key, alert addresses, and cron secret so due-date emails send.
+1. DONE, read from the live database 2026-10-18: `edit_delete.sql` is applied (`voided_at`
+   on 15 tables) and PR #8 merged long ago.
+2. DONE on the database side, read 2026-10-18: `auth_setup.sql` is applied (21 locked
+   per-store policies, no open demo policies, private `documents` bucket). One login account
+   exists, so staff logins are still to be made, from the Team page once
+   `SUPABASE_SERVICE_ROLE_KEY` is set in Vercel.
+3. Owner: set the Resend key and alert addresses so due-date emails send. Do it under the
+   store's own Resend account (docs/HANDOVER.md Step 5).
 4. Owner: delete or redact the Lawson "PO Details.docx" in Drive; it holds a full credit card number in plain text. Never import it.
 
 Both build gates shipped 2026-07-07 on the owner's make-it-production-ready instruction:
@@ -412,7 +489,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
 4. Seed: set store_id inline on the original inserts, not only the backfill, so a partial re-run still scopes store one.
 5. Second store: seed a few maintenance, HR, and compliance rows so its screens are not empty.
-6. Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.
+6. ~~Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.~~ Reversed 2026-10-24 by PR #58: every AI route returns a non-2xx status on a model failure (502, or 422 for a refusal on Ask) with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`.
 7. Decide whether the Acting-as user list stays store-wide or scopes per store.
 8. Storage policy scopes to the bucket, not the store: a signed-in member of store two could read store one's documents. Fine while both stores are the same owner; scope object paths by store before onboarding an outside store.
 9. View as previews navigation and home, not money hiding; verifying what staff see still needs signing in as (or acting as) a staff member.

@@ -70,7 +70,7 @@ an outage. Not the transaction pooler on 6543: it does not run every DDL stateme
 
 Where it goes:
 
-    https://github.com/raviteja0012/Lakeside_Store_Application/settings/secrets/actions
+    the repository on GitHub, Settings, Secrets and variables, Actions
 
 It must be a **Repository secret on the Actions tab**. That page also has Codespaces and
 Dependabot tabs and an Environment secrets section, and a secret in any of those is invisible

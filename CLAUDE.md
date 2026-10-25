@@ -7,11 +7,17 @@ feature.
 
 Read before building:
 - .claude/skills/robinsons-store/SKILL.md — the invariants; follow them on every change.
+- .claude/skills/robinsons-store/references/standards.md — how every doc, decision record and review is
+  written: status line, evidence tags, BUILT/PARTIAL/SCAFFOLDED/TARGET, basis footer.
+- docs/AGENTS.md — every AI agent, in the app and in the build loop, and whose key it uses.
+- docs/adr/ — decision records. ONBOARDING.md — forms and first week for a new member.
 - docs/README.md — the index to all eighteen docs and which one to open.
 - docs/REQUIREMENTS.md — the living requirements ledger (asks, states, open items).
 - docs/PLATFORM.md — every service and plan in use, what is adopted and what is declined
   and why. Carries two open risks: the Vercel plan does not license commercial use, and
   Supabase Free takes no backups. Check it before adding any service.
+- docs/HANDOVER.md — who holds each account, the order to move them to the store, and the
+  register of every secret and variable. Add any new secret or service there.
 - docs/STATUS.md and docs/VERIFICATION.md — build state and sign-off; update both in the
   same PR as the work.
 - docs/OWNER_NOTES.md — the owner's feedback verbatim (Telugu translated), round by round.
@@ -25,8 +31,9 @@ Hard rules:
 - Store scoping + RLS on everything new (schema.sql AND auth_setup.sql 3a AND feedback-style
   migration for live databases). Money fails closed (canSeeMoney). Soft voids only.
 - Builds must pass with blank env. Gates: npx tsc --noEmit, npm run build, npm run lint.
-- AI routes: grounded prompts, plain-text output (src/lib/aiText.ts strip), low temperature,
-  default model claude-sonnet-5 (ANTHROPIC_MODEL overrides).
+- AI routes: grounded prompts, plain-text output (src/lib/aiText.ts strip), no temperature
+  override (current models reject non-default sampling), default model claude-sonnet-5
+  (ANTHROPIC_MODEL overrides).
 - No em dashes in user-facing copy. Calm canvas; color = status only.
 - BLUF in everything written to people (chat, PRs, Slack, docs): answer in the first
   sentence, then only facts that change the reader's next action. No recaps, no process
