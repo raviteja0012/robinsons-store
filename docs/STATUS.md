@@ -460,6 +460,19 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- Import and export integrity, 2026-10-24 (branch import-export-integrity, see VERIFICATION.md):
+  the schedule import no longer guesses who a name is. A name two employees share, or a name
+  that may be a Staff full name ("Amy" beside "Amy Robinson"), is named in the import result
+  and its shifts are not loaded until someone renames one in Staff or writes the full name in
+  the schedule; nobody new is created for it. Exact matches and new names load as before, and
+  an employee read error now stops the import instead of re-creating everyone. The duplicate
+  shift check reads past 1000 shifts. The full export reads every table in pages keyed on id,
+  so a shift deleted or a row added while it runs cannot make the archive drop or repeat
+  another row; the README tab names the start time. The export also stopped ordering
+  tax_rules by province, a column that table does not have in schema.sql (not checked against
+  the live database). Left for later: a schedule full name beside a shorter Staff name
+  ("Amy Robinson" in the schedule, only "Amy" in Staff) still creates a new employee, and so
+  do two new names in one file that may be one person.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
