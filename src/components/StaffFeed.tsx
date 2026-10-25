@@ -9,6 +9,7 @@ import { useActiveStore } from "@/lib/store";
 import { canSeeMoney, currentActorId, useCurrentRole, useMember } from "@/lib/auth";
 import { canEdit, voidRow } from "@/lib/edit";
 import { docUrls } from "@/lib/docs";
+import NeedsCost from "@/components/NeedsCost";
 import type { FeedRow } from "@/lib/types";
 
 function rowSubtotal(r: FeedRow): number {
@@ -33,6 +34,7 @@ export default function StaffFeed() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
+  const [voids, setVoids] = useState(0);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !localStorage.getItem(HOWTO_KEY)) setShowHowTo(true);
@@ -79,6 +81,7 @@ export default function StaffFeed() {
     setError(null);
     try {
       await voidRow("receiving_event", r.id, currentActorId(member));
+      setVoids((n) => n + 1);
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -116,6 +119,8 @@ export default function StaffFeed() {
           </ol>
         </div>
       )}
+
+      <NeedsCost role={role} member={member} refresh={voids} onSaved={load} />
 
       {todayByDept.length > 0 && (
         <div style={{ marginBottom: 20 }}>
@@ -160,6 +165,7 @@ export default function StaffFeed() {
         {rows.map((r) => {
           const url = r.source_file_path ? thumbs.get(r.source_file_path) || null : null;
           const subtotal = rowSubtotal(r);
+          const noCost = (r.receiving_line || []).some((l) => l.unit_cost == null);
           return (
             <div key={r.id} className="card" style={{ padding: 12, display: "flex", gap: 12, alignItems: "center" }}>
               <div style={{ width: 56, height: 56, borderRadius: 8, background: "#EEF1F4", overflow: "hidden", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -172,6 +178,9 @@ export default function StaffFeed() {
                     <span className="chip" style={{ background: "#EEF1F4", color: r.department.accent_color || "#6B7480" }}>{r.department.name}</span>
                   )}
                   <span className={`chip ${chipClass(r.status)}`}>{labelize(r.status)}</span>
+                  {showMoney && noCost && (
+                    <a href="#needs-cost" className="chip chip-warning" style={{ textDecoration: "none" }}>Needs a cost</a>
+                  )}
                 </div>
                 <div className="help" style={{ marginTop: 4 }}>
                   {r.app_user?.full_name || "Unknown"} . {new Date(r.created_at).toLocaleString()}
@@ -180,7 +189,7 @@ export default function StaffFeed() {
               {showMoney && subtotal > 0 && (
                 <div className="tabular" style={{ textAlign: "right", fontWeight: 600, flexShrink: 0 }}>
                   {formatCAD(subtotal)}
-                  <div className="help" style={{ fontWeight: 400 }}>subtotal</div>
+                  <div className="help" style={{ fontWeight: 400 }}>{noCost ? "subtotal so far" : "subtotal"}</div>
                 </div>
               )}
               {canEdit(role) && (

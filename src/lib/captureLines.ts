@@ -28,3 +28,14 @@ export function linesToSave(lines: LineItem[], showMoney: boolean, threshold: nu
     };
   });
 }
+
+// The update for a cost typed later onto a saved line that has none (the feed's "Needs a cost"
+// list). Typing it is the same check as retyping it at capture, so confidence goes to 1 and the
+// database confidence trigger passes without the event's acknowledgement. Takes "12.50",
+// "$12.50" or "1,234.50"; blank, negative or anything else is null. A comma counts only as a
+// thousands separator, so "12,50" is refused rather than saved as 1250.
+export function costEntry(text: string): { unit_cost: number; confidence: number } | null {
+  const cleaned = text.trim().replace(/^\$\s*/, "");
+  if (!/^(\d{1,3}(,\d{3})+|\d+)(\.\d*)?$|^\.\d+$/.test(cleaned)) return null;
+  return { unit_cost: Number(cleaned.replace(/,/g, "")), confidence: 1 };
+}

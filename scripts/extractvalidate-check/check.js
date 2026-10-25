@@ -1,5 +1,5 @@
 const { normalizeExtraction, EXTRACT_MEDIA_TYPES } = require("./extractValidate.js");
-const { editLine, linesToSave } = require("./captureLines.js");
+const { editLine, linesToSave, costEntry } = require("./captureLines.js");
 let pass = 0, fail = 0;
 const t = (n, c, d = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"}  ${n}${d ? "  [" + d + "]" : ""}`); };
 const line = (o) => ({ description: "Rope 50ft", qty: 2, unit_cost: 12.5, retail_price_note: 19.99, confidence: 0.9, ...o });
@@ -54,6 +54,17 @@ t("staff save drops an amber cost", staffRow.unit_cost === null && staffRow.conf
 t("money role save keeps an amber cost", linesToSave([amber], true, 0.7)[0].unit_cost === 12.5);
 t("staff save keeps a confident cost", linesToSave([line({ confidence: 0.9 })], false, 0.7)[0].unit_cost === 12.5);
 t("staff save keeps a null-confidence cost", linesToSave([line({ confidence: null })], false, 0.7)[0].unit_cost === 12.5);
+
+// A cost typed later on the feed is a human check: confidence 1, so the trigger passes.
+const typed = costEntry("12.50");
+t("typed cost sets confidence 1", typed !== null && typed.unit_cost === 12.5 && typed.confidence === 1);
+t("dollar sign and commas accepted", costEntry(" $1,234.5 ")?.unit_cost === 1234.5);
+t("zero cost accepted", costEntry("0")?.unit_cost === 0);
+t("blank cost refused", costEntry("  ") === null);
+t("negative cost refused", costEntry("-3") === null);
+t("decimal comma refused, not read as 1250", costEntry("12,50") === null && costEntry("1,2,3") === null && costEntry("1,23") === null);
+t("plain and point-led costs accepted", costEntry("1234")?.unit_cost === 1234 && costEntry(".5")?.unit_cost === 0.5 && costEntry("12.")?.unit_cost === 12);
+t("text cost refused", costEntry("twelve") === null && costEntry("0x10") === null && costEntry("1e3") === null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

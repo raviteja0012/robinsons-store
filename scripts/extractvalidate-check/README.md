@@ -8,6 +8,9 @@ acknowledgement instead of being saved quietly.
 `src/lib/captureLines.ts` holds the capture screen's line rules. Only a retyped unit cost
 clears an amber line; fixing a description or qty does not. When the role cannot see money,
 an amber line is saved with no unit cost, so staff never post a cost they could not check.
+`costEntry` reads the cost an owner or manager types later on the feed's "Needs a cost" list:
+a plain non-negative number, with an optional dollar sign and thousands commas, saved with
+confidence 1. A decimal comma such as "12,50" is refused rather than read as 1250.
 
 ## Running it
 

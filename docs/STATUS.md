@@ -465,8 +465,20 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   description or qty leaves it amber, and the box covers the rest. Staff never see the cost, so
   their amber lines are saved with no unit cost and the confidence as read, for the owner to
   enter. Rules in src/lib/captureLines.ts, checked by scripts/extractvalidate-check in CI. No
-  schema or trigger change. Left open: no screen yet edits a saved receiving line, so the owner
-  has nowhere in the app to enter that cost, and the feed total counts the line as zero.
+  schema or trigger change. The owner enters that cost from the feed (next item).
+- Cost entry for lines saved without one, 2026-10-24 (branch receiving-cost-entry, see
+  VERIFICATION.md): for roles that see money (owner, manager, lead) the feed opens with a
+  "Needs a cost" list of every receiving line in the store that has no unit cost, newest
+  delivery first, up to 50 deliveries. A feed row with such a line carries a "Needs a cost"
+  marker and its subtotal reads "subtotal so far". Saving a typed cost sets unit_cost and
+  confidence 1 (a person checked it), so enforce_line_confidence passes without the event's
+  acknowledgement. The update fills a blank cost only, on a delivery that is still live and in
+  the active store, goes through the existing receiving_line policy, and logs cost_entered on
+  the line under the person who typed it. With no known person nothing saves; if the log row
+  fails the cost is put back. A comma reads only as a thousands separator, so "12,50" is
+  refused, not saved as 1250. Staff never load the list or see the marker. No schema, RLS or
+  trigger change. Screen part in src/components/NeedsCost.tsx; the input rule is costEntry()
+  in src/lib/captureLines.ts.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
