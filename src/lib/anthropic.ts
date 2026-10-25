@@ -27,13 +27,14 @@ export type ClaudeResult =
       stopReason: string;
       model: string;
       ms: number;
-      usage: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number } | null;
+      usage: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number } | null;
     }
   | { ok: false; kind: ClaudeFailure; detail: string; model: string; ms: number };
 
 type CallOptions = {
   route: string;
-  system?: string;
+  // A string, or text blocks when part of it carries cache_control (see /api/ask).
+  system?: string | unknown[];
   messages: unknown[];
   max_tokens: number;
   output_config?: unknown;

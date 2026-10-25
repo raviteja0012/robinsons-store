@@ -4,6 +4,19 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
+- `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
+  and `debugging` tool groups: documentation search, logs and advisors.
+- CI checks it: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails if
+  a hosted Supabase URL drops `read_only=true`, has no `features` list, or gives production
+  any group beyond those two. Fourteen new cases, plus the committed file.
+- Pull requests required on `main`: one branch ruleset (pull request with no required
+  approvals or status checks, no force pushes, no deletion), applied 2026-10-24 as a
+  repository setting. `gh api 'repos/{owner}/{repo}/rules/branches/main' --jq '[.[].type]'`
+  returns `["deletion","non_fast_forward","pull_request"]`.
+- docs/LOOP_ENGINEERING.md, CAPABILITIES item 9 and its Supabase MCP row, and the Kiro coding
+  conventions (model failures return a non-2xx status) now match.
+
 The handover written to the standard, 2026-10-24:
 - docs/HANDOVER.md now names exactly what the store will own and under which names (team,
   organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
@@ -476,12 +489,43 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   Left for later: an ai_call table with a daily per-store cap, an offline golden-case eval
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
+- Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
+  items above are done. Ask withholds any answer that names a vendor not in the store data or
+  the app guide, and shows "Not confirmed" with a plain message instead
+  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question never vouches
+  for a name: it only excuses one in an answer with no digits ("Costco is not on file"). The
+  model wraps vendor names in [[ ]] for the check; the brackets never reach the screen.
+  Unwrapped names are caught only with a legal suffix or after "vendor", "supplier", or
+  "order from", so an unwrapped made-up vendor with neither still gets through. Ask now
+  caches its prompt: the rules and app guide (roughly 1,600 to 2,000 tokens, over the 1,024
+  minimum for claude-sonnet-5) and the store data, which repeats for the same store and role
+  until a record changes. The function log carries cache_creation_input_tokens and
+  cache_read_input_tokens. Left: confirm reads are non-zero on a preview with two questions a
+  minute apart.
+- One of the left-for-later items above is built, not yet run: the golden-case evals,
+  2026-10-24 (branch ai-golden-evals, see VERIFICATION.md). 24 made-up cases in
+  scripts/aievals-check, 11 invoices for extract and 13 questions for ask, scored by fixed
+  rules (field match with a one-cent tolerance; facts that must and must not appear; for the
+  money and store cases, the prompt itself). The scorer tests are a step in ci.yml and use no
+  model. `npm run eval:ai` sends the cases through the real routes and src/lib/anthropic.ts
+  and prints a pass rate per case. It spends the API key (72 calls by default, 24 with
+  `-- --runs 1`), so it never runs in CI and has not been run yet: the first run is the
+  owner's call. One case is marked as a known gap and is expected to fail until it is fixed:
+  Ask lists a partly paid invoice at its full total as what is owed
+  (ask-owed-partial-payment).
+- Capture amber rule, 2026-10-24 (branch capture-staff-cost, see VERIFICATION.md): an amber
+  (low-confidence) line now clears only when a person retypes its unit cost; fixing the
+  description or qty leaves it amber, and the box covers the rest. Staff never see the cost, so
+  their amber lines are saved with no unit cost and the confidence as read, for the owner to
+  enter. Rules in src/lib/captureLines.ts, checked by scripts/extractvalidate-check in CI. No
+  schema or trigger change. Left open: no screen yet edits a saved receiving line, so the owner
+  has nowhere in the app to enter that cost, and the feed total counts the line as zero.
 1. Compliance: insurance policies could use the same add-and-edit form as the licence.
 2. Alerts email: label each invoice with its store, or send per store.
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
 4. Seed: set store_id inline on the original inserts, not only the backfill, so a partial re-run still scopes store one.
 5. Second store: seed a few maintenance, HR, and compliance rows so its screens are not empty.
-6. Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.
+6. ~~Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.~~ Reversed 2026-10-24 by PR #58: every AI route returns a non-2xx status on a model failure (502, or 422 for a refusal on Ask) with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`.
 7. Decide whether the Acting-as user list stays store-wide or scopes per store.
 8. Storage policy scopes to the bucket, not the store: a signed-in member of store two could read store one's documents. Fine while both stores are the same owner; scope object paths by store before onboarding an outside store.
 9. View as previews navigation and home, not money hiding; verifying what staff see still needs signing in as (or acting as) a staff member.
