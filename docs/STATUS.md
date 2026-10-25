@@ -4,6 +4,19 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
+- `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
+  and `debugging` tool groups: documentation search, logs and advisors.
+- CI checks it: `.github/scripts/distinct-databases.test.mjs` reads `.mcp.json` and fails if
+  a hosted Supabase URL drops `read_only=true`, has no `features` list, or gives production
+  any group beyond those two. Fourteen new cases, plus the committed file.
+- Pull requests required on `main`: one branch ruleset (pull request with no required
+  approvals or status checks, no force pushes, no deletion), applied 2026-10-24 as a
+  repository setting. `gh api 'repos/{owner}/{repo}/rules/branches/main' --jq '[.[].type]'`
+  returns `["deletion","non_fast_forward","pull_request"]`.
+- docs/LOOP_ENGINEERING.md, CAPABILITIES item 9 and its Supabase MCP row, and the Kiro coding
+  conventions (model failures return a non-2xx status) now match.
+
 The handover written to the standard, 2026-10-24:
 - docs/HANDOVER.md now names exactly what the store will own and under which names (team,
   organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
@@ -484,7 +497,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 3. HR schedule: reload employees when the active store switches; week navigation during a slow load can leave the header and list on different weeks.
 4. Seed: set store_id inline on the original inserts, not only the backfill, so a partial re-run still scopes store one.
 5. Second store: seed a few maintenance, HR, and compliance rows so its screens are not empty.
-6. Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.
+6. ~~Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.~~ Reversed 2026-10-24 by PR #58: every AI route returns a non-2xx status on a model failure (502, or 422 for a refusal on Ask) with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`.
 7. Decide whether the Acting-as user list stays store-wide or scopes per store.
 8. Storage policy scopes to the bucket, not the store: a signed-in member of store two could read store one's documents. Fine while both stores are the same owner; scope object paths by store before onboarding an outside store.
 9. View as previews navigation and home, not money hiding; verifying what staff see still needs signing in as (or acting as) a staff member.

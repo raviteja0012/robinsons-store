@@ -47,12 +47,15 @@ t("description edit keeps an amber line amber", editLine(amber, { description: "
 t("qty edit keeps an amber line amber", editLine(amber, { qty: 3 }).confidence === 0.5);
 const retyped = editLine(amber, { unit_cost: 13 });
 t("retyped unit cost clears the flag", retyped.confidence === 1 && retyped.unit_cost === 13);
+t("emptied cost box keeps an amber line amber", editLine(amber, { unit_cost: null }).confidence === 0.5);
+t("non-number cost keeps an amber line amber", editLine(amber, { unit_cost: NaN }).confidence === 0.5);
 
 // A role that cannot see money never posts an amber cost it could not check.
 const staffRow = linesToSave([amber], false, 0.7)[0];
 t("staff save drops an amber cost", staffRow.unit_cost === null && staffRow.confidence === 0.5 && staffRow.qty === 2);
 t("money role save keeps an amber cost", linesToSave([amber], true, 0.7)[0].unit_cost === 12.5);
 t("staff save keeps a confident cost", linesToSave([line({ confidence: 0.9 })], false, 0.7)[0].unit_cost === 12.5);
+t("staff save keeps a cost at exactly the threshold", linesToSave([line({ confidence: 0.7 })], false, 0.7)[0].unit_cost === 12.5);
 t("staff save keeps a null-confidence cost", linesToSave([line({ confidence: null })], false, 0.7)[0].unit_cost === 12.5);
 
 // A cost typed later on the feed is a human check: confidence 1, so the trigger passes.
