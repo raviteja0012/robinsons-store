@@ -30,10 +30,9 @@ The full plan with evidence, pricing, and citations is in robinsons_store_build_
 robinsons-store/
   README.md
   supabase/schema.sql        full data model, plus the dev row-level security and the documents storage policy
-  supabase/seed.sql          departments, a curated set of real vendors, demo accounts (one per role)
-  supabase/seed_bookings.sql the full real ledger (125 vendors), generated and validated against the sheet totals
+  supabase/seed.sql          departments, a curated set of vendors with made-up contact details, demo accounts (one per role)
   supabase/auth_setup.sql    the production cutover: auth_id, email auto-link, per-store per-role policies, storage lockdown
-  scripts/generate-seed-bookings.mjs  regenerate seed_bookings.sql from the bookings .xlsx; self-checks against printed totals
+  scripts/generate-seed-bookings.mjs  write the full ledger load (125 vendors) from the bookings .xlsx on your machine; self-checks against printed totals; the output is git-ignored, never committed
   src/app/page.tsx           role-driven home: Today dashboard (manager/owner) or staff Today + feed
   src/app/capture/page.tsx   capture, extract, confirm, save (uploads the document to storage)
   src/app/dashboard, reports, overdue, vendors, vendors/[id], inventory, reorder,
