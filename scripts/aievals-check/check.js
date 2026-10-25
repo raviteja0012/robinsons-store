@@ -22,20 +22,34 @@ const ids = [...extract, ...ask].map((c) => c.id);
 t("case ids are unique", new Set(ids).size === ids.length);
 t("about ten cases each", extract.length >= 10 && ask.length >= 10, `${extract.length} extract, ${ask.length} ask`);
 
-// Fiction only. 555-0100 to 555-0199 is the range reserved for made-up numbers, so any other
-// phone number in a case is a sign that real data was pasted in.
-const phones = JSON.stringify([extract, store]).match(/\b\d{3}-\d{3}-\d{4}\b/g) || [];
-t("every phone number is a fictional 555-01xx", phones.length > 0 && phones.every((p) => /^\d{3}-555-01\d\d$/.test(p)), phones.filter((p) => !/^\d{3}-555-01\d\d$/.test(p)).join(", "));
+// A tripwire for one kind of pasted real data, phone numbers, in any of the five files.
+// 555-0100 to 555-0199 is the range reserved for made-up numbers. It cannot tell a real
+// invoice from a made-up one; only the person adding a case can.
+const raw = ["cases/extract.json", "cases/ask.json", "cases/store.json", "samples/extract.json", "samples/ask.json"]
+  .map((p) => fs.readFileSync(path.join(HERE, p), "utf8"))
+  .join("\n");
+const phones = raw.match(/(?:\(\d{3}\)\s?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/g) || [];
+const fake = (p) => p.replace(/\D/g, "").slice(3, 8) === "55501";
+t("every phone number is a fictional 555-01xx", phones.length > 0 && phones.every(fake), phones.filter((p) => !fake(p)).join(", "));
+t("the phone tripwire sees other formats", ["(705) 286-1234", "705.286.1234", "705 286 1234"].every((p) => (p.match(/(?:\(\d{3}\)\s?|\b\d{3}[ .-])\d{3}[ .-]\d{4}\b/g) || []).length === 1 && !fake(p)));
 
-const rows = Object.values(store.tables).flat();
-t("every store row carries a store_id", rows.every((r) => typeof r.store_id === "string"));
+// Allocations belong to an invoice and are scoped through it, as in the real schema.
+const scoped = ["knowledge_note", "vendor", "invoice"].flatMap((name) => store.tables[name]);
+t("every store-scoped row carries a store_id", scoped.every((r) => typeof r.store_id === "string"));
+const invoiceIds = new Set(store.tables.invoice.map((i) => i.id));
+t("every allocation belongs to an invoice", store.tables.payment_allocation.every((a) => invoiceIds.has(a.invoice_id)));
 
+// The amber band, pinned to the capture screen's value and to its comparison.
 const capture = fs.readFileSync(path.join(HERE, "../../src/app/capture/page.tsx"), "utf8");
 const low = capture.match(/const LOW_CONFIDENCE = ([\d.]+);/);
 t("amber line matches the capture screen", !!low && Number(low[1]) === S.LOW_CONFIDENCE, low ? low[1] : "not found");
+t("capture's amber test is strictly below the line", capture.includes("l.confidence !== null && l.confidence < LOW_CONFIDENCE"));
 
-// Each expected line names exactly one printed row, and agrees with it on quantity and price.
-// This is what keeps a typo in a case from becoming a wrong answer the model is marked down for.
+t("every known gap says what it waits for", [...extract, ...ask].every((c) => c.knownGap === undefined || (typeof c.knownGap === "string" && c.knownGap.length > 20)));
+
+// Each expected line names exactly one printed row, and agrees with it on quantity, price
+// and handwritten retail note. This is what keeps a typo in a case from becoming a wrong
+// answer the model is marked down for.
 const words = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 const has = (desc, w) => w.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().split("|").some((x) => desc.some((d) => d === x || d === x + "s" || d === x + "es"));
 const mismatches = [];
@@ -45,10 +59,11 @@ for (const c of extract) {
     const hits = table.filter((r) => e.match.every((w) => has(words(r[1]), w)));
     const label = `${c.id} "${e.match.join(" ")}"`;
     if (hits.length !== 1) { mismatches.push(`${label} names ${hits.length} rows`); continue; }
-    const [qty, , unit] = hits[0];
+    const [qty, , unit, note] = hits[0];
     const qtyOk = e.qty === undefined || e.qty === qty;
     const unitOk = e.unit_cost === undefined || (typeof unit === "number" ? Math.abs(e.unit_cost - unit) < 1e-9 : e.unit_cost === 0);
-    if (!qtyOk || !unitOk) mismatches.push(`${label} printed ${qty} x ${unit}`);
+    const noteOk = e.retail_price_note === undefined || e.retail_price_note === (note && note.hand !== undefined ? Number(note.hand) : null);
+    if (!qtyOk || !unitOk || !noteOk) mismatches.push(`${label} printed ${qty} x ${unit}${note ? " note " + note.hand : ""}`);
   }
 }
 t("every expected line names one printed row and agrees with it", mismatches.length === 0, mismatches.join("; "));
@@ -115,6 +130,11 @@ t("a missing line fails the count as well", (() => {
   const s = S.scoreExtract({ lines: [{ match: ["rope"] }, { match: ["rake"] }] }, { status: 200, body: { line_items: [{ description: "rope" }] } });
   return !s.pass && s.checks.some((c) => c.name === "line count" && !c.pass);
 })());
+t("an extra line fails the count", (() => {
+  const s = S.scoreExtract({ lines: [{ match: ["rope"] }] }, { status: 200, body: { line_items: [{ description: "rope" }, { description: "rope" }] } });
+  return !s.pass && s.checks.some((c) => c.name === "line count" && !c.pass);
+})());
+t("confidence exactly at the line is not amber, as on capture", S.scoreExtract({ lines: [{ match: ["rope"], flagged: false }] }, { status: 200, body: { line_items: [{ description: "rope", confidence: S.LOW_CONFIDENCE }] } }).pass);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

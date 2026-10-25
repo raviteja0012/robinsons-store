@@ -22,13 +22,34 @@ const SRC = path.join(OUT, "src");
 const HERE = path.resolve(OUT, "../..");
 const REPO = path.resolve(HERE, "../..");
 
+// Anything it does not recognise stops the run before it spends anything: a misspelled
+// --offline must not turn into a live run, and --runs=1 must not quietly run three times.
 const args = process.argv.slice(2);
+const usage = "Options: --offline, --runs N, --only TEXT (a space before the value, not =).";
+const takesValue = new Set(["--runs", "--only"]);
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === "--offline") continue;
+  if (!takesValue.has(args[i])) {
+    console.error(`Unknown option "${args[i]}". ${usage}`);
+    process.exit(1);
+  }
+  if (i + 1 >= args.length || args[i + 1].startsWith("--")) {
+    console.error(`${args[i]} needs a value. ${usage}`);
+    process.exit(1);
+  }
+  i++;
+}
 const option = (name: string) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
 const OFFLINE = args.includes("--offline");
-const RUNS = Math.max(1, Math.floor(Number(option("--runs") || 3)));
+const runsArg = option("--runs");
+if (runsArg !== undefined && !/^[1-9]\d*$/.test(runsArg)) {
+  console.error(`--runs needs a whole number above zero, got "${runsArg}".`);
+  process.exit(1);
+}
+const RUNS = Number(runsArg ?? 3);
 const ONLY = option("--only");
 
 if (process.env.CI) {
@@ -71,7 +92,9 @@ globalThis.fetch = (async (input: any, init?: any) => {
   const text = (body.messages || [])
     .flatMap((m: any) => (typeof m.content === "string" ? [m.content] : (m.content || []).filter((p: any) => p.type === "text").map((p: any) => p.text)))
     .join("\n");
-  sent = { system: typeof body.system === "string" ? body.system : JSON.stringify(body.system ?? ""), text };
+  // system is a string, or text blocks when part of it is cached.
+  const system = typeof body.system === "string" ? body.system : (body.system || []).map((b: any) => b?.text ?? "").join("\n");
+  sent = { system, text };
   if (!OFFLINE) return realFetch(input, init);
   return new Response(JSON.stringify({ model: "offline", stop_reason: "end_turn", content: [{ type: "text", text: canned }] }), {
     status: 200,
@@ -89,13 +112,16 @@ function resolveDates(v: any): any {
   return v;
 }
 
-const ignored = new Set<string>();
+// The AI usage log's own bookkeeping (src/lib/aiUsage.ts), which every model call makes.
+// Any other RPC is a write the case has to expect: payments only ever move through RPCs.
+const BOOKKEEPING = new Set(["ai_call_begin", "ai_call_finish"]);
+
 function fakeDb(tables: Record<string, any[]>, writes: string[]) {
   const from = (table: string) => {
     const filters: ((r: any) => boolean)[] = [];
     let inserted: any = null;
     let single = false;
-    const q: any = {
+    const builder: any = {
       select: () => q,
       eq: (col: string, val: unknown) => (filters.push((r) => r[col] === val), q),
       is: (col: string, val: unknown) => (filters.push((r) => (r[col] ?? null) === val), q),
@@ -116,20 +142,27 @@ function fakeDb(tables: Record<string, any[]>, writes: string[]) {
         return Promise.resolve({ data: single ? rows[0] ?? null : rows, error: null }).then(ok, bad);
       }
     };
-    // A query method this stand-in does not know is ignored, and said so once: the run goes
-    // on, but a new filter in a route is visible instead of silently returning every row.
-    return new Proxy(q, {
+    // A query method this stand-in does not know throws and names itself, at any point in
+    // the chain, rather than being skipped: a filter that was silently ignored would hand
+    // the route every row. The route reports the throw as a 500, so the case fails on
+    // "answered" with this message. Add the method here when a route starts using it.
+    const q: any = new Proxy(builder, {
       get(target, prop) {
         if (prop in target || typeof prop !== "string") return target[prop as any];
-        if (!ignored.has(prop)) {
-          ignored.add(prop);
-          process.stderr.write(`  note: the stand-in database ignored .${prop}() on ${table}\n`);
-        }
-        return () => target;
+        return () => {
+          throw new Error(`the stand-in database in scripts/aievals-check/live.ts does not implement .${prop}() (on ${table}); add it to fakeDb`);
+        };
       }
     });
+    return q;
   };
-  return { from, rpc: () => Promise.resolve({ data: null, error: null }) };
+  const rpc = (fn: string) => {
+    if (!BOOKKEEPING.has(fn)) writes.push(`rpc:${fn}`);
+    const p: any = Promise.resolve({ data: null, error: null });
+    p.abortSignal = () => p;
+    return p;
+  };
+  return { from, rpc };
 }
 
 const serverMember = require(path.join(SRC, "lib/serverMember.js"));
@@ -166,7 +199,10 @@ const store = read("cases/store.json");
 const samples: any[] = [...read("samples/extract.json").samples, ...read("samples/ask.json").samples];
 const idealFor = (id: string) => samples.find((s) => s.case === id && s.expect === "pass");
 
-type Job = { id: string; run: () => Promise<Score> };
+// gap: a case written for a defect that is known and not fixed yet (knownGap in the case
+// file). It is expected to fail every run and does not fail the run while it does; once it
+// passes, the run fails until somebody deletes knownGap, so a fix never goes unrecorded.
+type Job = { id: string; gap?: string; run: () => Promise<Score> };
 const results: { case: string; output: RouteOutput; writes?: string[] }[] = [];
 const jobs: Job[] = [];
 
@@ -175,6 +211,7 @@ fs.mkdirSync(docs, { recursive: true });
 for (const c of extractCases) {
   jobs.push({
     id: c.id,
+    gap: c.knownGap,
     run: async () => {
       const pdf = renderPdf(c.document);
       fs.writeFileSync(path.join(docs, `${c.id}.pdf`), pdf);
@@ -190,6 +227,7 @@ for (const c of extractCases) {
 for (const c of askFile.cases) {
   jobs.push({
     id: c.id,
+    gap: c.knownGap,
     run: async () => {
       const writes: string[] = [];
       canned = idealFor(c.id).body.answer;
@@ -223,6 +261,8 @@ async function main() {
   const width = Math.max(...selected.map((j) => j.id.length));
   let casesPassing = 0;
   let runsPassing = 0;
+  let gapsHeld = 0;
+  let gapsPassed = 0;
   for (const job of selected) {
     let passed = 0;
     const misses = new Map<string, number>();
@@ -239,22 +279,36 @@ async function main() {
         misses.set(key, (misses.get(key) || 0) + 1);
       }
     }
-    runsPassing += passed;
-    if (passed === RUNS) casesPassing++;
     const rate = `${passed}/${RUNS}`.padStart(5) + `${Math.round((passed / RUNS) * 100)}%`.padStart(6);
-    console.log(`${passed === RUNS ? "PASS" : "FAIL"}  ${job.id.padEnd(width)}  ${rate}`);
+    if (job.gap) {
+      if (passed === 0) gapsHeld++;
+      else gapsPassed++;
+      console.log(`${passed === 0 ? "GAP " : "FIXED?"}  ${job.id.padEnd(width)}  ${rate}`);
+      console.log(
+        passed === 0
+          ? `        known gap, expected to fail: ${job.gap}`
+          : "        passed while marked as a known gap: if the fix has landed, delete knownGap from the case"
+      );
+    } else {
+      runsPassing += passed;
+      if (passed === RUNS) casesPassing++;
+      console.log(`${passed === RUNS ? "PASS" : "FAIL"}  ${job.id.padEnd(width)}  ${rate}`);
+    }
     for (const [miss, n] of misses) console.log(`        ${miss}${RUNS > 1 ? `  x${n}` : ""}`);
   }
 
   const file = path.join(OUT, `results-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
   fs.writeFileSync(file, JSON.stringify({ model: OFFLINE ? "offline" : claudeModel(), runs: RUNS, results }, null, 2));
-  const total = selected.length * RUNS;
+  const counted = selected.filter((j) => !j.gap).length;
+  const total = counted * RUNS;
+  const gaps = gapsHeld + gapsPassed;
   console.log(
-    `\n${casesPassing} of ${selected.length} cases passed every run; ${runsPassing} of ${total} runs passed (${Math.round((runsPassing / total) * 100)}%).` +
+    `\n${casesPassing} of ${counted} cases passed every run; ${runsPassing} of ${total} runs passed (${total ? Math.round((runsPassing / total) * 100) : 0}%).` +
+      (gaps ? `\n${gapsHeld} of ${gaps} known gaps still fail as expected, not counted above.` : "") +
       `\n${calls} ${OFFLINE ? "routed" : "model"} calls. Answers saved to ${path.relative(REPO, file)}` +
       `\nInvoices sent are in ${path.relative(REPO, docs)}`
   );
-  process.exit(casesPassing === selected.length ? 0 : 1);
+  process.exit(casesPassing === counted && gapsPassed === 0 ? 0 : 1);
 }
 
 main().catch((err) => {

@@ -1,5 +1,5 @@
 {
-  "note": "Questions to the real /api/ask route over the synthetic store in store.json. expect is checked against the answer; prompt is checked against the prompt the route built, before any model reads it. Roles: staff sees no money; lead, manager and owner do.",
+  "note": "Questions to the real /api/ask route over the synthetic store in store.json. expect is checked against the answer; prompt is checked against the prompt the route built, before any model reads it. knownGap marks a case written for a defect that is not fixed yet: it is expected to fail, and the live run reports it apart from the rest. Roles: staff sees no money; lead, manager and owner do.",
   "phrases": {
     "NOT_ON_FILE": [
       "not on file", "isn't on file", "is not on file", "no record", "don't have", "do not have",
@@ -8,7 +8,7 @@
     ],
     "CANNOT_ANSWER": [
       "not on file", "don't have", "do not have", "can't", "cannot", "not able", "unable",
-      "no information", "isn't something", "is not something", "outside"
+      "no information", "isn't something", "is not something", "outside the store", "outside what"
     ],
     "ASK_A_MONEY_ROLE": ["manager", "owner"]
   },
@@ -52,14 +52,26 @@
     },
     {
       "id": "ask-overdue",
-      "covers": "Overdue is worked out from today and the due dates: Birchwood (unpaid, 12 days past) and Hollow Pine (partly paid, 3 days past). Another store's overdue invoice is not this store's.",
+      "covers": "Overdue is worked out from today and the due dates: Birchwood (unpaid, 12 days past) and Hollow Pine (partly paid, 3 days past). Cedar Ridge is not due yet, Lakeview is paid, and another store's overdue invoice is not this store's. The question asks for the overdue ones only, so naming any of those three is the error.",
       "role": "owner",
-      "question": "Which invoices are overdue?",
+      "question": "Which invoices are overdue? Name only the overdue ones.",
       "expect": {
         "mustInclude": ["birchwood", "hollow pine"],
-        "mustNotInclude": ["pinecrest"]
+        "mustNotInclude": ["pinecrest", "cedar ridge", "lakeview"]
       },
       "prompt": { "promptExcludes": ["Pinecrest"] }
+    },
+    {
+      "id": "ask-owed-partial-payment",
+      "covers": "What is still owed on a partly paid invoice is the total less what has been paid: Hollow Pine's 180.00 less a settled 100.00 is 80.00. The question asks for the amount only, so the full 180.00 is the error.",
+      "knownGap": "Ask lists a partly paid invoice at its full total under 'amount owed' (src/app/api/ask/route.ts reads no payments). Expected to fail until the still-owed fix lands; delete this line in that change.",
+      "role": "owner",
+      "question": "How much do we still owe Hollow Pine Bakery Wholesale? Reply with the amount only.",
+      "expect": {
+        "mustInclude": [{ "amount": 80.00 }],
+        "mustNotInclude": [{ "amount": 180.00 }]
+      },
+      "prompt": { "promptIncludes": ["$80.00"] }
     },
     {
       "id": "ask-how-to-report",
@@ -99,9 +111,9 @@
       "question": "What are the payment terms for Pinecrest Paper Co.?",
       "expect": {
         "mustInclude": ["@NOT_ON_FILE"],
-        "mustNotInclude": ["net 15", "705-555-0163"]
+        "mustNotInclude": ["net 45", "705-555-0163"]
       },
-      "prompt": { "promptExcludes": ["705-555-0163", "1017.00"] }
+      "prompt": { "promptExcludes": ["705-555-0163", "Net 45", "1017.00"] }
     },
     {
       "id": "ask-invented-vendor",
@@ -110,7 +122,13 @@
       "question": "When is the next delivery from Great Lakes Fireworks?",
       "expect": {
         "mustInclude": ["@NOT_ON_FILE"],
-        "mustNotMatch": ["\\b20\\d\\d-\\d\\d-\\d\\d\\b"]
+        "mustNotMatch": [
+          "\\b20\\d\\d-\\d\\d-\\d\\d\\b",
+          "\\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.? \\d{1,2}\\b",
+          "\\b\\d{1,2}(st|nd|rd|th)? (of )?(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)",
+          "\\b(mon|tues|wednes|thurs|fri|satur|sun)days?\\b",
+          "\\b(tomorrow|next week|this week)\\b"
+        ]
       }
     },
     {
@@ -120,7 +138,13 @@
       "question": "What will the weather be in Dorset this weekend?",
       "expect": {
         "mustInclude": ["@CANNOT_ANSWER"],
-        "mustNotMatch": ["\\b\\d+\\s?(°|degrees)", "\\bforecast (is|calls)"]
+        "mustNotMatch": [
+          "\\b\\d+\\s?(°|degrees)",
+          "\\bforecast (is|calls)",
+          "\\b\\d+\\s?[cf]\\b",
+          "\\b(sunny|cloudy|overcast|showers|clear skies)\\b",
+          "\\b(highs?|lows?) (of|near|around|in the)\\b"
+        ]
       }
     },
     {
