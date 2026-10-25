@@ -15,6 +15,8 @@ export default function Ask() {
   const { storeId } = useActiveStore();
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
+  // True when the answer named a vendor the store's records do not have, so it was withheld.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +27,7 @@ export default function Ask() {
     setLoading(true);
     setError(null);
     setAnswer(null);
+    setUnconfirmed(false);
     try {
       const resp = await fetch("/api/ask", {
         method: "POST",
@@ -34,6 +37,7 @@ export default function Ask() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "request failed");
       setAnswer(data.answer || data.message || "No answer came back.");
+      setUnconfirmed(Boolean(data.unconfirmed));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -79,7 +83,7 @@ export default function Ask() {
 
       {answer && (
         <div className="card" style={{ padding: 16 }}>
-          <span className="chip chip-progress">Answer</span>
+          <span className={`chip ${unconfirmed ? "chip-warning" : "chip-progress"}`}>{unconfirmed ? "Not confirmed" : "Answer"}</span>
           <p style={{ margin: "10px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{answer}</p>
         </div>
       )}

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "eval:ai": "tsc -p scripts/aievals-check/tsconfig.live.json && node scripts/aievals-check/out/live/scripts/aievals-check/live.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
