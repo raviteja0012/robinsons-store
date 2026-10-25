@@ -4,6 +4,17 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-24, on branch claude/review-pending-requests-43g9hk (latest: the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Data loads kept out of the repository, 2026-10-24 (branch keep-data-loads-local):
+- `supabase/seed_bookings.sql` and `supabase/seed_schedule.sql` are no longer committed. The
+  generators (`scripts/generate-seed-bookings.mjs`, `scripts/generate-seed-schedule.ts`) write
+  them on the developer's machine from the store's workbooks, and `.gitignore` keeps them out.
+  Neither was ever in `supabase/run-order.txt`, so no workflow applied them and the live
+  database is unchanged.
+- `supabase/seed.sql` keeps its curated vendors with made-up phone numbers (705-555-01NN) and
+  no email addresses.
+- RUNBOOK Step 2, the store skill's file map and the Kiro data-model notes say how to generate
+  the loads locally.
+
 Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch repo-protect):
 - `.mcp.json` keeps the Supabase MCP server, now with `read_only=true` and only the `docs`
   and `debugging` tool groups: documentation search, logs and advisors.
