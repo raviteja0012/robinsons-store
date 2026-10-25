@@ -6,7 +6,8 @@ calendar dates. Anything it has to coerce gets confidence 0 so it goes through t
 acknowledgement instead of being saved quietly.
 
 `src/lib/captureLines.ts` holds the capture screen's line rules. Only a retyped unit cost
-clears an amber line; fixing a description or qty does not. When the role cannot see money,
+that is a real number clears an amber line; fixing a description or qty, emptying the cost
+box, or typing something that is not a number does not. When the role cannot see money,
 an amber line is saved with no unit cost, so staff never post a cost they could not check.
 
 ## Running it

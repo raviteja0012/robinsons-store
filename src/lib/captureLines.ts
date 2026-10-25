@@ -7,9 +7,12 @@
 
 import type { LineItem } from "@/lib/types";
 
-// Applies one edit to a line. Confidence goes to 1 only when the patch carries a unit cost.
+// Applies one edit to a line. Confidence goes to 1 only when the patch carries a typed unit
+// cost that is a real number. Emptying the box (null) or typing something that is not a
+// number (NaN) leaves the line amber, so it cannot save a blank cost that looks checked.
 export function editLine(line: LineItem, patch: Partial<LineItem>): LineItem {
-  return { ...line, ...patch, ...("unit_cost" in patch ? { confidence: 1 } : {}) };
+  const retypedCost = typeof patch.unit_cost === "number" && Number.isFinite(patch.unit_cost);
+  return { ...line, ...patch, ...(retypedCost ? { confidence: 1 } : {}) };
 }
 
 // The receiving_line rows to insert, without the event id. A role that cannot see money never
