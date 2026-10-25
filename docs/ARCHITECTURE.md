@@ -110,7 +110,7 @@ The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 | `/api/extract` | Claude vision reads an invoice image into a strict JSON contract with a confidence per line | Signed-in member when login is enforced | [R src/app/api/extract/route.ts:9, 11-28, 69] |
 | `/api/ask` | Answers from the store's notes, vendors and invoices; withholds invoices from non-money roles | Signed-in member | [R src/app/api/ask/route.ts:14, 36, 44-50, 91] |
 | `/api/reorder` | Plain-language summary of the formula reorder list | Money roles once login is enforced | [R src/app/api/reorder/route.ts:12, 33] |
-| `/api/feedback-triage` | Describes a screenshot attached to a suggestion into `feedback.ai_summary` | Signed-in member | [R src/app/api/feedback-triage/route.ts:10, 89] |
+| `/api/feedback-triage` | Describes a screenshot attached to a suggestion into `feedback_summary`, which opens to the people who may open the screenshot (ADR-005) | Signed-in member who may open the screenshot | [R src/app/api/feedback-triage/route.ts:30, 56, 85-89] |
 | `/api/alerts` | Daily due-date email of unpaid and partially paid invoices; guarded by `CRON_SECRET` | The Vercel cron | [R src/app/api/alerts/route.ts:12, 23-44, 53-54] [R vercel.json:3-5] |
 | `/api/health` | Pass or fail on database reachability, the owed-total rule, the payment engine, status drift and required columns; never returns a dollar figure | Anyone; detail only with `CRON_SECRET` | [R src/app/api/health/route.ts:11, 22-24, 148-258] |
 | `/api/import` | Loads the bookings, schedule or inventory workbook | Owner or manager | [R src/app/api/import/route.ts:14, 450-451] |
@@ -120,7 +120,7 @@ The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 AI routes: default model `claude-sonnet-5`, `ANTHROPIC_MODEL` overrides; no temperature is
 sent, on purpose, because current models reject non-default sampling; text answers go
 through `plainText()` [R src/app/api/ask/route.ts:39, 152, 166] [R src/app/api/reorder/route.ts:23, 110]
-[R src/app/api/feedback-triage/route.ts:38, 86]. BUILT.
+[R src/app/api/feedback-triage/route.ts:82]. BUILT.
 
 AI usage log and daily cap. BUILT: every model call goes through `callClaude`
 [R src/lib/anthropic.ts:66], which reserves a row in `ai_call` before the model is asked and
@@ -305,13 +305,15 @@ which adds the role fence [R supabase/auth_setup.sql:315-331]. `inventory_count_
 and `pay_rate` and `receiving_line` through theirs, all in 3e
 [R supabase/auth_setup.sql:333-412]. `ai_call`, the AI usage log, is store-scoped in its own
 block: the owner reads it, and nobody writes it except through its two functions
-[R supabase/auth_setup.sql:135-157]. It runs just before `money_by_role.sql`, the last script
-in the run order [R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
+[R supabase/auth_setup.sql:135-157]. `feedback_summary`, the AI's description of a suggestion
+screenshot, is store-scoped in section 3g and opens by the screenshot's rule (ADR-005)
+[R supabase/auth_setup.sql:658-716]. `ai_call.sql` runs just before `money_by_role.sql`
+[R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
 `auth_setup.sql` (3a, or 3e if it holds a dollar figure), and in a migration for live
 databases [R CLAUDE.md:31-32].
 
 Soft voids only: `voided_at` and `voided_by` sit on 13 tables from one loop plus `credit_note`
-and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 241-242, 666-681].
+and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 240-241, 776-792].
 
 ## 6. Build and release
 
@@ -369,7 +371,9 @@ Store data is fenced by store at the database. Money is fenced by role in the ap
 and the same fence at the database is built and applies on merge (ARCH-03;
 docs/adr/ADR-003-money-by-role-at-the-database.md). Stored files are fenced by store and by
 kind at the database, built and applying on merge (ARCH-04;
-docs/adr/ADR-004-stored-files-by-store-and-role.md).
+docs/adr/ADR-004-stored-files-by-store-and-role.md). The AI's description of a suggestion
+screenshot follows the screenshot's rule, built and applying on merge (ARCH-12;
+docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
 
 - Row-level security, repository default: a fresh install from `schema.sql` gets the open
   demo policy set (`dev_all`, anon read and write on every table) and a public `documents`
@@ -421,6 +425,20 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   `supabase/documents_by_role.sql` applies on merge [Q: the developer, run ADR-004 condition 3
   after the merge]. Ravi Kiran chose who opens which file
   [D: relayed to the developer 2026-10-25, confirm with Ravi Kiran].
+- Screenshot descriptions: BUILT in the repository. The AI's description of a suggestion
+  screenshot is kept in `feedback_summary`, one row per suggestion with the file it was read
+  from, and opens to lead, manager and owner of its store and to whoever may open that file,
+  which for a suggestion file is the member who attached it [R supabase/auth_setup.sql:658-695].
+  Whoever may read one may write it, for its own suggestion's file, so the reader runs as the
+  caller; no member removes one [R supabase/auth_setup.sql:696-716]. Older descriptions move off
+  `feedback.ai_summary`, which is dropped [R supabase/auth_setup.sql:641-656]. Proven on fresh and
+  upgraded copies [V-run, supabase/feedback_summary_test.sql on supabase/postgres 17.11.0.005
+  with the storage schema of supabase/storage-api v1.79.5, 2026-10-25: 85 of 85 checks pass on
+  both] and through PostgREST v14.18 and the storage service with the app's own client
+  [V-run, @supabase/supabase-js 2.106.2, 2026-10-25: the Suggestions reads and the reader's
+  save for owner, manager, lead, two staff and a second store]. Live once
+  `supabase/feedback_summary.sql` applies on merge [Q: the developer, run ADR-005 condition 3
+  after the merge].
 - Audit trail: members may only insert `activity_log` rows attributed to themselves and have
   no update or delete policy [R supabase/auth_setup.sql:263-279]. BUILT.
 - Service role key: server-side only, used by `/api/admin/users`, `/api/import`,
@@ -431,10 +449,10 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-58]
   [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
   content: feedback triage sends the attached screenshot as an image, so a screenshot of the
-  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
+  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:63-75],
   and knowledge notes, typed freely by staff, go into every Ask prompt
   [R src/app/api/ask/route.ts:45, 73-76]. The screenshot picker says so before anything is attached
-  [R src/app/suggestions/page.tsx:275-277]. BUILT.
+  [R src/app/suggestions/page.tsx:295-297]. BUILT.
 - Canadian regions: records and stored files live in Toronto, and the API routes run in
   Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
   which stores it in the US, and the due-date email goes through Resend, which stores its
@@ -477,6 +495,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
+| ARCH-12 | BUILT 2026-10-25: the AI's description of a suggestion screenshot opens to the people who may open the screenshot (ADR-005; `supabase/feedback_summary.sql`); 85 of 85 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-005 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
 
 ## 10. How this maps to the rest of the docs
 
@@ -506,4 +525,8 @@ section 7, and docs/adr/ADR-003-money-by-role-at-the-database.md); line referenc
 repository, the local test databases with the Supabase storage service cited in section 7, and
 docs/adr/ADR-004-stored-files-by-store-and-role.md); the owner's choice stays `[D]` until Ravi
 Kiran confirms it, and the references into `supabase/auth_setup.sql` after section 3d were
-re-read and moved up ten lines.
+re-read and moved up ten lines. Added 2026-10-25 by the ADR-005 session: 12 claims checked, 12
+confirmed, 0 killed, 3 sources (this repository, the local test databases with PostgREST and the
+storage service cited in section 7, and
+docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md); four references into the
+screenshot reader route and the Suggestions page that had drifted were re-read and moved.
