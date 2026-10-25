@@ -193,12 +193,13 @@ declare
 begin
   if not (select enforced from mode) then return; end if;
 
-  -- 1. The rules are in place: a private bucket, exactly two policies, nothing open.
+  -- 1. The rules are in place: a private bucket and exactly two policies on storage.objects.
+  -- Policies add up, so any other one (say, made in the dashboard) could open these files again.
   perform pg_temp.expect('bucket is private', 'false',
     (select public::text from storage.buckets where id = 'documents'));
-  perform pg_temp.expect('documents policies', 'documents_open SELECT authenticated,documents_save INSERT authenticated',
+  perform pg_temp.expect('every policy on storage.objects', 'documents_open SELECT authenticated,documents_save INSERT authenticated',
     (select string_agg(policyname || ' ' || cmd || ' ' || array_to_string(roles, ','), ',' order by policyname)
-     from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname like 'documents%'));
+     from pg_policies where schemaname = 'storage' and tablename = 'objects'));
 
   -- 2. Older files are recorded with their store, once, and only these kinds of name.
   perform app_auth.record_legacy_documents();

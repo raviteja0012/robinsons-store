@@ -130,14 +130,24 @@ Run in this order; skip nothing (each is safe to re-run):
    insurance_renewal). On a demo database it only adds the views. It is the same block as
    `auth_setup.sql` section 3e, so either order ends the same. `money_by_role_test.sql` is
    its proof, for a disposable database only; it is never in the run order.
-11. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
+11. `documents_by_role.sql`: stored files fenced by store and role (ARCH-04,
+   docs/adr/ADR-004-stored-files-by-store-and-role.md). With enforced login, a member opens
+   only their own store's files: invoice photos only as lead, manager or owner, screenshots
+   and voice notes also when they attached them, the workbook archive only as owner or
+   manager. Files saved before the store folders are recorded once with their store, so none
+   moves; it prints how many. On a demo database it changes nothing. It must run after
+   `money_by_role.sql`, and it is the same block as `auth_setup.sql` sections 3d and 3f.
+   `documents_by_role_test.sql` is its proof, for a disposable database with Supabase's
+   storage schema only; it is never in the run order.
+12. `auth_setup.sql`: ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 
 ## What each remaining file is
 
 - `auth_setup.sql` — the enforced-auth policy set (per-store, per-role; app_auth helpers).
-- `storage.sql` (if present) / bucket setup — the documents bucket used by Capture and by
-  Suggestions attachments (paths under feedback/).
+- The `documents` bucket: made by `schema.sql` (open, for the demo) and locked by
+  `auth_setup.sql` sections 3d and 3f. Files sit under `<store_id>/invoices/`,
+  `<store_id>/feedback/` and `<store_id>/imports/`; older ones keep their earlier names.
 
 ## After running scripts
 

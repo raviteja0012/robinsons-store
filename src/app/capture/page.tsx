@@ -440,7 +440,7 @@ export default function Capture() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn-primary" style={{ flex: "1 1 200px", minWidth: 160, maxWidth: 360 }} onClick={save} disabled={saving || (hasDiscrepancy && !ack) || (hasLowFlags && !lowAck)}>
+            <button className="btn-primary" style={{ flex: "1 1 200px", minWidth: 160, maxWidth: 360 }} onClick={save} disabled={saving || !storeId || (hasDiscrepancy && !ack) || (hasLowFlags && !lowAck)}>
               {saving ? "Saving." : "Save to feed"}
             </button>
             {hasDiscrepancy && !ack && (

@@ -208,7 +208,10 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
 - [ ] 9.1 **YOU, with Claude**: fix ARCH-03, so dollar amounts are hidden from staff by the
       database itself, not only by the screens. Built on branch claude/arch-03-money-by-role
       (docs/adr/ADR-003-money-by-role-at-the-database.md); done once it is merged and the
-      ADR-003 condition 3 check reads clean. Decide ARCH-04 (stored files) at the same time.
+      ADR-003 condition 3 check reads clean. ARCH-04 (stored files) likewise: RAVI chose who
+      opens which file on 2026-10-25, built on branch claude/arch-04-stored-files
+      (docs/adr/ADR-004-stored-files-by-store-and-role.md); done once it is merged and the
+      ADR-004 condition 3 check reads clean.
 - [ ] 9.2 Only then: RAVI or a manager adds staff from the app's Admin, Team page.
 
 ## Task 10. The new team member

@@ -78,8 +78,8 @@ only you can create them in your Supabase. These steps create them, then turn it
    these if you prefer; just set the same email on the matching member (auth_setup section 1b).
 3. Run the cutover SQL. SQL Editor, paste all of `supabase/auth_setup.sql`, Run. It adds
    `auth_id`, creates the role and store helper functions, replaces the open dev policies with
-   per-store per-role policies, locks the `documents` bucket to signed-in users, and links every
-   account to its member automatically by email. It is idempotent; re-run it any time you add an
+   per-store per-role policies, makes the `documents` bucket private and fences its files by
+   store and role, and links every account to its member automatically by email. It is idempotent; re-run it any time you add an
    account. It does not touch `schema.sql`.
 4. Test BEFORE trusting it. Set `NEXT_PUBLIC_REQUIRE_AUTH` = `true` in Vercel (Settings,
    Environment Variables) and redeploy (it is a build-time public var, so a redeploy is
@@ -103,7 +103,8 @@ anonymous writes again (otherwise reads and writes keep requiring a linked sessi
 ## Before real staff use (later hardening, not blockers)
 - Signed document URLs: DONE. The app reads thumbnails through signed, expiring URLs
   (src/lib/docs.ts) and `auth_setup.sql` now makes the `documents` bucket private, so no
-  permanent public link to an invoice photo exists once you run the cutover.
+  permanent public link to an invoice photo exists once you run the cutover. Since ARCH-04 it
+  also fences each file by store and role (docs/adr/ADR-004-stored-files-by-store-and-role.md).
 - Low-confidence dollar gate: DONE. Capture blocks the save until every amber line is fixed or
   explicitly confirmed, records the acknowledgement on the event, and a database trigger
   (in `schema.sql` and `edit_delete.sql`) refuses a low-confidence dollar line without it.
