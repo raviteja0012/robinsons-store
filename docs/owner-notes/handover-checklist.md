@@ -131,6 +131,9 @@ Do this before Vercel, so Vercel is reconnected once, to the repository's final 
 - [ ] 6.5 **YOU**: open the project `robinsons-store`, Settings, General, scroll to **Transfer
       Project**, choose the store's team. If it offers a transfer link or code instead, open
       it in the private window as ADMIN and accept.
+- [ ] 6.5a **ADMIN**: the store team, Settings, General, copy the **Team ID** (starts `team_`).
+      **YOU** (GitHub): repository, Settings, Secrets and variables, Actions, **Variables**
+      tab, New repository variable: name `VERCEL_TEAM_ID`, value that Team ID.
 - [ ] 6.6 **ADMIN**: in the store team's copy of the project, check each one and note it here:
   - [ ] Domains lists `app.robinsonsgeneralstore.ca`
   - [ ] Environment Variables lists every name in the HANDOVER register
@@ -145,6 +148,10 @@ Do this before Vercel, so Vercel is reconnected once, to the repository's final 
       merges as a Member.
 - [ ] 6.10 **ADMIN**: Account settings, Tokens, create a token scoped to the store team. Put
       it straight into GitHub as the `VERCEL_TOKEN` secret (replace the old one).
+- [ ] 6.11 **YOU**: GitHub, Actions, "Set Vercel protection", Run workflow, mode **preview**.
+      It prints the moved project's firewall; the `/login` rate limit should be listed. If it
+      is not, run it once more with mode **apply**. Then Actions, "Diagnose Vercel deploys",
+      Run workflow. **CLAUDE**: read both run logs.
 
 ## Task 7. New keys under the store (30 minutes)
 
@@ -254,3 +261,5 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
 Supabase organization id and Owner-only rights (Supabase API and docs), the Vianet support
 number (`docs/DOMAIN_EMAIL.md:21`) and the GitHub variable fallback
 (`.github/workflows/post-deploy-watch.yml:54`). Menu paths are `[J-open]` as stated at the top.
+2026-10-25: steps 6.5a and 6.11 added; both workflows read `VERCEL_TEAM_ID`
+(`.github/workflows/vercel-diagnose.yml:40`, `.github/workflows/vercel-protect.yml:42`).

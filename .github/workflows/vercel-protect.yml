@@ -8,7 +8,8 @@
 # enables the firewall, inserts the login rate limit if it is not already there, and
 # prints the config back. Safe to run twice: the rule is looked up by name first.
 # Requires VERCEL_TOKEN. The two ids are not secrets; Vercel prints them in its bot
-# comment on every pull request here.
+# comment on every pull request here. The team id comes from the repository variable
+# VERCEL_TEAM_ID when it is set; unset, it is the team the project was created on.
 
 name: Set Vercel protection
 
@@ -38,7 +39,7 @@ jobs:
       - name: Read, and in apply mode write, the firewall
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          TEAM_ID: team_Aj8Hn8jG6RAIKdixSLzls0BN
+          TEAM_ID: ${{ vars.VERCEL_TEAM_ID || 'team_Aj8Hn8jG6RAIKdixSLzls0BN' }}
           PROJECT_ID: prj_sDGCXtpmypc0d3qw0ylbO1rnWqeo
           MODE: ${{ inputs.mode }}
         run: |

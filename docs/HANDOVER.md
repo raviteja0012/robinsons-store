@@ -208,6 +208,7 @@ Every name the code and workflows read [V-run, search of `process.env` in `src/`
 | `DEV_URL` | The dev site, once it exists |
 | `SLACK_REQUEST_CHANNEL` | The Slack channel ID the autopilot reads (accepted as a secret too) |
 | `SLACK_REQUIRE_MENTION` | Optional. `false` only for a requests-only channel |
+| `VERCEL_TEAM_ID` | The Vercel team the diagnose and protect workflows ask [R `.github/workflows/vercel-diagnose.yml:40`, `.github/workflows/vercel-protect.yml:42`]. Optional until the project moves; then the store team's id, which starts `team_` |
 
 ## Proof the move worked
 
