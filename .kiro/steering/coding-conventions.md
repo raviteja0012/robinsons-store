@@ -82,7 +82,7 @@ When working on TypeScript or React files in this project, follow these conventi
 - All routes resolve the caller through `src/lib/serverMember.ts`
 - In enforced mode: require a signed-in member; queries run as the caller so RLS applies
 - /api/alerts uses the service role (cron has no session), requires CRON_SECRET once auth is on
-- Return 200 with a clear message on model errors, not 502
+- Model failures return a non-2xx status with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`, never the provider's raw error
 - The `/api/extract` route uses a strict JSON-only contract with Claude vision
 - Guard against duplicate payments on retry
 
