@@ -47,6 +47,8 @@ function fakeDb(tables, opts = {}) {
 }
 const inserts = (db, table) => db.log.filter((l) => l.op === "insert" && l.table === table);
 const selects = (db, table) => db.log.filter((l) => l.op === "select" && l.table === table);
+// A read that throws comes back as no rows plus the reason, so it shows as a FAIL line.
+const caught = async (fn) => { try { return { rows: await fn(), why: "" }; } catch (e) { return { rows: [], why: e.message }; } };
 
 async function main() {
   // ---- Schedule upload, through planScheduleLoad: the code the import route runs ----
@@ -137,20 +139,20 @@ async function main() {
 
   // Somebody adds a row that sorts before the cursor while the export is between pages.
   const insDb = fakeDb({ shift: ids.map((id) => ({ id })) }, { beforeRequest: { 1: (tb) => tb.shift.push({ id: "id-0500x" }) } });
-  const insGot = await readTable(insDb, "shift", (q) => q);
-  t("insert between pages: every pre-existing id exactly once", eachOnce(insGot, ids), `repeats ${repeats(insGot).join(",") || "none"}`);
+  const ins = await caught(() => readTable(insDb, "shift", (q) => q));
+  t("insert between pages: every pre-existing id exactly once", eachOnce(ins.rows, ids), ins.why || `repeats ${repeats(ins.rows).join(",") || "none"}`);
 
   // Somebody hard-deletes a shift that was already exported, between pages.
   const delDb = fakeDb({ shift: ids.map((id) => ({ id })) }, { beforeRequest: { 1: (tb) => tb.shift.splice(tb.shift.findIndex((r) => r.id === "id-0010"), 1) } });
-  const delGot = await readTable(delDb, "shift", (q) => q);
-  t("delete between pages: no other row dropped", eachOnce(delGot, ids), `${delGot.length} rows`);
+  const del = await caught(() => readTable(delDb, "shift", (q) => q));
+  t("delete between pages: no other row dropped", eachOnce(del.rows, ids), del.why || `${del.rows.length} rows`);
 
   // Every page keeps the route's filter, so page two never reaches another store.
   const mixDb = fakeDb({ vendor: [...ids.map((id) => ({ id, store_id: "s1" })), ...ids.map((id) => ({ id: id + "b", store_id: "s2" }))] });
-  const s1 = await readTable(mixDb, "vendor", (q) => q.eq("store_id", "s1"));
-  t("every page keeps the store filter", s1.length === 1500 && s1.every((r) => r.store_id === "s1"), `${s1.length} rows`);
+  const s1 = await caught(() => readTable(mixDb, "vendor", (q) => q.eq("store_id", "s1")));
+  t("every page keeps the store filter", s1.rows.length === 1500 && s1.rows.every((r) => r.store_id === "s1"), s1.why || `${s1.rows.length} rows`);
   t("pages are ordered on id, ascending, 1000 at a time",
-    EXPORT_PAGE_SIZE === 1000 && selects(mixDb, "vendor").every(({ q }) => q.order && q.order.c === "id" && q.order.dir === 1 && q.limit === 1000));
+    EXPORT_PAGE_SIZE === 1000 && selects(mixDb, "vendor").length === 2 && selects(mixDb, "vendor").every(({ q }) => q.order && q.order.c === "id" && q.order.dir === 1 && q.limit === 1000));
 
   // A database error fails the export with the table named, instead of a short workbook.
   let threw = "";
