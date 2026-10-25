@@ -372,13 +372,21 @@ not yet at the database (ARCH-03).
   `/api/alerts`, `/api/health` [R src/app/api/admin/users/route.ts:32]
   [R src/app/api/import/route.ts:417] [R src/app/api/alerts/route.ts:35]
   [R src/app/api/health/route.ts:112].
-- PIPEDA and staff data: the AI routes read notes, vendors, invoices and orders, never
-  employee, pay or shift tables [R src/app/api/ask/route.ts:44-50]
-  [R src/app/api/reorder/route.ts:44-46]. BUILT.
-- Canadian regions: records and invoice images live in Toronto; invoice images go to
-  Anthropic in the US to be read; the owner was told this in writing
-  [R docs/owner-notes/store-app-infrastructure.html:470-517]. Function processing runs in
-  Montreal (section 2; ARCH-01 closed 2026-10-24).
+- PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
+  reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:44-51]
+  [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
+  content: feedback triage sends the attached screenshot as an image, so a screenshot of the
+  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
+  and knowledge notes, typed freely by staff, go into every Ask prompt
+  [R src/app/api/ask/route.ts:44]. The screenshot picker says so before anything is attached
+  [R src/app/suggestions/page.tsx:275-277]. BUILT.
+- Canadian regions: records and stored files live in Toronto, and the API routes run in
+  Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
+  which stores it in the US, and the due-date email goes through Resend, which stores its
+  records in the US; what each flow sends, its region and its retention are in
+  [R docs/PLATFORM.md:91-142]. The owner was told in writing, corrected 2026-10-24
+  [R docs/owner-notes/store-app-infrastructure.html:509-525]; the owner's published copy
+  changes only when the developer republishes it.
 
 ## 8. What is deliberately not here
 

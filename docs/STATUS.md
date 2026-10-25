@@ -42,8 +42,10 @@ What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICA
   four-pieces card name screenshot reading.
 - The Suggestions screenshot picker now says under the field: "Screenshots are read by an AI
   service in the United States. Leave out pay, schedules and staff details."
+- docs/ARCHITECTURE.md section 7 restated the old claim; its PIPEDA and Canadian regions
+  bullets now describe the screenshot and knowledge-note paths and point at the PLATFORM.md
+  table.
 - Open: the owner's published page changes only when the developer republishes it.
-  docs/ARCHITECTURE.md section 7 still restates the old claim.
 
 The handover is prepared, 2026-10-18:
 - docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
