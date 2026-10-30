@@ -14,6 +14,9 @@ AI view and standards map in the architecture doc, 2026-10-30:
   arc42). Names only; no conformance claimed.
 - Found: the store name and town are written into the Ask, reorder and alert prompts
   (ARCH-13, blocks a second store). The AI evals have never run against the model (ARCH-14).
+- The store's Miro board now has all seven diagrams, built in Miro from the doc's Mermaid and
+  named "N. Section, 2026-10-30". The six older ones are still there; ARCH-12 stays open
+  until they are removed.
 - Docs only; no code, schema, policy or workflow change.
 
 
