@@ -13,6 +13,7 @@ import { useActiveStore } from "@/lib/store";
 import { authHeader, currentActorId, useCurrentRole, useMember } from "@/lib/auth";
 import { canEdit, voidRow } from "@/lib/edit";
 import { docUrls } from "@/lib/docs";
+import { documentPath } from "@/lib/documentPath";
 import type { Feedback } from "@/lib/types";
 
 const KINDS: { value: Feedback["kind"]; label: string }[] = [
@@ -121,20 +122,26 @@ export default function Suggestions() {
       setError("Pick who you are first: choose your name under Acting as on any main screen.");
       return;
     }
+    if (!storeId) {
+      setError("The store has not loaded yet. Wait a moment and try again.");
+      return;
+    }
     setBusy(true);
     setError(null);
     setOkMsg(null);
     try {
+      // Attachments open to lead, manager, owner and the member who attached them
+      // (supabase/auth_setup.sql 3f), so a staff member's own screenshot can still be read by AI.
       let screenshotPath: string | null = null;
       if (shot) {
-        screenshotPath = `feedback/${Date.now()}_${shot.name.replace(/\s+/g, "_")}`;
+        screenshotPath = documentPath(storeId, "feedback", `${Date.now()}_${shot.name.replace(/\s+/g, "_")}`);
         const up = await supabase.storage.from(DOCUMENTS_BUCKET).upload(screenshotPath, shot, { upsert: false });
         if (up.error) throw new Error(`storage: ${up.error.message}`);
       }
       let audioPath: string | null = null;
       if (audioBlob) {
         const ext = (audioBlob.type || "").includes("ogg") ? "ogg" : "webm";
-        audioPath = `feedback/${Date.now()}_voice.${ext}`;
+        audioPath = documentPath(storeId, "feedback", `${Date.now()}_voice.${ext}`);
         const up = await supabase.storage.from(DOCUMENTS_BUCKET).upload(audioPath, audioBlob, { upsert: false, contentType: audioBlob.type || "audio/webm" });
         if (up.error) throw new Error(`storage: ${up.error.message}`);
       }

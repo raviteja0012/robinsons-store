@@ -3,7 +3,7 @@
 -- Run once in the Supabase SQL editor. Idempotent: safe to run again.
 --
 -- Each note can carry a screenshot and a voice recording (stored in the documents bucket
--- under feedback/). When a screenshot is attached, the app reads it with the store's
+-- under <store_id>/feedback/). When a screenshot is attached, the app reads it with the store's
 -- Anthropic key and stores a text description in ai_summary, so the request is searchable
 -- and the developer digest carries the full picture without the image.
 
@@ -14,8 +14,8 @@ create table if not exists public.feedback (
   kind text not null default 'idea' check (kind in ('idea','problem','question','praise')),
   page text,                -- which screen it is about, in the author's words
   body text,                -- the note itself
-  screenshot_path text,     -- storage path under feedback/ in the documents bucket
-  audio_path text,          -- voice recording path under feedback/
+  screenshot_path text,     -- storage path under <store_id>/feedback/ in the documents bucket
+  audio_path text,          -- voice recording path under <store_id>/feedback/
   ai_summary text,          -- what the screenshot shows, read by the store's AI at submit time
   status text not null default 'new' check (status in ('new','planned','done','declined')),
   created_at timestamptz default now(),
