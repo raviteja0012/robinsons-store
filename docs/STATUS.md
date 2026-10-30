@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/sync-main-into-develop (develop brought level with main; latest on develop: the Slack lifecycle workflow runs its scripts from the base branch, below; latest on main: money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/sync-main-into-develop (develop brought level with main; latest on develop: the Slack lifecycle workflow runs its scripts from the base branch, below; latest on main: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 The Slack lifecycle workflow runs its scripts from the base branch, 2026-10-30:
 - `slack-lifecycle.yml` now checks out `pull_request.base.sha` on a pull request event and
@@ -13,6 +13,78 @@ The Slack lifecycle workflow runs its scripts from the base branch, 2026-10-30:
 - New `.github/scripts/slack-lifecycle.test.mjs` (21 checks) fails if the checkout loses its
   ref, if the ref gives anything but the base for any trigger the workflow listens to, if a
   trigger is added without a matching case, or if a script runs before the checkout.
+
+PR #88 promotion follow-up, 2026-10-30:
+- Promotion records main before CI, fetches it again immediately before the merge, and
+  continues only if main is unchanged. The head remains pinned with --match-head-commit.
+- README.md describes CI on both branches; ENVIRONMENTS.md requires a successful dev script
+  run before SQL promotion; LOOP_ENGINEERING.md and CAPABILITIES.md describe promotion.
+- Verification: automation tests run locally; app gates skipped because dependencies are absent.
+
+CI on `develop`; promotion merges only on green CI, 2026-10-30:
+- CI now starts by itself on every pull request into `develop` and every push to it, as on
+  `main`. Before, the documented path for app changes ran no checks unless someone started CI
+  by hand; #71, #83 and #85 target `develop`. They get a run on their next push or update from
+  `develop` once this reaches `develop`. The leftover `claude/great-johnson-CFSbi` trigger is
+  gone; that branch no longer exists on origin.
+- `promote.yml` no longer merges with `--auto`, which with no required checks on `main` could
+  merge at once. It now does what the Slack loop's tier A step does: requires `develop` to
+  hold everything on `main`, starts CI on the pull request's head commit, waits, reads the
+  pull request again, and merges with `--match-head-commit`. Anything unexpected leaves the
+  pull request open and fails the run. After the merge it starts CI on `main` and, when
+  `supabase/` changed, Apply database scripts, since a merge made with the workflow's token
+  may start neither.
+- Docs: ENVIRONMENTS.md, LOOP_ENGINEERING.md section 3, CONTRIBUTING.md, the ARCHITECTURE.md
+  promotion row (was SCAFFOLDED with no `develop`; now PARTIAL), CAPABILITIES.md item 40
+  (auto-merge no longer used), two ONBOARDING.md line references.
+- Open: the promotion has not run end to end on GitHub. First run after this merges: expect a
+  hold until `develop` is brought level with `main` (it lacks #56 today). Whether GitHub
+  starts no push workflow for a merge made with `GITHUB_TOKEN` stays `[J-open]` (ADR-002
+  context item 3); the dispatches are safe either way.
+- Tier C (`.github/`): a person merges. Then bring `develop` level with `main`, which is the
+  step that makes pull requests into `develop` show CI.
+
+PR #87 documentation follow-up, 2026-10-30:
+- Added the status line, related-docs paragraph and basis footer to docs/README.md, and
+  expanded the architecture catalogue entry for PR #81.
+- CONTRIBUTING.md points to the release checklist before real staff use.
+- Verification: local link and format checks; app gates skipped because dependencies are absent.
+
+Docs organized into one entry path, 2026-10-30:
+- docs/README.md now routes by reader (new member, builder or AI session, owner, checker),
+  lists the rules every session loads, adds a 13-step learning path (one component per
+  sitting: read the doc, open the code, answer one question) and states the six rules that
+  keep AI-written docs trustworthy. It also lists the Slack app manifest, which was missing.
+- The root README.md and CONTRIBUTING.md are rewritten. Both still described login, signed
+  URLs and the confidence gate as to-do; CONTRIBUTING also called integer cents planned, CI
+  lint and build only, and the repository untested. They now route to the current docs and
+  list every CI step.
+- docs/LOOP_ENGINEERING.md: the watchdog runs after CI, not after the deploy; the Refine
+  section no longer calls the parked Jira board the queue; Costs describes the Slack sweep;
+  two improvement items no longer mention a ticket or a dev database still to build.
+- Pointers fixed: the standards path in ARCHITECTURE.md, docs/SOURCES.md in the skill and the
+  build spec, the doc count in CLAUDE.md, the invariant count in VERIFICATION.md; a personal
+  account name removed from two evidence lines. The build spec carries a history banner.
+- Docs only; no code, schema, policy or workflow change. Tier C, because it edits CLAUDE.md,
+  the skill, LOOP_ENGINEERING.md and an ADR: a person merges.
+
+Stored files fenced by store and role, 2026-10-25 (branch claude/arch-04-stored-files; ARCH-04,
+docs/adr/ADR-004-stored-files-by-store-and-role.md, see VERIFICATION.md):
+- Ravi Kiran chose who opens which stored file: invoice photos only lead, manager and owner;
+  screenshots and voice notes those three and whoever attached them. The workbook archive
+  opens to owner and manager, the roles that import. Each member sees only their own store's.
+- New files are saved under the store's folder and a kind folder. Staff still save the invoice
+  photo in their hand from Capture but do not open it again, so the home feed shows their
+  captures without a picture; a staff member's own screenshot is still read by AI. Files
+  saved before are recorded once with their store, so nothing in the bucket moves.
+- It applies itself: supabase/documents_by_role.sql runs after money_by_role.sql and matches
+  auth_setup.sql sections 3d and 3f. Demo databases stay open.
+- Proven with Supabase Postgres 17 and the Supabase storage service: documents_by_role_test.sql
+  163 of 163 on a fresh install and on a copy upgraded from main, 5 of 5 on demo copies;
+  through the storage service with the app's own client, 55 of 55 fresh and 108 of 108
+  upgraded, older files included; money_by_role_test.sql still 130 of 130.
+- After the merge: read ADR-004 condition 3 once. A page left open from before the update
+  needs a reload before it can save a file. Open: whether leads open the workbook archive.
 
 Money fenced by role at the database, 2026-10-25 (branch claude/arch-03-money-by-role; ARCH-03,
 docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
@@ -150,7 +222,6 @@ Module checks and automation tests run in CI by convention, 2026-10-30:
   they ran only by hand. The `run.sh` contract is in the vendorfields-check README.
 - The checks already in CI with their own steps (extraction, Ask grounding, AI evals, AI
   usage, import and export) are unchanged. Commit 2f4b1ea.
-
 
 Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
 - The move to the store's accounts is done and the docs now say so: the Vercel project is

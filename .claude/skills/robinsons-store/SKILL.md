@@ -45,15 +45,14 @@ robinsons-store/
     importSchedule, nav (grouped sidebar model), view (View-as preview),
     edit (canEdit, soft-delete voidRow, hard deleteRow), notify (bell items)
   vercel.json                the daily /api/alerts cron
-  docs/  STATUS, VERIFICATION (per-feature sign-off record), ARCHITECTURE, DATA_SOURCES,
-    DATA_INVENTORY, SOURCES
+  docs/  every doc, indexed with a learning path in docs/README.md; decision records in docs/adr/
   RUNBOOK.md, CONTRIBUTING.md
   .claude/skills/robinsons-store/  this skill, so it travels with the code
 ```
 
 ## Screen and route map
 Every screen is a client component that reads through useActiveStore() and filters by the active store_id. Money is gated where noted.
-- `/` feed: the department feed of recent receiving events, with document thumbnails resolved through docUrls() in src/lib/docs.ts (signed URLs, public fallback in demo). Line totals are money-gated.
+- `/` feed: the department feed of recent receiving events, with document thumbnails resolved through docUrls() in src/lib/docs.ts (signed URLs, public fallback in demo) for lead, manager and owner only; staff see the card without the photo. Line totals are money-gated.
 - `/capture`: the core loop. Upload an invoice photo or PDF, /api/extract returns structured lines with per-line confidence, a confirm screen flags low-confidence (amber) lines and an order-vs-invoiced discrepancy. The save is hard-blocked until every amber line is fixed (a human edit sets confidence to 1) or the person checks "I checked every amber line"; that acknowledgement is stored on receiving_event.low_confidence_ack and a database trigger (receiving_line_confidence_gate) refuses a low-confidence dollar line without it. Then save() uploads the file and writes receiving_event plus receiving_line plus an activity_log row. Has a manual-entry path with no file (phone orders).
 - `/dashboard`: KPIs and charts (src/lib/charts, Okabe-Ito palette).
 - `/reports`: reporting views. Money-gated figures.
@@ -82,7 +81,7 @@ App conventions to apply on every screen:
 - Author: use useEffectiveActor() for created_by and activity_log.actor_id (the signed-in member in enforced auth, the "Acting as" dropdown in demo). Hide the dropdown with {!REQUIRE_AUTH && ...}. Screens with no dropdown use currentActorId(member) from src/lib/auth.ts; never inline the localStorage/REQUIRE_AUTH switch. Guard audit inserts with if (actor) so an unresolved identity never writes a null-actor log row.
 - Money by role: hide cost and margin (unit cost, order and invoice amounts, payments, premiums, pay) from the staff role with canSeeMoney(role) from src/lib/auth. Retail, customer-facing prices are not hidden.
 - Money and dates: format money with formatCAD(); compare dates with todayISO(), daysOverdue(), and dueBand() from src/lib/format.
-- Documents: upload captured files to the `documents` bucket via supabase.storage; store the path on source_file_path or confirmation_file_path. Read thumbnails through docUrls() from src/lib/docs.ts (signed URLs with a public fallback), never getPublicUrl directly. The bucket and its policy are created by schema.sql (dev, public) and made private and authenticated-only by auth_setup.sql (production).
+- Documents: upload files to the `documents` bucket via supabase.storage at a path from documentPath(storeId, kind, ...) in src/lib/documentPath.ts (kind invoices, feedback or imports); any other path is refused once login is enforced. Store the path on source_file_path or confirmation_file_path. Read through docUrls() from src/lib/docs.ts (signed URLs; a file the member may not open gets no URL), never getPublicUrl directly. The bucket and its policy are created by schema.sql (dev, public) and made private and fenced by store and kind by auth_setup.sql sections 3d and 3f (ARCH-04, docs/adr/ADR-004-stored-files-by-store-and-role.md).
 
 ## Auth and security model
 The app runs in two modes, switched by the build-time env var NEXT_PUBLIC_REQUIRE_AUTH (src/lib/auth.ts reads it once as REQUIRE_AUTH).
@@ -97,7 +96,7 @@ How identity resolves:
 
 Real auth is ON in production (read live 2026-10-18: the per-store per-role policies from auth_setup.sql are applied, the documents bucket is private, one login account exists). For a NEW database the cutover is still the five-minute RUNBOOK.md "Turn on login" step: enable Email auth, create the accounts, run auth_setup.sql, set NEXT_PUBLIC_REQUIRE_AUTH=true and redeploy. Staff logins in production are made from the Team page once SUPABASE_SERVICE_ROLE_KEY is set in Vercel.
 
-Storage security: the app reads document thumbnails through docUrls() in src/lib/docs.ts, which creates signed, expiring URLs and falls back to the public URL only for the open demo bucket. Uploads require a policy on storage.objects or every capture fails with "new row violates row-level security policy". schema.sql opens the bucket for the demo (anon write, public-read); auth_setup.sql makes the bucket PRIVATE and narrows access to authenticated members, so in production no permanent public link to an invoice photo exists. Never reintroduce getPublicUrl as the primary read path.
+Storage security: the app reads document thumbnails through docUrls() in src/lib/docs.ts, which creates signed, expiring URLs and falls back to the public URL only for the open demo bucket. Uploads require a policy on storage.objects or every capture fails with "new row violates row-level security policy". schema.sql opens the bucket for the demo (anon write, public-read); auth_setup.sql makes the bucket PRIVATE (3d) and fences it by store and kind (3f): a member opens only their own store's files, invoice photos only as lead, manager or owner, suggestion files also when they saved them, the workbook archive only as owner or manager; any member saves invoice photos and suggestion files into their store's folder, only owner and manager save workbooks, and nobody changes or deletes a stored file through the API. So in production no permanent public link to an invoice photo exists. Never reintroduce getPublicUrl as the primary read path.
 
 ## Environment variables
 - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: the Supabase project. Without both, SUPABASE_CONFIGURED is false and every screen shows its "Connection" card.
@@ -108,7 +107,7 @@ Storage security: the app reads document thumbnails through docUrls() in src/lib
 
 ## Debugging playbook (the errors this app actually throws)
 - "column <table>.store_id does not exist" or "relation <table> does not exist" (for example maintenance_asset): the deployed code is newer than the database. The schema drifted. Fix: re-run schema.sql (drop the tables first with a drop-all DO-block) then seed.sql. For an existing database with data to keep, deliver the targeted ALTER or CREATE instead of a full rebuild.
-- "storage: new row violates row-level security policy" on capture: the documents bucket has no upload policy. Fix: run the bucket + policy block (now in schema.sql), or auth_setup.sql in production.
+- "storage: new row violates row-level security policy" on capture: the documents bucket has no upload policy, or (enforced login) the path is not under the member's own store folder from documentPath(), or the page was opened before the store folders shipped and needs a reload. Fix: run the bucket + policy block (now in schema.sql), or auth_setup.sql in production; build every upload path with documentPath().
 - "new row violates row-level security policy" on a table insert in enforced mode: the member is not linked (app_user.auth_id is null) or store_id does not match my_store_id(). Fix: run auth_setup.sql section 4 to auto-link by email; confirm select full_name, role, store_id, auth_id from app_user.
 - /api/ask or /api/extract returns 500 or a "needs ANTHROPIC_API_KEY" message: the key is missing or invalid in Vercel.
 - Every screen shows a "Connection" card: NEXT_PUBLIC_SUPABASE_URL or ANON_KEY is unset, so SUPABASE_CONFIGURED is false.
@@ -123,7 +122,7 @@ Breaking any of these is a regression even if the build passes.
 3. Actor integrity: created_by and activity_log.actor_id come from useEffectiveActor(); the actor dropdown is hidden when REQUIRE_AUTH.
 4. Audit: every meaningful write inserts an activity_log row with a non-null entity_id.
 5. Human in the loop on dollars: extracted lines carry confidence; low-confidence dollar fields never auto-post; an order-vs-invoiced discrepancy needs an explicit acknowledgement before save.
-6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth. A table or column that holds a dollar figure goes into section 3e of auth_setup.sql and into supabase/money_by_role.sql, never the open 3a array, and supabase/money_by_role_test.sql gets a check for it.
+6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth. A table or column that holds a dollar figure goes into section 3e of auth_setup.sql and into supabase/money_by_role.sql, never the open 3a array, and supabase/money_by_role_test.sql gets a check for it. A new kind of stored file goes into src/lib/documentPath.ts, auth_setup.sql section 3f, supabase/documents_by_role.sql and supabase/documents_by_role_test.sql together.
 7. Build-safe: code must build with blank env. Auth and data helpers degrade to null rather than throwing; never require Supabase env or auth.users to exist at build time.
 8. Payments only through the engine RPCs in src/lib/payments.ts: record_payment (record), edit_payment (fix date/method/reference/notes/filing; re-derives touched invoice statuses), void_payment (undo; invoices go back to owing), reconcile_postdated (editors only, on load). Never update or delete payment rows directly, never hand-set a derived invoice status without a payment behind it (the vendor page auto-opens Record payment when an edit marks an invoice paid with nothing recorded). Post-dated is a future paid_date on a cheque, never a method value.
 9. AI text answers are plain text: prompts forbid markdown, routes strip it with plainText() from src/lib/aiText.ts, default model claude-sonnet-5 with ANTHROPIC_MODEL as the override. DO NOT send a temperature parameter: claude-sonnet-5 rejects non-default sampling and every AI route 400s. This was caught in review once already; do not re-add it.
@@ -242,4 +241,4 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, what the store owns on each service, every secret, and what is still open.
 - ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
-- robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.
+- robinsons_store_build_spec.md, the original plan kept for history. The Drive links are in docs/DATA_SOURCES.md.
