@@ -2,7 +2,25 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/ci-module-checks (latest: module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/slack-autopilot-review (latest: the Slack autopilot checks its work before the pull request opens, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+The Slack autopilot checks its work before the pull request opens, 2026-10-30:
+- The autopilot is built but not running: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are set,
+  `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step. Setting that one
+  variable, with the bot invited to the channel, switches it on (docs/SLACK_AUTOPILOT.md).
+- The builder now commits and stops. The workflow runs the three gates again, the tier
+  classifier, and money-reviewer and invariant-auditor as two read-only model runs with their
+  instructions read from the base branch, then opens the draft pull request itself. A change
+  under `.github/` or `.claude/` is not pushed. Verdicts go on the pull request; the reports go
+  to the Slack thread, because the repository is public.
+- The decision is a tested script, `.github/scripts/autopilot-review.mjs`; CI picks up its
+  test by the convention above. `slack-status.mjs` can post one extra thread reply
+  (`DETAIL_FILE`) for the reports.
+- New open item ARCH-13: a pull request opened with the workflow's token starts no CI run, so
+  CI first runs when a person marks it ready. The workflow's own gate run covers the gap.
+- docs/ARCHITECTURE.md section 6, AGENTS.md, SLACK_AUTOPILOT.md, LOOP_ENGINEERING.md,
+  HANDOVER.md (Slack row now PARTIAL) and the skill updated in the same change. The store's
+  Miro board needs section 6 redrawn (ARCH-12).
 
 Module checks and automation tests run in CI by convention, 2026-10-30:
 - CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops

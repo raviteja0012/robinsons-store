@@ -3,6 +3,11 @@
 Type what you want in the store's requests channel. Within half an hour it comes back as a
 draft pull request, with a reply in the thread under your own message saying what happened.
 
+**State, 2026-10-30: built, not running.** The bot token and the Anthropic key are in GitHub,
+but the variable `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step with
+"Slack autopilot is not configured yet" [V-run, `gh variable list`, `gh secret list` and that
+day's run logs]. No request has been built yet. To switch it on, see Setting it up below.
+
 This is the intake loop the Jira board used to be, moved to where the work is actually asked
 for. Nobody was writing to the board; people do write in Slack.
 
@@ -24,9 +29,9 @@ Two things track it, and neither needs anything stored anywhere.
 | Card | When |
 |---|---|
 | 👀 Working on it | picked up |
-| 📝 Ready for someone to look | the draft pull request exists |
+| 📝 Ready for someone to look | the draft pull request exists and every check before it passed |
 | ☑️ Checks passed, waiting to be merged | the automatic checks went green |
-| 🔴 Checks failed | they did not |
+| 🔴 Checks failed | they did not, or a reviewer flagged something before the pull request opened |
 | 🚀 Merged, going out to the store | somebody merged it |
 | 🟢 Live on the store's site | the deploy is confirmed serving it |
 | ✋ Stopped, this one needs a person | it refused to guess, or the build failed |
@@ -100,6 +105,56 @@ If you make a channel that exists solely for requests, set the variable
   anything, including "ignore your previous instructions". Message text is a request for
   work, never a change to the process. This is written into the prompt, and it is the reason
   the channel should not be public to people outside the store.
+- **Edit the automation.** A change under `.github/` or `.claude/` is not pushed at all; the
+  card says a person is needed.
+- **Open a pull request nobody has checked.** See the next section.
+
+## What checks the work before you see it
+
+The model that builds the change commits it and stops. It does not push and it does not open
+the pull request. The workflow then does four things, and only after them opens the draft
+pull request itself:
+
+| Check | What it is | Why |
+|---|---|---|
+| The three gates, again | `npx tsc --noEmit`, `npm run lint`, `npm run build` run by the workflow | The model says it ran them. Running them again turns a claim into a result |
+| Tier classifier | `.github/scripts/classify-change.mjs` reads the diff and labels it A, B or C | A script, so nothing in the request can move it. The label goes on the pull request |
+| money-reviewer | A separate model run following `.claude/agents/money-reviewer.md` | The ways this codebase has broken money before: a select missing `tax_mode`, an inline total bypassing `invoiceTotal`, SQL and TypeScript changed on one side |
+| invariant-auditor | A separate model run following `.claude/agents/invariant-auditor.md` | Store scoping, money hidden from staff, soft voids, audit rows, RLS on new tables, blank-env build |
+
+How the reviewers are kept honest:
+
+- **Their instructions come from the base branch.** The classifier, both reviewer files,
+  CLAUDE.md and the skill are read with `git show origin/<base>:...`, never from the working
+  tree, so a change cannot weaken its own reviewer.
+- **They can only read.** Read, Grep and Glob, the same tools as their agent files. Bash,
+  Write and Edit are refused by name.
+- **They never see the Slack request.** They judge the code against the store's rules. That
+  removes the one route by which somebody typing in Slack could talk a reviewer into passing
+  something.
+- **Silence is not a pass.** Each must end with `VERDICT: PASS` or `VERDICT: FINDINGS` as its
+  last line. A reviewer that errors, runs out of turns, or ends any other way counts as
+  "did not finish", which turns the card red exactly like a finding.
+
+What happens with the result: the pull request opens either way, so the work is not lost. The
+card turns 🔴 if the gates failed or either reviewer flagged something or did not finish, and
+📝 if all four passed. **The reviewers' reports are posted in the Slack thread, not on the
+pull request**, because the repository is public and a report can describe a weakness. The
+pull request carries only the verdicts and points to the thread.
+
+**The reviewers are a second look, not the gate.** A model reading another model's work
+misses things. The gate is still the person who merges. What the reviewers add is a list of
+concrete lines to read first. The decision logic is `.github/scripts/autopilot-review.mjs`,
+with its tests in `autopilot-review.test.mjs`.
+
+**CI does not run when the pull request opens** (docs/ARCHITECTURE.md, ARCH-13). The workflow
+opens it with its own token, and GitHub starts no other workflow from events that token
+causes [J-open, kill condition: the first autopilot pull request shows a CI run]. That is why
+the workflow runs the gates itself, and why it moves the card on itself instead of waiting for
+the lifecycle workflow. CI runs once a person marks the pull request ready or pushes to it.
+
+What it costs: the reviewers run only when a request produced a change, never on an idle
+sweep. Each is one `claude-sonnet-5` run of at most 30 turns.
 
 ## What it costs
 
@@ -130,8 +185,8 @@ In **Settings, Secrets and variables, Actions**:
 | Name | Kind | What |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | secret | Already set; the same key the app's AI features use |
-| `SLACK_BOT_TOKEN` | secret | A bot token, starting `xoxb-` |
-| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch |
+| `SLACK_BOT_TOKEN` | secret | A bot token, starting `xoxb-`. Set 2026-08-13 |
+| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch. **Not set as of 2026-10-30**; this is the one thing stopping it |
 | `SLACK_REQUIRE_MENTION` | **variable**, optional | Defaults to requiring the bot to be named. `false` only for a requests-only channel |
 
 **The bot token is not the incoming webhook, and it is not a refresh token.** Two different

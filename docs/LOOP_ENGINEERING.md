@@ -182,6 +182,15 @@ tier classifier is the strong one, because it does not read the ticket.
 Both have `tools: Read, Grep, Glob` and no write access at all. That is config, not
 instruction: they cannot edit even if asked to.
 
+Since 2026-10-30 the Slack autopilot runs both on every change it builds, before the pull
+request opens (docs/SLACK_AUTOPILOT.md, "What checks the work before you see it"). Three
+choices there follow from the rules above. Their instructions are read from the base branch,
+because a loop that can edit its reviewer has no reviewer. They never see the Slack request,
+so text typed in Slack cannot argue with them. And they do not decide anything: a model asked
+"is this right?" usually says yes, so their verdicts colour the card and name lines for the
+person who merges, while the merge itself stays with that person and the tier stays with the
+script.
+
 ## Borrowed skills
 
 `.agents/skills/` holds two skills installed from Supabase's official `supabase/agent-skills`

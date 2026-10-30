@@ -27,7 +27,7 @@ same change that adds it.
 | GitHub | Repository **`robinsons-store/robinsons-store`**; `main` is protected [V-run, GitHub list_branches, 2026-10-30]. The owner is admin@'s GitHub account, not an organization [D: the developer, 2026-10-25] | BUILT, with A-05 open |
 | Supabase | Organization `robinsons-store` (plan `free` [V-run, Supabase get_organization, 2026-10-30]) holding project `robinsons-store` (ref `mhcjreqvvhnrtgwtuwvr`, the live database) and project `robinsons-store-dev` (ref `wqxcmchxkdhigacvxgad`, seed data only, docs/ENVIRONMENTS.md), both Canada Central. admin@ is a member [D: the developer, 2026-10-25; confirm the Owner role on the Team page] | PARTIAL: still on Free (A-01) |
 | Anthropic | Console organization for the store [Q: Ravi Kiran, confirm it exists] | PARTIAL: the key in Vercel is the original from 2026-05-29 (A-02) |
-| Slack | Workspace robinsonsgeneralstore.slack.com [R `docs/DOMAIN_EMAIL.md:18`] and the bot app from `docs/slack-app-manifest.yml` | BUILT. Primary Owner not recorded (A-07) |
+| Slack | Workspace robinsonsgeneralstore.slack.com [R `docs/DOMAIN_EMAIL.md:18`] and the bot app from `docs/slack-app-manifest.yml` | PARTIAL. `SLACK_BOT_TOKEN` is set but `SLACK_REQUEST_CHANNEL` is not, so the request loop does not run [V-run, `gh secret list` and `gh variable list`, 2026-10-30]; which workspace the token belongs to is not readable from GitHub [J-open, kill condition: the first sweep after the channel is set logs a Slack error]. Primary Owner not recorded (A-07) |
 | Resend | Not opened. The daily due-date email stays off until it is | TARGET |
 | Google | The store's own Google account, which owns the live sheets [R `docs/SYNC_PLAN.md:67`] | BUILT. Address not recorded (A-07) |
 | Password vault | Bitwarden or 1Password, opened with admin@ | TARGET (A-03) |
@@ -85,7 +85,7 @@ Every name the code and workflows read. Values are never written here.
 | `PRODUCTION_URL` | The address the watchdog checks: `https://app.robinsonsgeneralstore.ca` |
 | `DEV_URL` | The dev site, `https://robinsons-store-git-develop-robinsons-store1.vercel.app`. Set 2026-10-30 [V-run, `gh variable list`] |
 | `VERCEL_TEAM_ID` | Optional. The team the Vercel workflows ask; unset, they use `team_pEEbrKESMFC4HpgFi3pa26P8` [R `.github/workflows/vercel-diagnose.yml:39`] |
-| `SLACK_REQUEST_CHANNEL` | The Slack channel ID the autopilot reads (accepted as a secret too) |
+| `SLACK_REQUEST_CHANNEL` | The Slack channel ID the autopilot reads (accepted as a secret too). **Not set** [V-run, `gh variable list` and `gh secret list`, 2026-10-30]; until it is, the autopilot stops at its first step |
 | `SLACK_REQUIRE_MENTION` | Optional. `false` only for a requests-only channel |
 
 ## When someone leaves
@@ -108,3 +108,8 @@ live database URL until it was removed from Preview the same day, and no `CRON_S
 October charges on the Vercel team; the repository at `robinsons-store/robinsons-store` with
 `main` protected; `develop` created the same day; the Supabase plan `free` and both projects.
 admin@'s Supabase role stays `[D]`: it is not readable from the Supabase API. Sources: Vercel API, GitHub API, Supabase API.
+Added later the same day, branch claude/slack-autopilot-review: 3 claims checked, 2
+confirmed, 1 killed. Confirmed: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are GitHub secrets;
+`SLACK_REQUEST_CHANNEL` is neither a variable nor a secret. Killed: the Slack row's BUILT,
+now PARTIAL, because the request loop has never passed its first step. Sources: GitHub CLI,
+Actions run logs.

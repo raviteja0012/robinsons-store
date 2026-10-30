@@ -182,7 +182,9 @@ break:
 - Two read-only reviewers live in .claude/agents: money-reviewer (knows the specific ways
   this codebase has broken: a select missing tax_mode, an inline total bypassing
   invoiceTotal, SQL and TypeScript changed on one side only) and invariant-auditor. Use them
-  on any diff that touches money or adds a query.
+  on any diff that touches money or adds a query. The Slack autopilot runs both on every
+  change it builds, with their instructions read from the base branch, before it opens the
+  pull request; the builder commits and never pushes (docs/SLACK_AUTOPILOT.md).
 
 ## Operational reality (how this repo is actually run)
 - The build and review work happens in an isolated cloud container with no network route to the owner's Supabase or Vercel. Do not try to connect to the database or the live site. Deliver database changes as SQL the owner runs in the Supabase SQL editor, and deploys happen by pushing to the branch (Vercel auto-deploys main).
