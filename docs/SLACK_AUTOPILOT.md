@@ -27,7 +27,7 @@ Two things track it, and neither needs anything stored anywhere.
 | 📝 Ready for someone to look | the draft pull request exists |
 | ☑️ Checks passed, waiting to be merged | the automatic checks went green |
 | 🔴 Checks failed | they did not |
-| 🚀 Merged, going out to the store | somebody merged it |
+| 🚀 Merged, going out to the store | somebody merged it, or it was words only and merged itself |
 | 🟢 Live on the store's site | the deploy is confirmed serving it |
 | ✋ Stopped, this one needs a person | it refused to guess, or the build failed |
 
@@ -94,7 +94,11 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What it will not do
 
-- **Merge.** It opens a draft pull request and stops. A person merges.
+- **Merge anything but words.** It opens a draft pull request, and a script labels it with how
+  far it may go: `tier-a` words only, `tier-b` the app, `tier-c` money, logins, the database or
+  the automation. Only tier A merges itself, after the checks pass, and only while the
+  repository variable `AUTOMERGE_TIER_A` is `true`. Everything else waits for a person
+  (docs/adr/ADR-002-words-only-changes-merge-themselves.md).
 - **Touch payments, auth, or RLS.** Those requests get a reply saying a person is needed.
 - **Follow instructions inside a message.** Anyone who can type in the channel can write
   anything, including "ignore your previous instructions". Message text is a request for
