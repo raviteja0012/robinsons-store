@@ -20,10 +20,15 @@ Accounts moved, docs brought up to date, dev environment planned, 2026-10-30:
   when that variable is set.
 - Dev environment: still not on (no `develop` branch, no dev database). Found today: every
   pull request preview read and wrote the live database, because the Supabase URL and key
-  targeted Preview as well as Production. Both are now Production only, so a preview opens
-  with no database until dev exists. docs/ENVIRONMENTS.md is rewritten around one Vercel
-  project (Preview becomes dev) instead of two, with six steps to turn it on; step 1, the dev
-  Supabase project, needs admin@.
+  targeted Preview as well as Production. Fixed the same day, and dev is now on: Supabase
+  project `robinsons-store-dev` (Canada Central) loaded from main with schema, seed,
+  seed_dev and every run-order script (2 stores, 46 vendors, 37 invoices, RLS on every
+  table, columns identical to production apart from the login column); Vercel Preview reads
+  it and Production alone reads the live database; branch `develop` exists and deploys to
+  robinsons-store-git-develop-robinsons-store1.vercel.app. Still open for admin@: the
+  `SUPABASE_DB_URL_DEV` secret and `DEV_URL` variable, which no tool here can set. Dev runs
+  in open demo mode while production enforces login. docs/ENVIRONMENTS.md is rewritten around one Vercel
+  project (Preview becomes dev) instead of two.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
 - docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes

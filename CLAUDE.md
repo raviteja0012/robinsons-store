@@ -18,8 +18,8 @@ Read before building:
   Supabase Free takes no backups. Check it before adding any service.
 - docs/HANDOVER.md — what the store owns on each service, the register of every secret and
   variable, and what is still open. Add any new secret or service there.
-- docs/ENVIRONMENTS.md — production and the dev site. Dev is not on yet; until it is, pull
-  request previews run with no database.
+- docs/ENVIRONMENTS.md — production (`main`, live database) and dev (`develop`, its own
+  database of invented data). Every preview reads dev; only the live site reads production.
 - docs/STATUS.md and docs/VERIFICATION.md — build state and sign-off; update both in the
   same PR as the work.
 - docs/OWNER_NOTES.md — the owner's feedback verbatim (Telugu translated), round by round.

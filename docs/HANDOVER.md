@@ -4,9 +4,9 @@ Status: ACCEPTED, 2026-10-30. Owner: the developer. Approver: Ravi Kiran (store 
 Decision record: [docs/adr/ADR-001-the-store-owns-every-account.md](adr/ADR-001-the-store-owns-every-account.md).
 
 **The move to the store's accounts is done: the hosting and the code now sit under the
-store, not under a person. What is left is not moving, it is finishing: two paid plans are
-unconfirmed, the original keys have not been reissued, and the dev environment does not exist
-yet (docs/ENVIRONMENTS.md).** This file is the register of each account, every secret and
+store, not under a person, and production and dev each have their own database
+(docs/ENVIRONMENTS.md). What is left is finishing: two paid plans are unconfirmed and the
+original keys have not been reissued.** This file is the register of each account, every secret and
 variable the code reads, and the items still open. Evidence tags follow
 `.claude/skills/robinsons-store/references/standards.md`.
 
@@ -25,7 +25,7 @@ same change that adds it.
 | Vianet (domain, mail) | Account 1000476363 ONTARIO INC., customer ID 616900 [R `docs/DOMAIN_EMAIL.md:29`]; mailbox admin@ | BUILT |
 | Vercel | Team **robinsons-store** (slug `robinsons-store1`, id `team_pEEbrKESMFC4HpgFi3pa26P8`), project `robinsons-store` (id `prj_sDGCXtpmypc0d3qw0ylbO1rnWqeo`) [V-run, Vercel list_teams and get_project, 2026-10-30]. Domains `app.robinsonsgeneralstore.ca` (verified) and `robinsons-store.vercel.app` [V-run, list_project_domains, 2026-10-30] | BUILT. Plan not readable from here (A-01) |
 | GitHub | Repository **`robinsons-store/robinsons-store`**; `main` is protected [V-run, GitHub list_branches, 2026-10-30]. The owner is admin@'s GitHub account, not an organization [D: the developer, 2026-10-25] | BUILT, with A-05 open |
-| Supabase | Organization `robinsons-store`, project `robinsons-store` (ref `mhcjreqvvhnrtgwtuwvr`, Canada Central). admin@ is a member [D: the developer, 2026-10-25; confirm the Owner role on the Team page] | PARTIAL: plan was still Free on 2026-10-30 (A-01) |
+| Supabase | Organization `robinsons-store` (plan `free` [V-run, Supabase get_organization, 2026-10-30]) holding project `robinsons-store` (ref `mhcjreqvvhnrtgwtuwvr`, the live database) and project `robinsons-store-dev` (ref `wqxcmchxkdhigacvxgad`, invented data, docs/ENVIRONMENTS.md), both Canada Central. admin@ is a member [D: the developer, 2026-10-25; confirm the Owner role on the Team page] | PARTIAL: still on Free (A-01) |
 | Anthropic | Console organization for the store [Q: Ravi Kiran, confirm it exists] | PARTIAL: the key in Vercel is the original from 2026-05-29 (A-02) |
 | Slack | Workspace robinsonsgeneralstore.slack.com [R `docs/DOMAIN_EMAIL.md:18`] and the bot app from `docs/slack-app-manifest.yml` | BUILT. Primary Owner not recorded (A-07) |
 | Resend | Not opened. The daily due-date email stays off until it is | TARGET |
@@ -36,7 +36,7 @@ same change that adds it.
 
 | ID | Item | Owner | Blocking? |
 |---|---|---|---|
-| A-01 | Confirm Supabase **Pro** ($25 a month, daily backups) and Vercel **Pro** ($20 a seat, licenses commercial use) on the store's card. Supabase read `free` on 2026-10-30. Vercel's plan is not readable here; its billing API returned no charges for October [V-run, list_billing_charges, 2026-10-30], which is what Hobby looks like. See docs/PLATFORM.md risks 1 and 2 | Ravi Kiran | **Yes** |
+| A-01 | Confirm Supabase **Pro** ($25 a month, daily backups) and Vercel **Pro** ($20 a seat, licenses commercial use) on the store's card. Supabase read `free` on 2026-10-30 [V-run]; on Pro the dev project adds about $10 a month in compute [J-open]. Vercel's plan is not readable here; its billing API returned no charges for October [V-run, list_billing_charges, 2026-10-30], which is what Hobby looks like. See docs/PLATFORM.md risks 1 and 2 | Ravi Kiran | **Yes** |
 | A-02 | Reissue the keys under the store and revoke the originals: `ANTHROPIC_API_KEY` (Vercel and GitHub), `VERCEL_TOKEN` (a token that can see team `robinsons-store1`), a new `CRON_SECRET` set in both Vercel and GitHub | The developer, with admin@ | No |
 | A-03 | Pick the password vault, put admin@'s password and every recovery code in it | Ravi Kiran | No |
 | A-04 | Domain renewal was due 2026-10-16 and has not been seen. Write the new expiry in docs/DOMAIN_EMAIL.md | Ravi Kiran | **Yes**, for anything on the domain |
@@ -53,8 +53,8 @@ Every name the code and workflows read. Values are never written here.
 
 | Name | Issued by | Set today, for | Notes |
 |---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Production | Public by design. Removed from Preview 2026-10-30 so previews cannot reach the live database; Preview gets the dev value in docs/ENVIRONMENTS.md step 3 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Production (Preview removed 2026-10-30) | Public by design; the database policies protect the data |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Production: the live project. Preview: the dev project | Public by design. Two separate entries since 2026-10-30, so a preview cannot reach the live database. Production ends `mhcjreqvvhnrtgwtuwvr`, Preview `wqxcmchxkdhigacvxgad` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Production: live. Preview: dev | Public by design; the database policies protect the data |
 | `NEXT_PUBLIC_REQUIRE_AUTH` | Set by hand | Production | `true` once login is enforced |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Production | Server only, bypasses the policies. Rotate if the developer leaves |
 | `ANTHROPIC_API_KEY` | Anthropic | Production, Preview | Also a GitHub secret. A-02 |
@@ -70,7 +70,7 @@ Every name the code and workflows read. Values are never written here.
 | Name | Used by | Rotate if the developer leaves |
 |---|---|---|
 | `SUPABASE_DB_URL` | migrate, rls-audit | **Yes** (reset the database password) |
-| `SUPABASE_DB_URL_DEV` | migrate, on a push to `develop` | Yes |
+| `SUPABASE_DB_URL_DEV` | migrate, on a push to `develop`. **Not set yet** (docs/ENVIRONMENTS.md step 2) | Yes |
 | `CRON_SECRET` | migrate, post-deploy-watch | **Yes** |
 | `SLACK_WEBHOOK_URL` | migrate, rls-audit, post-deploy-watch, slack-announce | **Yes** |
 | `SLACK_BOT_TOKEN` | slack-autopilot, slack-lifecycle | **Yes** |
@@ -83,7 +83,7 @@ Every name the code and workflows read. Values are never written here.
 | Name | What |
 |---|---|
 | `PRODUCTION_URL` | The address the watchdog checks: `https://app.robinsonsgeneralstore.ca` |
-| `DEV_URL` | The dev site, once it exists (docs/ENVIRONMENTS.md) |
+| `DEV_URL` | The dev site, `https://robinsons-store-git-develop-robinsons-store1.vercel.app`. **Not set yet** (docs/ENVIRONMENTS.md step 5) |
 | `VERCEL_TEAM_ID` | Optional. The team the Vercel workflows ask; unset, they use `team_pEEbrKESMFC4HpgFi3pa26P8` [R `.github/workflows/vercel-diagnose.yml:39`] |
 | `SLACK_REQUEST_CHANNEL` | The Slack channel ID the autopilot reads (accepted as a secret too) |
 | `SLACK_REQUIRE_MENTION` | Optional. `false` only for a requests-only channel |
@@ -101,11 +101,10 @@ inventory and plan risks: docs/PLATFORM.md. Dev and production: docs/ENVIRONMENT
 agent runs on which key: docs/AGENTS.md. The new member's forms: ONBOARDING.md. Domain and
 mailboxes: docs/DOMAIN_EMAIL.md.
 
-**Basis: 9 claims checked this session (2026-10-30), 9 confirmed, 0 killed, 2 sources.**
+**Basis: 11 claims checked this session (2026-10-30), 11 confirmed, 0 killed, 3 sources.**
 Confirmed: the Vercel team name, slug and id; the project on that team; both domains and
 the custom one verified; every Vercel variable name and its targets, including Preview on the
 live database URL until it was removed from Preview the same day, and no `CRON_SECRET`; the Anthropic key unchanged since 2026-05-29; no
 October charges on the Vercel team; the repository at `robinsons-store/robinsons-store` with
-`main` protected; no `develop` branch. The Supabase plan and admin@'s role are carried from
-the 2026-10-25 and 2026-10-30 reads by the developer and stay `[D]`, because the Supabase
-connection failed in this session. Sources: Vercel API, GitHub API.
+`main` protected; `develop` created the same day; the Supabase plan `free` and both projects.
+admin@'s Supabase role stays `[D]`: it is not readable from the Supabase API. Sources: Vercel API, GitHub API, Supabase API.

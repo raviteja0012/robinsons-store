@@ -105,9 +105,9 @@ When you leave, the same table runs in reverse [R docs/HANDOVER.md:93-95].
 - The three gates, all green before any pull request: `npx tsc --noEmit`, `npm run build`,
   `npm run lint` [R CLAUDE.md:33]. A Claude Code Stop hook also blocks ending a session with
   TypeScript broken [R docs/LOOP_ENGINEERING.md:60].
-- Do not put production values in your local env. The dev database is TARGET
-  [R docs/ENVIRONMENTS.md:5-8], and production data never copies to anywhere else
-  [R docs/ENVIRONMENTS.md:62]. Ask before connecting to any database [Q: the developer].
+- Do not put production values in your local env. Use the dev project's URL and anon key
+  [R docs/ENVIRONMENTS.md:32], and production data never copies to anywhere else
+  [R docs/ENVIRONMENTS.md:64]. Ask before connecting to any database [Q: the developer].
 
 ### 3.3 Standing invariants (never regress these)
 
@@ -135,10 +135,10 @@ Copied from docs/REQUIREMENTS.md [R docs/REQUIREMENTS.md:41]:
 - **Ships (BUILT):** a script reads each diff and sets its tier. A: words only, merges itself.
   B: the default, a person merges. C: money, access, the database or the automation, nothing
   merges [R docs/LOOP_ENGINEERING.md:74].
-- **Dev then production (SCAFFOLDED):** the design is `develop` to a dev site and dummy
-  database, `main` to production [R docs/ENVIRONMENTS.md:13-35]. The workflows exist but stay
-  inert until a `develop` branch and `SUPABASE_DB_URL_DEV` exist [R docs/ENVIRONMENTS.md:68-81],
-  so today changes go to `main`, and pull request previews open with no database.
+- **Dev then production (PARTIAL):** changes merge to `develop`, which deploys to the dev
+  site on its own database of invented data; a person promotes to `main` and the live site
+  [R docs/ENVIRONMENTS.md:14-37]. Dev scripts do not apply themselves until
+  `SUPABASE_DB_URL_DEV` is set [R docs/ENVIRONMENTS.md:75].
 - **Watched (BUILT):** "Post-deploy watch" runs after CI on `main` and every two hours, and
   asks the live site `/api/health` [R .github/workflows/post-deploy-watch.yml:17]
   [R .github/workflows/post-deploy-watch.yml:22]. It checks `PRODUCTION_URL`, the custom
@@ -153,7 +153,7 @@ that section warns its lines go stale [R docs/REQUIREMENTS.md:180].
 | Item | Waiting on | Blocks |
 |---|---|---|
 | Supabase and Vercel on Pro (A-01) | Ravi Kiran | Closes both platform risks: Vercel Hobby is not licensed for commercial use, Supabase Free takes no backups [R docs/PLATFORM.md:20-26] |
-| Turn on the dev environment, six steps | admin@ for the dev database; the developer for the rest | Trying a change before it ships [R docs/ENVIRONMENTS.md:68] |
+| Finish dev: the `SUPABASE_DB_URL_DEV` secret and the `DEV_URL` variable | admin@ | Dev scripts applying themselves [R docs/ENVIRONMENTS.md:75] |
 | Domain renewal not seen, due 2026-10-16 (A-04) | Ravi Kiran | Anything on the domain |
 | Reissue the original keys under the store (A-02) | The developer, with admin@ | Nothing |
 | Which password vault (A-03) | Ravi Kiran | Nothing |

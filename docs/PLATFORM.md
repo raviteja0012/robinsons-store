@@ -74,8 +74,8 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 
 | Service | Does what | Plan | Notes |
 |---|---|---|---|
-| **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby unless confirmed otherwise, see risk 1** | Team `robinsons-store1`, project `robinsons-store`. Preview deploys per PR, with no database until dev exists (ENVIRONMENTS.md) |
-| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free as of 2026-10-30, see risk 2** | ca-central Toronto. RLS per store per role. A second, Free project for dev is step 1 of ENVIRONMENTS.md |
+| **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby unless confirmed otherwise, see risk 1** | Team `robinsons-store1`, project `robinsons-store`. Preview deploys per PR, all on the dev database (ENVIRONMENTS.md) |
+| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free as of 2026-10-30, see risk 2** | ca-central Toronto. RLS per store per role. Second project `robinsons-store-dev` holds invented data for dev (ENVIRONMENTS.md) |
 | **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | Stores in the US; what each route sends is in "What leaves Canada" below. Default model claude-sonnet-5. $5 to $40 a month by volume |
 | **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set. No Canadian region, see "What leaves Canada" |
 | **Vianet** | Domain robinsonsgeneralstore.ca, 5 of 10 mailboxes, store internet | About $10/mo | Domain expires 2026-10-16, auto-renew on. No self-serve DNS editor, changes are a phone call |
