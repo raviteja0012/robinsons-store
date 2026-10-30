@@ -543,9 +543,8 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   supabase/postgres 17.11.0.005, 2026-10-25: 130 of 130 checks pass on both] and through
   PostgREST v14.18 with the app's own client [V-run, 48 of 48 read and write paths for owner,
   manager and staff, 2026-10-25]. Live once `supabase/money_by_role.sql` applies on merge
-  [Q: the developer, run ADR-003 condition 3 after the merge]. Two columns stay outside the
-  fence by design: `item.cost_price`, which nothing writes, and `department.target_margin`, a
-  percentage (ADR-003).
+  [Q: the developer, run ADR-003 condition 3 after the merge]. `department.target_margin` is a
+  percentage and stays readable (ADR-003).
 - Documents: private bucket, read through signed URLs that expire after an hour
   [R supabase/auth_setup.sql:281-287] [R src/lib/docs.ts:5, 17]. BUILT in the repository:
   each file is saved under its store's folder and a kind folder (invoices, feedback,
@@ -562,8 +561,8 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   listings for owner, manager, lead, two staff and a second store, 55 of 55 on a fresh copy
   and 108 of 108, older files included, on a copy upgraded from main]. Live once
   `supabase/documents_by_role.sql` applies on merge [Q: the developer, run ADR-004 condition 3
-  after the merge]. Ravi Kiran chose who opens which file
-  [D: relayed to the developer 2026-10-25, confirm with Ravi Kiran].
+  after the merge]. Who opens which file follows the owner's
+  requirement (ADR-004).
 - Audit trail: members may only insert `activity_log` rows attributed to themselves and have
   no update or delete policy [R supabase/auth_setup.sql:263-279]. BUILT.
 - Service role key: server-side only, used by `/api/admin/users`, `/api/import`,
