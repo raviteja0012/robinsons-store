@@ -30,7 +30,7 @@ same change that adds it.
 | Slack | Workspace robinsonsgeneralstore.slack.com [R `docs/DOMAIN_EMAIL.md:18`] and the bot app from `docs/slack-app-manifest.yml` | BUILT. Primary Owner not recorded (A-07) |
 | Resend | Not opened. The daily due-date email stays off until it is | TARGET |
 | Google | The store's own Google account, which owns the live sheets [R `docs/SYNC_PLAN.md:67`] | BUILT. Address not recorded (A-07) |
-| Miro | Team holding the board **"Robinsons store architecture"**, the six diagrams of docs/ARCHITECTURE.md, opened with admin@ from the start [V-run, Miro board read in the browser signed in as admin@, 2026-10-25]. docs/ARCHITECTURE.md stays the source; the board is redrawn from it | BUILT. Still shows the diagrams from before 2026-10-30 (ARCH-12) |
+| Miro | The store's board **"Robinsons store architecture"** shows the nine diagrams of docs/ARCHITECTURE.md, built in Miro from the doc's Mermaid with the same colour key and named by section and date. The six older diagrams and their labels moved to the separate board **"Robinsons store architecture, archive"** [R pr/81:docs/ARCHITECTURE.md:695]. docs/ARCHITECTURE.md stays the source; redraw the matching board diagram whenever its Mermaid changes | BUILT. ARCH-12 closed 2026-10-30 |
 | Password vault | Bitwarden or 1Password, opened with admin@ | TARGET (A-03) |
 
 ## Still open
@@ -109,3 +109,8 @@ live database URL until it was removed from Preview the same day, and no `CRON_S
 October charges on the Vercel team; the repository at `robinsons-store/robinsons-store` with
 `main` protected; `develop` created the same day; the Supabase plan `free` and both projects.
 admin@'s Supabase role stays `[D]`: it is not readable from the Supabase API. Sources: Vercel API, GitHub API, Supabase API.
+
+**Basis (Miro update, 2026-10-30): 3 claims checked, 3 confirmed, 0 killed, 1 source.**
+The current board, archive and redraw rule match ARCH-12 in
+`git show pr/81:docs/ARCHITECTURE.md` (line 695). This is a document comparison, not a new
+live board check.

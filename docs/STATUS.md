@@ -2,16 +2,51 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/handover-miro-board (latest: the architecture board on the store's Miro account, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/handover-miro-board (latest: the nine-diagram Miro board and separate archive, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
-The architecture board on the store's Miro account, 2026-10-25:
-- A Miro account opened with admin@robinsonsgeneralstore.ca holds one board, "Robinsons
-  store architecture", with the six diagrams of docs/ARCHITECTURE.md, each built from the
-  same Mermaid and captioned with its question and its plain flow. The store owns it from
-  the start, so it is not a step to move later; docs/HANDOVER.md lists it.
-- docs/ARCHITECTURE.md stays the source. When a diagram changes there, the board is redrawn
-  from it; the board is never edited first.
+The architecture board on the store's Miro account, 2026-10-30:
+- BUILT: "Robinsons store architecture" shows the nine diagrams of docs/ARCHITECTURE.md,
+  built in Miro from the doc's Mermaid with the same colour key and named by section and
+  date [R pr/81:docs/ARCHITECTURE.md:695].
+- The six older diagrams and their labels moved to a separate board, "Robinsons store
+  architecture, archive" [R pr/81:docs/ARCHITECTURE.md:695].
+- docs/ARCHITECTURE.md stays the source. When its Mermaid changes, redraw the matching
+  diagram on the board [R pr/81:docs/ARCHITECTURE.md:695]. docs/HANDOVER.md lists both boards.
 - Docs only; no code, schema, policy or workflow change.
+
+Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
+- The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
+  `tier-a`, `tier-b` or `tier-c`, and comments why. It does this in a second job on a fresh
+  runner, from the workflow's own commit, against the pull request's real base; the build job's
+  token can only push and open pull requests [R `.github/workflows/slack-autopilot.yml:68-79`,
+  `:197-282`]. PARTIAL until the first live request shows a label.
+- Tier A (words only, 300 lines or fewer) merges itself after CI passes on its exact head
+  commit, with the pull request read again and the merge pinned to that commit; anything
+  unexpected leaves it for a person [R `.github/workflows/slack-autopilot.yml:284-343`].
+  SCAFFOLDED: off until the repository variable `AUTOMERGE_TIER_A` is `true`. Before setting
+  it, see ADR-002 conditions 2 to 4.
+- Instructions and configuration are never words, whatever the switch: every agent
+  instruction file by name at any depth (CLAUDE.md, AGENTS.md with docs/AGENTS.md, GEMINI.md,
+  SKILL.md and the like), agent folders, `skills-lock.json`, LOOP_ENGINEERING.md, `docs/adr/`,
+  and any `.sql`, manifest or config file are tier C. Words means `.md` and `.txt` under
+  `docs/` and `.md` at the root, as plain text; scripts, pages, images, links and binary files
+  are tier B, as is the in-app guide [R `.github/scripts/classify-change.mjs:25-79`].
+- The rules are pinned by `classify-change.test.mjs`, 110 cases, run in CI
+  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 110 passed].
+- Open: whether GitHub's `GITHUB_TOKEN` rule is what kept CI off Slack pull requests, and
+  whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
+  ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
+  `--auto`; replace that step before waking it (ADR-002 condition 5).
+
+Module checks and automation tests run in CI by convention, 2026-10-30:
+- CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops
+  at the first failure. "Automation rules" now runs every `.github/scripts/*.test.mjs` in a
+  loop instead of a hand-kept list. A new check or test needs no `ci.yml` edit.
+- `scripts/vendorfields-check` (the money-field gate) and `scripts/invoicefields-check` (the
+  department matrix) each gained a `run.sh` and now run on every pull request; before this
+  they ran only by hand. The `run.sh` contract is in the vendorfields-check README.
+- The checks already in CI with their own steps (extraction, Ask grounding, AI evals, AI
+  usage, import and export) are unchanged. Commit 2f4b1ea.
 
 Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
 - The move to the store's accounts is done and the docs now say so: the Vercel project is
@@ -48,8 +83,8 @@ Architecture diagrams corrected against the code, 2026-10-30:
   finishes, not on deploy; the Slack card reaches "live" only by hand.
 - Section 7 now names the two routes that take no session (health, alerts) and that extract
   returns line costs to any signed-in member. Five stale line references fixed.
-- The store's Miro board still shows the old diagrams (ARCH-12): redraw it from the doc after
-  this and the open pull requests that edit the doc have merged.
+- At that check, the store's Miro board still showed the old diagrams (ARCH-12). CLOSED
+  2026-10-30: the nine-diagram board and separate archive are recorded above.
 - Docs only; no code, schema, policy or workflow change.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
@@ -659,3 +694,8 @@ A seven-dimension audit (store scoping, money gating, actor and audit integrity,
 
 ## Run and deploy
 See RUNBOOK.md. Pushing to main auto-deploys to Vercel; each pull request gets a preview. The verification record and re-verification rules are in docs/VERIFICATION.md.
+
+**Basis (Miro update, 2026-10-30): 3 claims checked, 3 confirmed, 0 killed, 1 source.**
+The current board, archive and redraw rule match ARCH-12 in
+`git show pr/81:docs/ARCHITECTURE.md` (line 695). This is a document comparison, not a new
+live board check.
