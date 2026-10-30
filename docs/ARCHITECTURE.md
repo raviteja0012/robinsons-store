@@ -581,7 +581,9 @@ HANDOVER, ENVIRONMENTS, LOOP_ENGINEERING, STATUS, README and the owner infrastru
 the eight killed are the six stale statements this rewrite replaces, the old diagram's upload
 after the database writes, and tier A self-merge in the live Slack loop. Added the same day
 by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
-curl of the health route. Added 2026-10-25 by the ARCH-03 session: 19 claims checked, 19 confirmed, 0
+curl of the health route.
+Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
+script, 6 claims checked, 6 confirmed. Source: this repository. Added 2026-10-25 by the ARCH-03 session: 19 claims checked, 19 confirmed, 0
 killed, 3 sources (this repository, the local test databases and PostgREST runs cited in
 section 7, and docs/adr/ADR-003-money-by-role-at-the-database.md); line references into
 `supabase/auth_setup.sql` in sections 5 and 7 were re-read after section 3e moved them. Added
@@ -594,8 +596,6 @@ confirmed, 0 killed, 3 sources (this repository, the local test databases with P
 storage service cited in section 7, and
 docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md); four references into the
 screenshot reader route and the Suggestions page that had drifted were re-read and moved.
-Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
-script, 6 claims checked, 6 confirmed. Source: this repository.
 
 **Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
 killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
