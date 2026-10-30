@@ -14,7 +14,7 @@ Read before building:
   written: status line, evidence tags, BUILT/PARTIAL/SCAFFOLDED/TARGET, basis footer.
 - docs/AGENTS.md - every AI agent, in the app and in the build loop, and whose key it uses.
 - docs/adr/ - decision records. ONBOARDING.md - forms and first week for a new member.
-- docs/README.md - the index to all eighteen docs and which one to open.
+- docs/README.md - the index to every doc and the order to learn the components in.
 - docs/REQUIREMENTS.md - the living requirements ledger (asks, states, open items).
 - docs/PLATFORM.md - every service and plan in use, what is adopted and what is declined
   and why. Carries two open risks: the Vercel plan does not license commercial use, and
