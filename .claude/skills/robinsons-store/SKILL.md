@@ -230,7 +230,7 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - references/design-tokens.md, the exact color values, status mapping, and form rules.
 - references/standards.md, how documents, decision records and reviews are written and checked.
 - docs/AGENTS.md, every AI agent in the app and in the build loop, and whose key it runs on.
-- docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, who owns each account and the move to store ownership.
+- docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, what the store owns on each service, every secret, and what is still open.
 - ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
 - robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.
