@@ -197,7 +197,7 @@ role, and import uses it when its key is set. GitHub Actions applies database sc
 - Routes check the caller's token with Supabase Auth [R src/lib/serverMember.ts:54]
   [R src/app/api/admin/users/route.ts:53]. Feedback triage downloads the screenshot from
   Storage and import archives every uploaded workbook there
-  [R src/app/api/feedback-triage/route.ts:54] [R src/app/api/import/route.ts:25]. Documents are
+  [R src/app/api/feedback-triage/route.ts:56] [R src/app/api/import/route.ts:26]. Documents are
   viewed through signed URLs, with a public-URL fallback in demo mode [R src/lib/docs.ts:15, 21].
   The alerts route calls Resend directly when its keys are set [R src/app/api/alerts/route.ts:98].
   BUILT.
@@ -209,7 +209,7 @@ The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 | `/api/extract` | Claude vision reads an invoice image into a strict JSON contract with a confidence per line | Signed-in member when login is enforced | [R src/app/api/extract/route.ts:9, 11-28, 69] |
 | `/api/ask` | Answers from the store's notes, vendors and invoices; withholds invoices from non-money roles | Signed-in member | [R src/app/api/ask/route.ts:14, 36, 44-50, 91] |
 | `/api/reorder` | Plain-language summary of the formula reorder list | Money roles once login is enforced | [R src/app/api/reorder/route.ts:12, 33] |
-| `/api/feedback-triage` | Describes a screenshot attached to a suggestion into `feedback.ai_summary` | Signed-in member | [R src/app/api/feedback-triage/route.ts:10, 89] |
+| `/api/feedback-triage` | Describes a screenshot attached to a suggestion into `feedback_summary`, which opens to the people who may open the screenshot (ADR-005) | Signed-in member who may open the screenshot | [R src/app/api/feedback-triage/route.ts:30, 56, 85-89] |
 | `/api/alerts` | Daily due-date email of unpaid and partially paid invoices; guarded by `CRON_SECRET` | The Vercel cron | [R src/app/api/alerts/route.ts:12, 23-44, 53-54] [R vercel.json:3-5] |
 | `/api/health` | Pass or fail on database reachability, the owed-total rule, the payment engine, status drift and required columns; never returns a dollar figure | Anyone; detail only with `CRON_SECRET` | [R src/app/api/health/route.ts:11, 22-24, 148-258] |
 | `/api/import` | Loads the bookings, schedule or inventory workbook | Owner or manager | [R src/app/api/import/route.ts:14, 450-451] |
@@ -219,7 +219,7 @@ The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 AI routes: default model `claude-sonnet-5`, `ANTHROPIC_MODEL` overrides; no temperature is
 sent, on purpose, because current models reject non-default sampling; text answers go
 through `plainText()` [R src/app/api/ask/route.ts:39, 152, 166] [R src/app/api/reorder/route.ts:23, 110]
-[R src/app/api/feedback-triage/route.ts:38, 86]. BUILT.
+[R src/app/api/feedback-triage/route.ts:82]. BUILT.
 
 AI usage log and daily cap. BUILT: every model call goes through `callClaude`
 [R src/lib/anthropic.ts:66], which reserves a row in `ai_call` before the model is asked and
@@ -397,7 +397,7 @@ and credit notes; one payment splits across zero or more invoices through paymen
 which is how a single cheque settles several invoices and how a deposit waits with none.
 
 - The store and vendor links are nullable foreign keys, so the database itself does not insist
-  on a parent; the app always stamps them [R supabase/schema.sql:36, 136, 138, 177, 616, 617].
+  on a parent; the app always stamps them [R supabase/schema.sql:36, 136, 138, 177, 629, 630].
   An allocation always has its payment and invoice, and a credit note always has its vendor
   [R supabase/schema.sql:196-197, 210].
 - `payment.invoice_id` is the legacy one-invoice link, still written by the bookings import; a
@@ -406,15 +406,15 @@ which is how a single cheque settles several invoices and how a deposit waits wi
 - `record_payment` accepts an amount with no allocations, a deposit
   [R supabase/payments_v2.sql:147, 159-163].
 - Table names are real: `store`, `vendor`, `purchase_order`, `invoice`, `payment`,
-  `payment_allocation`, `credit_note` [R supabase/schema.sql:7, 34, 134, 175, 194, 207, 614].
-- `purchase_order` and `invoice` also carry `store_id` [R supabase/schema.sql:136, 616];
+  `payment_allocation`, `credit_note` [R supabase/schema.sql:7, 34, 134, 175, 194, 207, 627].
+- `purchase_order` and `invoice` also carry `store_id` [R supabase/schema.sql:136, 629];
   `credit_note` does too [R supabase/schema.sql:209]. There is no foreign key between
   `invoice` and `purchase_order`; an invoice carries `po_number` as text
   [R supabase/schema.sql:160].
 - Every amount column is `numeric` dollars: `invoice.amount`, `hst_amount`,
   `freight_charges`, `payment.amount`, `payment_allocation.amount`,
   `credit_note.credit_amount`, `purchase_order.order_amount`. BUILT
-  [R supabase/schema.sql:141-143, 179, 198, 213, 620]. The header comment says the same, and integer cents is
+  [R supabase/schema.sql:141-143, 179, 198, 213, 633]. The header comment says the same, and integer cents is
   not planned [R supabase/schema.sql:3]; ARCH-09 is closed.
 - Nothing in `schema.sql` uses vectors; the only extension created is `pgcrypto`
   [R supabase/schema.sql:5]. pgvector for Ask the store is TARGET, deferred until the data
@@ -433,13 +433,15 @@ which adds the role fence [R supabase/auth_setup.sql:315-331]. `inventory_count_
 and `pay_rate` and `receiving_line` through theirs, all in 3e
 [R supabase/auth_setup.sql:333-412]. `ai_call`, the AI usage log, is store-scoped in its own
 block: the owner reads it, and nobody writes it except through its two functions
-[R supabase/auth_setup.sql:135-157]. It runs just before `money_by_role.sql`, the last script
-in the run order [R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
+[R supabase/auth_setup.sql:135-157]. `feedback_summary`, the AI's description of a suggestion
+screenshot, is store-scoped in section 3g and opens by the screenshot's rule (ADR-005)
+[R supabase/auth_setup.sql:658-716]. `ai_call.sql` runs just before `money_by_role.sql`
+[R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
 `auth_setup.sql` (3a, or 3e if it holds a dollar figure), and in a migration for live
 databases [R CLAUDE.md:33-35].
 
 Soft voids only: `voided_at` and `voided_by` sit on 13 tables from one loop plus `credit_note`
-and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 241-242, 666-681].
+and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 240-241, 776-792].
 
 ## 6. Build and release
 
@@ -506,7 +508,9 @@ Store data is fenced by store at the database. Money is fenced by role in the ap
 and the same fence at the database is built and applies on merge (ARCH-03;
 docs/adr/ADR-003-money-by-role-at-the-database.md). Stored files are fenced by store and by
 kind at the database, built and applying on merge (ARCH-04;
-docs/adr/ADR-004-stored-files-by-store-and-role.md).
+docs/adr/ADR-004-stored-files-by-store-and-role.md). The AI's description of a suggestion
+screenshot follows the screenshot's rule, built and applying on merge (ARCH-15;
+docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
 
 - Row-level security, repository default: a fresh install from `schema.sql` gets the open
   demo policy set (`dev_all`, anon read and write on every table) and a public `documents`
@@ -563,6 +567,20 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   `supabase/documents_by_role.sql` applies on merge [Q: the developer, run ADR-004 condition 3
   after the merge]. Who opens which file follows the owner's
   requirement (ADR-004).
+- Screenshot descriptions: BUILT in the repository. The AI's description of a suggestion
+  screenshot is kept in `feedback_summary`, one row per suggestion with the file it was read
+  from, and opens to lead, manager and owner of its store and to whoever may open that file,
+  which for a suggestion file is the member who attached it [R supabase/auth_setup.sql:658-695].
+  Whoever may read one may write it, for its own suggestion's file, so the reader runs as the
+  caller; no member removes one [R supabase/auth_setup.sql:696-716]. Older descriptions move off
+  `feedback.ai_summary`, which is dropped [R supabase/auth_setup.sql:641-656]. Proven on fresh and
+  upgraded copies [V-run, supabase/feedback_summary_test.sql on supabase/postgres 17.11.0.005
+  with the storage schema of supabase/storage-api v1.79.5, 2026-10-25: 85 of 85 checks pass on
+  both] and through PostgREST v14.18 and the storage service with the app's own client
+  [V-run, @supabase/supabase-js 2.106.2, 2026-10-25: the Suggestions reads and the reader's
+  save for owner, manager, lead, two staff and a second store]. Live once
+  `supabase/feedback_summary.sql` applies on merge [Q: the developer, run ADR-005 condition 3
+  after the merge].
 - Audit trail: members may only insert `activity_log` rows attributed to themselves and have
   no update or delete policy [R supabase/auth_setup.sql:263-279]. BUILT.
 - Service role key: server-side only, used by `/api/admin/users`, `/api/import`,
@@ -573,10 +591,10 @@ docs/adr/ADR-004-stored-files-by-store-and-role.md).
   reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-58]
   [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
   content: feedback triage sends the attached screenshot as an image, so a screenshot of the
-  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:61-72],
+  HR, pay or schedule screen carries that data [R src/app/api/feedback-triage/route.ts:63-75],
   and knowledge notes, typed freely by staff, go into every Ask prompt
   [R src/app/api/ask/route.ts:45, 73-76]. The screenshot picker says so before anything is attached
-  [R src/app/suggestions/page.tsx:275-277]. BUILT.
+  [R src/app/suggestions/page.tsx:295-297]. BUILT.
 - Canadian regions: records and stored files live in Toronto, and the API routes run in
   Montreal (section 2; ARCH-01 closed 2026-10-24). The four AI routes send data to Anthropic,
   which stores it in the US, and the due-date email goes through Resend, which stores its
@@ -737,6 +755,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-12 | CLOSED 2026-10-30: the store's Miro board shows the nine diagrams in this file, built in Miro from the Mermaid here with the same colour key and named by section and date. The six older diagrams and their labels moved to a separate board, "Robinsons store architecture, archive". Redraw any diagram on the board whose Mermaid changes here | The developer | No |
 | ARCH-13 | The store name and town are written into the Ask, reorder and alert prompts (section 8); read them from the store's settings so a second store needs no code change | The developer | Yes, before a second store |
 | ARCH-14 | The AI golden-case evals have never run against the model; run them before any change to `ANTHROPIC_MODEL` or a prompt | The developer | No |
+| ARCH-15 | BUILT 2026-10-25: the AI's description of a suggestion screenshot opens to the people who may open the screenshot (ADR-005; `supabase/feedback_summary.sql`); 85 of 85 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-005 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
 
 ## 11. How this maps to the rest of the docs
 
@@ -768,7 +787,11 @@ section 7, and docs/adr/ADR-003-money-by-role-at-the-database.md); line referenc
 repository, the local test databases with the Supabase storage service cited in section 7, and
 docs/adr/ADR-004-stored-files-by-store-and-role.md); the owner's choice stays `[D]` until Ravi
 Kiran confirms it, and the references into `supabase/auth_setup.sql` after section 3d were
-re-read and moved up ten lines.
+re-read and moved up ten lines. Added 2026-10-25 by the ADR-005 session: 12 claims checked, 12
+confirmed, 0 killed, 3 sources (this repository, the local test databases with PostgREST and the
+storage service cited in section 7, and
+docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md); four references into the
+screenshot reader route and the Suggestions page that had drifted were re-read and moved.
 
 **Basis, 2026-10-30 target context, AI enablement and colour key:** every `[R]` in the two new
 tables opened at the named lines on this branch; the autopilot switch read live with
