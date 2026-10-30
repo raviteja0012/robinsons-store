@@ -13,6 +13,28 @@ this repository this session, `[V-run]` checked live this session, `[J-open]` be
 not checked (with what would prove it wrong), `[Q: owner]` an open question. States: BUILT,
 PARTIAL (gaps named), SCAFFOLDED (built, switched off; the switch named), TARGET (not built).
 
+Standards each view follows. The document as a whole is an architecture description in the
+sense of ISO/IEC/IEEE 42010:2022 (one concern per view, each view answers a question), laid
+out after arc42; the diagrams are Mermaid, per `.claude/skills/robinsons-store/references/standards.md`.
+
+| Section | View | Notation or standard |
+|---|---|---|
+| 1. Context | Who and what the app depends on today, and the planned pieces | C4 model, level 1 (System Context), current and target |
+| 2. Containers | Deployable pieces and how they talk. "Container" is the C4 term for a separately running unit, not Docker; there are no Docker containers | C4 model, level 2 (Container) |
+| 3. Capture loop | One flow, step by step | UML 2.5 sequence diagram |
+| 4. Money | How an invoice status moves | UML 2.5 state machine |
+| 5. Data | Tables and keys | Entity relationship, crow's foot notation |
+| 6. Build and release | Request to live site | Delivery pipeline (continuous delivery); measured, when it is, by the four DORA metrics |
+| 7. Security and privacy | What is fenced and what leaves Canada | PIPEDA for personal data; OWASP Top 10 for the web app |
+| 8. AI | How the model is called and checked, and how requests, requirements and rules reach Claude | Same C4 container notation; risks named after NIST AI RMF 1.0 and its Generative AI Profile (NIST AI 600-1), and the OWASP Top 10 for LLM Applications |
+| 9 to 11 | Out of scope, open items, map | arc42 section 11 (risks and technical debt) in short form; decisions live in docs/adr (arc42 section 9) |
+
+Colour key, the same in every diagram, and colour means state only: a plain box is BUILT; an
+amber dashed box is SCAFFOLDED (built, switched off); a grey dashed box is TARGET (planned,
+not built). A dotted arrow is a flow that is switched off or planned. Planned pieces stay on
+the diagrams in their colour instead of being left out, and a box changes colour when its
+state changes.
+
 ## 1. Context
 
 The store is Robinson's General Store, the general store Ravi Kiran acquired, in Dorset,
@@ -51,6 +73,8 @@ flowchart LR
   GH -- "migrations, weekly RLS audit" --> SB
   GH -- "GET /api/health" --> APP
   GH -- "status and alarms" --> SL
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  class RS scaffolded
 ```
 
 Plain flow: staff and the owner open app.robinsonsgeneralstore.ca, which Vianet's DNS points
@@ -75,12 +99,62 @@ Facts behind the picture:
   SCAFFOLDED, switch is `RESEND_API_KEY`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` in Vercel
   [R src/app/api/alerts/route.ts:98-105] [R docs/STATUS.md:392-393].
 - Slack carries build requests in and watchdog and migration messages out, through a bot app
-  and an incoming webhook. BUILT [R docs/PLATFORM.md:80].
+  and an incoming webhook. BUILT [R docs/PLATFORM.md:80]. Build requests are switched on since
+  2026-10-30, when `SLACK_REQUEST_CHANNEL` was set (section 8).
 - The Slack build runs Claude Code in GitHub Actions on the app's Anthropic key
-  [R .github/workflows/slack-autopilot.yml:138-140]. Migrations and the RLS audit connect to the
+  [R .github/workflows/slack-autopilot.yml:195-199]. Migrations and the RLS audit connect to the
   database with `psql` [R .github/workflows/migrate.yml:150] [R .github/workflows/rls-audit.yml:43];
   the health watchdog calls the app, not the database [R .github/scripts/health-check.mjs:33].
   BUILT.
+
+### Target context: what is planned
+
+Question: which outside services and features is the store planning to add, and how would
+they connect?
+
+```mermaid
+flowchart LR
+  APP["Robinson's store app<br/>everything built today"]
+  AN["Anthropic API<br/>in-app AI"]
+  MAIL["invoices@ mailbox<br/>email invoice intake"]
+  QB["QuickBooks<br/>accounting"]
+  POS["Point of sale<br/>till sales"]
+  GS["Google Sheets<br/>the owner's live sheets"]
+  SLK["Slack<br/>questions to the assistant"]
+  VEC["Search index or tool use<br/>Ask at larger data sizes"]
+  S2["A second store<br/>same app, own settings"]
+  APP -- "extract, ask, reorder, triage" --> AN
+  MAIL -. "vendor invoices from allowed senders" .-> APP
+  APP -. "export invoices and payments" .-> QB
+  POS -. "daily sales for margin, shrinkage, demand reorder" .-> APP
+  GS -. "pull live sheets; push FromApp tabs" .-> APP
+  SLK -. "questions answered from store data" .-> APP
+  APP -. "Ask looks things up instead of preloading" .-> VEC
+  S2 -. "own store_id, row-level security, settings" .-> APP
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  classDef target fill:#eef2f7,stroke:#64748b,stroke-dasharray:5 3
+  class MAIL scaffolded
+  class QB,POS,GS,SLK,VEC,S2 target
+```
+
+Plain flow: today's app and its AI stay as they are; planned next are vendor invoices arriving
+by email, an export to QuickBooks, till sales from the point of sale, a two-way sync with the
+owner's Google Sheets, questions asked in Slack, a search index once the data outgrows one
+prompt, and a second store on the same app.
+
+| Planned piece | State | Waits on | Evidence |
+|---|---|---|---|
+| Email invoice intake | SCAFFOLDED: AgentMail installed, not wired | The owner creating the invoices@ mailbox | [R docs/REQUIREMENTS.md:154-157] [R docs/PLATFORM.md:85, 155] |
+| QuickBooks export, point-of-sale import | TARGET, QUEUED | Nothing recorded; the owner confirmed the store runs both | [R docs/REQUIREMENTS.md:149-150] |
+| Google Sheets sync, phases 2 and 3 | TARGET, QUEUED | The live sheets shared with the developer's Google account | [R docs/REQUIREMENTS.md:146-148] |
+| Slack questions answered by the assistant | TARGET, not designed | A design; stated as the direction by the developer on 2026-10-30 | [Q: owner] which channel, who may ask, and whether money answers are allowed there |
+| Search index or tool use for Ask | TARGET, deferred | The data outgrowing one prompt | [R docs/PLATFORM.md:179] |
+| A second store | TARGET; the database is already per store | ARCH-13, and the product direction in open pull request #78 | Section 2, section 8 |
+
+Planned inside the app, with no new outside service, all QUEUED: three-way match before
+payment, a food-safety compliance module, recurring obligations and renewals from the
+payments workbook, department photo tiles, and a price-check list
+[R docs/REQUIREMENTS.md:138-158].
 
 ## 2. Containers
 
@@ -109,6 +183,8 @@ flowchart LR
   API -. "due email when keys set" .-> RS
   GHA -- "run-order.txt scripts" --> DB
   GHA -- "GET /api/health" --> API
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  class RS scaffolded
 ```
 
 Plain flow: the browser signs in with Supabase Auth, reads and writes the database directly,
@@ -368,44 +444,48 @@ Question: how does a change travel from a request to the live store?
 
 ```mermaid
 flowchart LR
-  REQ["Slack request<br/>or developer"]
-  AP["slack-autopilot<br/>builds on a branch"]
-  PR["Draft pull request<br/>labelled tier A, B or C"]
-  CI["CI: lint, tsc,<br/>blank-env build"]
-  HUM["A person merges<br/>(tier A may merge itself)"]
-  VD["Vercel deploys main"]
-  MIG["migrate: run-order.txt<br/>to production"]
-  WD["post-deploy-watch<br/>GET /api/health"]
-  SLK["Slack thread<br/>and alerts"]
-  REQ -- "mention in channel" --> AP
-  AP -- "opens" --> PR
-  PR -- "runs" --> CI
-  CI -- "green" --> HUM
-  HUM -- "merges the pull request" --> VD
-  HUM -- "if supabase/ changed" --> MIG
-  CI -- "completes on main; also every 2 hours" --> WD
-  MIG -- "result, after a health check" --> SLK
-  WD -- "on change of health" --> SLK
-  PR -- "slack-lifecycle updates card" --> SLK
+  REQ["Slack request"]
+  AP["Slack autopilot build job<br/>commits, cannot push"]
+  REV["Review on a fresh runner<br/>ship opens the pull request"]
+  PR["Draft pull request<br/>target: develop"]
+  CI["Independent CI<br/>lint, tsc, blank-env build"]
+  DEV["develop branch"]
+  PRE["Vercel dev preview<br/>separate dev database"]
+  HUM["Person runs promotion<br/>develop to main pull request"]
+  LIVE["main: Vercel production deploy<br/>production migrations and watchdog"]
+  REQ -- "mention in the request channel" --> AP
+  AP -- "commit as a bundle" --> REV
+  REV -- "ship pushes, opens and labels" --> PR
+  PR -- "ship starts CI for tiers A and B" --> CI
+  CI -- "passes; person merges, or tier A if enabled" --> DEV
+  DEV -- "deploys against dev data" --> PRE
+  PRE -- "person verifies the change" --> HUM
+  DEV -- "supplies the promotion commits" --> HUM
+  HUM -- "checks pass, merges to main" --> LIVE
 ```
 
-Plain flow: a request in Slack becomes a draft pull request labelled with its tier; CI runs
-the three gates; a person merges, or a words-only change merges itself once switched on; Vercel
-deploys main and, separately, migrate applies any merged database scripts, asks the site
-whether it is healthy and tells Slack. The watchdog runs when CI finishes on main (and every
-two hours, or by hand), waits 90 seconds after a CI run, asks the live site whether it is
-healthy and tells Slack when that changes. It does not confirm which deploy it is looking at.
+Plain flow: Slack intake builds a commit, review and ship open its pull request, independent CI checks it, the change lands on `develop` for a dev preview, and a person promotes `develop` to `main` for the live deployment.
+
+BUILT: Slack intake is switched on since 2026-10-30, when the repository variable
+`SLACK_REQUEST_CHANNEL` was set [R .github/workflows/slack-autopilot.yml:105-121].
+BUILT: `develop` and its dev preview exist; a person starts `promote.yml` to open and merge
+a `develop` to `main` pull request after checks pass [R docs/ENVIRONMENTS.md:19-27,54-56]
+[R .github/workflows/promote.yml:24-25,84-113]. Automatic dev migrations wait for the
+`SUPABASE_DB_URL_DEV` secret [R docs/ENVIRONMENTS.md:75]. Production migrations and
+the health watchdog remain separate workflows, detailed below.
 
 | Step | What happens | State | Evidence |
 |---|---|---|---|
-| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request; merges only tier A (see below) | BUILT | [R .github/workflows/slack-autopilot.yml:7-31, 57, 167, 179-195] |
+| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; the job it builds in holds no Slack token, can only read the repository and hands its commit over as a bundle; a change to `.github/` or `.claude/`, including a file moved out of them, or a change not built on the base commit the run started from, is never pushed; anything else becomes a DRAFT pull request, opened by ship after the review; merges only tier A (see below). Switched on 2026-10-30 when the repository variable `SLACK_REQUEST_CHANNEL` was set | BUILT | [R .github/workflows/slack-autopilot.yml:93-292] |
+| Review | A separate job on a fresh runner, checked out at the workflow's own commit: reads the build's commit from its bundle and lays its files out as data with agent instruction files removed, runs money-reviewer and invariant-auditor as two `claude-sonnet-5` runs with Read, Grep and Glob only and no Slack text; no verdict line counts as not passed. Verdicts go on the pull request, reports to the Slack thread; tier A merges only if both passed the same commit | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:308-427, 536-540, 601-650] [R .github/scripts/autopilot-review.mjs] [V-run, `autopilot-review.test.mjs` 42/42 and a dry run of the layout step, 2026-10-30] |
 | Status card | Updates the Slack thread through review, checks and merge, for `claude/slack-*` branches only. "Live" is posted only when someone runs the workflow by hand with that stage; nothing posts it automatically | PARTIAL | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] [R .github/scripts/slack-lifecycle-stage.mjs:22-26, 32, 57] |
-| Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-79] [R .github/workflows/slack-autopilot.yml:197-282] [R .github/workflows/ci.yml:93] |
-| Tier A self-merge | Starts CI on the head commit, waits, reads the pull request again (open, same commit, same base), merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:284-343] |
+| Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-79] [R .github/workflows/slack-autopilot.yml:462-519] [R .github/workflows/ci.yml:93] |
+| Tier A self-merge | Requires both reviewers to have passed the head commit; starts CI on it, waits, reads the pull request again (open, same commit, same base), merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:536-584] |
+| CI on autopilot pull requests | A pull request opened with the workflow's token starts no workflow, so ship starts CI on tier A and B pull requests that did not go through the merge step; not tier C, because a dispatched run uses the branch's workflow files | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:586-597] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-122] [V-run, `gh api` on ruleset 25802611 of the repository before its move, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
-| Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
-| Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose; then asks `/api/health` and tells Slack the result | BUILT | [R .github/workflows/migrate.yml:33-39, 131, 150, 154-159, 166-185] [R supabase/run-order.txt:10-16] |
+| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
+| Deploy | Vercel deploys `develop` and pull requests as dev previews; promotion to `main` deploys production | BUILT | [R docs/ENVIRONMENTS.md:19-39] |
+| Migrate | On pushes to `main` or `develop` touching `supabase/**`, applies `supabase/run-order.txt` to the corresponding environment; rebuild and seed scripts are excluded. Automatic dev migrations wait for `SUPABASE_DB_URL_DEV` | BUILT for production; SCAFFOLDED for automatic dev migrations | [R .github/workflows/migrate.yml:33-39,66-96] [R docs/ENVIRONMENTS.md:75] |
 | Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
 | Dev site and promotion | `promote.yml` opens a `develop` to `main` pull request when a person runs it, starts CI on its head commit, and merges with that commit pinned only if CI passed and `develop` holds everything on `main`; otherwise the pull request stays open and the run fails. CI starts by itself on pull requests into and pushes to `develop` | PARTIAL: the merge step has not yet run end to end on GitHub | [R .github/workflows/promote.yml:16-19, 48-56, 107-194] [R .github/workflows/ci.yml:3-7] [V-run, git ls-remote --heads origin, 2026-10-30: develop at cae5104] |
@@ -470,7 +550,122 @@ not yet at the database (ARCH-03).
   [R docs/owner-notes/store-app-infrastructure.html:516-532]; the owner's published copy
   changes only when the developer republishes it.
 
-## 8. What is deliberately not here
+## 8. AI
+
+Question: how does a photo or a question reach the model, and what stands between the model's
+answer and the store's records?
+
+```mermaid
+flowchart LR
+  P["Staff or owner"]
+  R["AI route<br/>extract, ask, reorder, triage"]
+  DB[("Postgres<br/>store data, feedback summaries")]
+  CC["callClaude<br/>the one door"]
+  LOG[("ai_call log<br/>daily cap per store")]
+  AN["Anthropic API, US<br/>claude-sonnet-5"]
+  CHK["Answer checks<br/>schema, stop reason, grounding"]
+  H["Invoice capture: person confirms<br/>amber lines, I checked"]
+  REC[("Receiving records")]
+  P -- "photo or question, session" --> R
+  R -- "Ask/reorder: store data by role" --> DB
+  R -- "fenced prompt" --> CC
+  CC -- "reserve; refused past the cap" --> LOG
+  CC -- "Messages API, retries, timeout" --> AN
+  AN -- "answer and stop reason" --> CHK
+  CHK -- "invoice draft for review" --> H
+  H -- "saves receiving only after confirming" --> REC
+  CHK -- "Ask/reorder: display answer only" --> P
+  CHK -- "triage: automatically save feedback.ai_summary" --> DB
+```
+
+Plain flow: a route checks who is asking, reads store data where needed (Ask and reorder limit
+dollar data by role), and hands a fenced prompt to `callClaude`, which counts the call against
+the store's daily cap and then asks Anthropic. Checks include the invoice schema, the stop
+reason and, for Ask, vendor names against the store data and app guide. Invoice capture saves
+receiving records after a person confirms; `/api/feedback-triage` automatically saves the
+screenshot description to `feedback.ai_summary`. Ask and reorder answers are displayed, not saved.
+
+What is in the AI side, layer by layer:
+
+| Layer | What it does | State | Evidence |
+|---|---|---|---|
+| Agents | Four in the app (invoice reader, Ask the store, reorder summary, suggestion screenshot reader); the build side has the Slack autopilot and two read-only reviewers. Full register: docs/AGENTS.md | BUILT | [R docs/AGENTS.md] |
+| Model | `claude-sonnet-5`; `ANTHROPIC_MODEL` overrides; no temperature or other sampling setting is sent | BUILT | [R src/lib/anthropic.ts:11-12, 56-58] |
+| One door | Every call goes through `callClaude`: retries 429, 529 and 500, 502, 503, 504 twice with backoff, never retries a timeout or a 400, reads refusal and cut-off from `stop_reason` | BUILT | [R src/lib/anthropic.ts:53-54, 88-121, 137-142] |
+| Prompt | Store data and the question are fenced and marked as data, not instructions | BUILT | [R src/app/api/ask/route.ts:145, 170-175] |
+| Output contract | Invoice reader output is constrained to a JSON schema by the API | BUILT | [R src/app/api/extract/route.ts:43-67, 108] |
+| Grounding | Checks vendor names the Ask answer mentions against the store data and app guide. Unsupported names withhold the answer; the question excuses them only if all occur in the question and the answer has no figures (no digits) | BUILT | [R src/lib/askGrounding.ts:256-290] [R src/app/api/ask/route.ts:185-196] |
+| Human in the loop | Invoice capture requires a person to confirm and save; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it. Screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved | BUILT | [R src/app/capture/page.tsx:183-229, 432-439] [R supabase/edit_delete.sql:41-61] [R src/app/api/feedback-triage/route.ts:80-85] [R src/app/ask/page.tsx:23-42] [R src/app/reorder/page.tsx:151-157] |
+| Cost | Daily cap per store, default 100 calls, roughly $10 on a runaway day; fails open so the receiving door is never blocked by the log | BUILT | [R src/lib/aiUsage.ts:8-15, 24-28] |
+| Logging | Metadata only (route, model, tokens, time, outcome), never the prompt, store data or answer | BUILT | [R src/lib/anthropic.ts:162-171] [R supabase/ai_call.sql:4-8] |
+| Failure words | Every failure has a plain sentence and a next step; capture always offers Enter manually | BUILT | [R src/lib/anthropic.ts:174-192] [R src/app/api/extract/route.ts:113-131] |
+| Evals | 24 made-up golden cases scored by fixed rules; never run against the model, so a model change has no regression gate yet | PARTIAL | [R docs/AGENTS.md] |
+| Data residency | The four routes send data to Anthropic in the US; what each sends is in section 7 and docs/PLATFORM.md | BUILT, recorded | Section 7 |
+| Retrieval | The whole store's data goes in the prompt; a vector index waits until the data outgrows one prompt | TARGET | Section 9 |
+
+Risks named after the standards, and where each is handled:
+
+| Risk (OWASP LLM / NIST AI 600-1 term) | Handled by |
+|---|---|
+| Prompt injection | Fenced data in the prompt; issue logging is deterministic, not the model |
+| Sensitive information disclosure | Money withheld by role before the prompt is built; no AI route reads staff tables (section 7) |
+| Improper output handling | JSON schema, `plainText()` strip, grounding check |
+| Excessive agency | Invoice capture requires a person to confirm and save; screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved. The build agent opens draft pull requests; only a words-only tier A change may merge itself, and that is off until `AUTOMERGE_TIER_A` is set (section 6) |
+| Unbounded consumption | Daily cap per store |
+| Confabulation | Confidence per line, amber lines, the 0.7 database gate |
+
+Gap against the multi-store rule: the Ask and reorder prompts and the alert email name the store
+and its town in code, so a second store's assistant would call itself Robinsons
+[R src/app/api/ask/route.ts:62, 145] [R src/app/api/reorder/route.ts:54, 84]
+[R src/app/api/alerts/route.ts:115, 120]. ARCH-13.
+
+### AI enablement: how requests, requirements and rules reach Claude
+
+Question: how does a request or a piece of owner feedback become a change, and what tells
+Claude how to build it?
+
+```mermaid
+flowchart LR
+  OWN["Owner and staff"]
+  SUG["Suggestions page<br/>notes, voice, screenshots"]
+  SLK["Slack<br/>store workspace"]
+  DEV["Developer<br/>Claude Code sessions"]
+  LED["Requirements ledger<br/>OWNER_NOTES, REQUIREMENTS"]
+  RUL["Rules and templates<br/>CLAUDE.md, skill, standards, reviewers"]
+  AP["Slack autopilot<br/>Claude Code in Actions"]
+  PR["Draft pull request<br/>tier label, CI, merge"]
+  ASK["Ask the store<br/>diagram above"]
+  OWN -- "notes, voice, screenshots" --> SUG
+  OWN -- "requests in the channel" --> SLK
+  SUG -- "developer digest, pasted by hand" --> DEV
+  DEV -- "triages each ask into" --> LED
+  RUL -- "loaded by every session" --> DEV
+  RUL -- "same rules for the build" --> AP
+  SLK -- "request in the channel" --> AP
+  SLK -. "questions, planned" .-> ASK
+  SUG -. "asks filed into the ledger, planned" .-> LED
+  DEV -- "opens" --> PR
+  AP -- "opens and labels the tier" --> PR
+```
+
+Plain flow: owner and staff leave notes, voice and screenshots on the Suggestions page, and the
+developer pastes its digest into a Claude Code session, files each ask in the requirements
+ledger and opens a pull request; the same rules and templates load into every session and
+into the Slack autopilot, which turns a channel request into a pull request; questions in
+Slack and automatic filing of
+asks are planned.
+
+| Piece | What it does | State | Evidence |
+|---|---|---|---|
+| Suggestions page | Notes, voice and screenshots from the owner and staff; the screenshot reader describes images; "Copy developer digest" makes one block for a build session | BUILT | [R src/app/suggestions/page.tsx:7, 168, 244] |
+| Requirements ledger | Every ask lands verbatim in docs/OWNER_NOTES.md, then gets a SHIPPED, QUEUED or OPEN line in docs/REQUIREMENTS.md. A person triages it in a session | BUILT, by hand | [R docs/REQUIREMENTS.md:284-291] |
+| Rules and templates | CLAUDE.md; the robinsons-store skill and its invariants; the standards file's templates for every document, claim, decision record, diagram, review and basis footer; two read-only reviewers (money, invariants); a typecheck gate on every session | BUILT | [R .claude/skills/robinsons-store/references/standards.md:8-80] [R docs/AGENTS.md] |
+| Slack autopilot | Turns a request in the channel into a draft pull request with Claude Code; the tier classifier labels it | BUILT; switched on 2026-10-30 when the repository variable `SLACK_REQUEST_CHANNEL` was set | [R docs/SLACK_AUTOPILOT.md:138] [V-run, `gh variable list`, 2026-10-30: `SLACK_REQUEST_CHANNEL` set at 20:57 UTC] |
+| Review job on Slack-built pull requests | Two read-only reviewers read every Slack-built pull request before it ships | TARGET, open pull request #82 | Section 6 when it merges |
+| Slack questions | Questions asked in Slack answered from the store's data by Ask the store | TARGET, not designed; the developer's stated direction, 2026-10-30 | [Q: owner] as in section 1 |
+| Automatic filing of asks | Suggestions filed into the requirements ledger without a person | TARGET, not designed; the developer's stated direction, 2026-10-30 | None yet |
+
+## 9. What is deliberately not here
 
 Not the enterprise stack: no Snowflake, Fabric, Redpanda, MuleSoft, API gateway or MCP
 governance at this scale. One store, thousands of rows a month; the upgrade path is earned
@@ -489,7 +684,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:174-175] |
 | Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:165-167] |
 
-## 9. Open items
+## 10. Open items
 
 | ID | Item | Owner | Blocking? |
 |---|---|---|---|
@@ -504,9 +699,11 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | ~~Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop~~ Closed 2026-10-24 by ADR-002: wired, off until `AUTOMERGE_TIER_A` is set | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
-| ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
+| ARCH-12 | CLOSED 2026-10-30: the store's Miro board shows the nine diagrams in this file, built in Miro from the Mermaid here with the same colour key and named by section and date. The six older diagrams and their labels moved to a separate board, "Robinsons store architecture, archive". Redraw any diagram on the board whose Mermaid changes here | The developer | No |
+| ARCH-13 | The store name and town are written into the Ask, reorder and alert prompts (section 8); read them from the store's settings so a second store needs no code change | The developer | Yes, before a second store |
+| ARCH-14 | The AI golden-case evals have never run against the model; run them before any change to `ANTHROPIC_MODEL` or a prompt | The developer | No |
 
-## 10. How this maps to the rest of the docs
+## 11. How this maps to the rest of the docs
 
 Every service and plan, adopted or declined: docs/PLATFORM.md. Who holds each account and
 every secret: docs/HANDOVER.md. The AI agents and whose key each runs on: docs/AGENTS.md.
@@ -530,6 +727,17 @@ curl of the health route.
 Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
 script, 6 claims checked, 6 confirmed. Source: this repository.
 
+**Basis, 2026-10-30 target context, AI enablement and colour key:** every `[R]` in the two new
+tables opened at the named lines on this branch; the autopilot switch read live with
+`gh variable list`. Slack questions and automatic filing are recorded as the developer's
+stated direction with no design behind them [J-open: none designed].
+
+**Basis, 2026-10-30 AI view and standards map:** every `[R]` in section 8 opened at the named
+lines against main 3a90f50: `src/lib/anthropic.ts`, `src/lib/aiUsage.ts`, the extract, ask,
+reorder and alerts routes, `supabase/ai_call.sql`, docs/AGENTS.md and the standards reference.
+The standard names in the map are titles only; no conformance to any of them is claimed
+[J-open: none audited].
+
 **Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
 killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
 back; each correction here was re-read in the code before it was written. Killed: the health
@@ -545,3 +753,28 @@ reorder, feedback-triage, import, alerts, health and admin users routes; `src/li
 docs, auth and anthropic; the capture and vendor pages; `supabase/` schema, payments_v2, edit_delete and run-order.txt; and
 `src/lib/importBookingsV2.ts`. All six diagrams rendered without error in Mermaid 10.9.1
 [V-run, mermaid.render on each block in a browser, 2026-10-30].
+
+**Basis, 2026-10-30 review job: 7 claims checked, 7 confirmed, 0 killed, 4 sources.** Section
+6 redrawn on branch claude/slack-autopilot-review. Confirmed: the request channel variable is
+unset and every sweep that day stopped at the gate (`gh variable list`, `gh secret list`, run
+logs); the bot token and Anthropic key are set; the review job's checkout, permissions, layout
+and reviewer tools, and the merge condition (workflow read at the cited lines); the decision
+rules (42 script tests); the layout step on this branch's own diff (agent files removed, file
+list written, git ignores the folder); the CI start limited to tiers A and B. Killed earlier
+the same day: the Slack request row's BUILT, now PARTIAL. Sources: this repository, GitHub
+CLI, Actions run logs, a local dry run.
+
+**Basis, 2026-10-30 build job commit-only: 7 claims checked, 7 confirmed, 0 killed, 2 sources.**
+Section 6 and its rows re-pointed on branch claude/autopilot-build-job-commit-only. Confirmed:
+four jobs, with the Slack token only in find and ship and the build job holding the Anthropic
+key and a read-only token (workflow parsed with js-yaml, secrets listed per job); the bundle
+round trip and the guard, including renames and a commit built on an older base (`autopilot-change.test.mjs` against real repositories); the push
+and the pull request in ship only, past the guard (`slack-autopilot.test.mjs`); every `[R]`
+in this section opened at its line. Sources: this repository, local test runs. Not verified:
+a real run.
+
+**Basis, 2026-10-30 PR #86: 5 claims checked, 5 confirmed, 0 killed, 4 sources.**
+Confirmed: the Slack intake configuration gate; the separate CI gates; promotion only when
+a person starts it; the recorded dev preview and pending automatic dev migrations. Sources:
+`.github/workflows/slack-autopilot.yml:105-121`, `.github/workflows/ci.yml:28-44`,
+`.github/workflows/promote.yml:24-25,84-113`, and `docs/ENVIRONMENTS.md:19-39,54-56,75`.
