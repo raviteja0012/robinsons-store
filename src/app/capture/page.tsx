@@ -59,9 +59,18 @@ export default function Capture() {
       if (storeId) dq = dq.eq("store_id", storeId);
       const { data: depts } = await dq;
       const { data: us } = await supabase.from("app_user").select("id, full_name, role").order("full_name");
-      let vq = supabase.from("vendor").select("id, name, department_id, default_terms").is("voided_at", null);
-      if (storeId) vq = vq.eq("store_id", storeId);
-      const { data: vs } = await vq;
+      // Staff capture too, and once login is on the vendor table returns them no rows
+      // (supabase/money_by_role.sql), so the match list comes from the money-free view for
+      // every role. Order amounts stay on purchase_order, which only a money role can read:
+      // the discrepancy check below only runs for those roles anyway. A database that has
+      // not run money_by_role.sql yet has no view; the vendor table answers then, so a deploy
+      // that lands before its migration does not lose the vendor match or the order check.
+      const vendorList = (from: "vendor_directory" | "vendor") => {
+        const q = supabase.from(from).select("id, name, department_id, default_terms").is("voided_at", null);
+        return storeId ? q.eq("store_id", storeId) : q;
+      };
+      let { data: vs, error: ve } = await vendorList("vendor_directory");
+      if (ve) ({ data: vs } = await vendorList("vendor"));
       let pq = supabase.from("purchase_order").select("vendor_id, order_amount").is("voided_at", null);
       if (storeId) pq = pq.eq("store_id", storeId);
       const { data: po } = await pq;

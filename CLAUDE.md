@@ -19,8 +19,10 @@ Read before building:
 - docs/PLATFORM.md - every service and plan in use, what is adopted and what is declined
   and why. Carries two open risks: the Vercel plan does not license commercial use, and
   Supabase Free takes no backups. Check it before adding any service.
-- docs/HANDOVER.md - who holds each account, the order to move them to the store, and the
-  register of every secret and variable. Add any new secret or service there.
+- docs/HANDOVER.md - what the store owns on each service, the register of every secret and
+  variable, and what is still open. Add any new secret or service there.
+- docs/ENVIRONMENTS.md - production (`main`, live database) and dev (`develop`, its own
+  database of invented data). Every preview reads dev; only the live site reads production.
 - docs/STATUS.md and docs/VERIFICATION.md - build state and sign-off; update both in the
   same PR as the work.
 - docs/OWNER_NOTES.md - the owner's feedback verbatim (Telugu translated), round by round.
@@ -32,7 +34,8 @@ Hard rules:
 - Payments only through the engine RPCs (record_payment / void_payment / edit_payment /
   reconcile_postdated). Post-dated is a future-dated cheque, never a method.
 - Store scoping + RLS on everything new (schema.sql AND auth_setup.sql 3a AND feedback-style
-  migration for live databases). Money fails closed (canSeeMoney). Soft voids only.
+  migration for live databases). Money fails closed (canSeeMoney), in the database too: a table
+  with a dollar figure goes in auth_setup.sql 3e and money_by_role.sql, not 3a. Soft voids only.
 - Builds must pass with blank env. Gates: npx tsc --noEmit, npm run build, npm run lint.
 - AI routes: grounded prompts, plain-text output (src/lib/aiText.ts strip), no temperature
   override (current models reject non-default sampling), default model claude-sonnet-5
