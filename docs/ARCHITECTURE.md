@@ -13,6 +13,22 @@ this repository this session, `[V-run]` checked live this session, `[J-open]` be
 not checked (with what would prove it wrong), `[Q: owner]` an open question. States: BUILT,
 PARTIAL (gaps named), SCAFFOLDED (built, switched off; the switch named), TARGET (not built).
 
+Standards each view follows. The document as a whole is an architecture description in the
+sense of ISO/IEC/IEEE 42010:2022 (one concern per view, each view answers a question), laid
+out after arc42; the diagrams are Mermaid, per `.claude/skills/robinsons-store/references/standards.md`.
+
+| Section | View | Notation or standard |
+|---|---|---|
+| 1. Context | Who and what the app depends on | C4 model, level 1 (System Context) |
+| 2. Containers | Deployable pieces and how they talk. "Container" is the C4 term for a separately running unit, not Docker; there are no Docker containers | C4 model, level 2 (Container) |
+| 3. Capture loop | One flow, step by step | UML 2.5 sequence diagram |
+| 4. Money | How an invoice status moves | UML 2.5 state machine |
+| 5. Data | Tables and keys | Entity relationship, crow's foot notation |
+| 6. Build and release | Request to live site | Delivery pipeline (continuous delivery); measured, when it is, by the four DORA metrics |
+| 7. Security and privacy | What is fenced and what leaves Canada | PIPEDA for personal data; OWASP Top 10 for the web app |
+| 8. AI | How the model is called and checked | Same C4 container notation; risks named after NIST AI RMF 1.0 and its Generative AI Profile (NIST AI 600-1), and the OWASP Top 10 for LLM Applications |
+| 9 to 11 | Out of scope, open items, map | arc42 section 11 (risks and technical debt) in short form; decisions live in docs/adr (arc42 section 9) |
+
 ## 1. Context
 
 The store is Robinson's General Store, the general store Ravi Kiran acquired, in Dorset,
@@ -468,7 +484,73 @@ not yet at the database (ARCH-03).
   [R docs/owner-notes/store-app-infrastructure.html:516-532]; the owner's published copy
   changes only when the developer republishes it.
 
-## 8. What is deliberately not here
+## 8. AI
+
+Question: how does a photo or a question reach the model, and what stands between the model's
+answer and the store's records?
+
+```mermaid
+flowchart LR
+  P["Staff or owner"]
+  R["AI route<br/>extract, ask, reorder, triage"]
+  DB[("Postgres<br/>store-scoped reads")]
+  CC["callClaude<br/>the one door"]
+  LOG[("ai_call log<br/>daily cap per store")]
+  AN["Anthropic API, US<br/>claude-sonnet-5"]
+  CHK["Answer checks<br/>schema, stop reason, grounding"]
+  H["Person confirms<br/>amber lines, I checked"]
+  REC[("Receiving records")]
+  P -- "photo or question, session" --> R
+  R -- "store data; dollars only for money roles" --> DB
+  R -- "fenced prompt" --> CC
+  CC -- "reserve; refused past the cap" --> LOG
+  CC -- "Messages API, retries, timeout" --> AN
+  AN -- "answer and stop reason" --> CHK
+  CHK -- "draft or plain answer" --> H
+  H -- "saves only after confirming" --> REC
+```
+
+Plain flow: a route checks who is asking, reads that store's data (dollars only for roles that
+see money), and hands a fenced prompt to `callClaude`, which counts the call against the
+store's daily cap and then asks Anthropic; the answer is checked against a schema, its stop
+reason and the store's own vendor names, and nothing the model says becomes a record until a
+person confirms it.
+
+What is in the AI side, layer by layer:
+
+| Layer | What it does | State | Evidence |
+|---|---|---|---|
+| Agents | Four in the app (invoice reader, Ask the store, reorder summary, suggestion screenshot reader); the build side has the Slack autopilot and two read-only reviewers. Full register: docs/AGENTS.md | BUILT | [R docs/AGENTS.md] |
+| Model | `claude-sonnet-5`; `ANTHROPIC_MODEL` overrides; no temperature or other sampling setting is sent | BUILT | [R src/lib/anthropic.ts:11-12, 56-58] |
+| One door | Every call goes through `callClaude`: retries 429, 529 and 5xx twice with backoff, never retries a timeout or a 400, reads refusal and cut-off from `stop_reason` | BUILT | [R src/lib/anthropic.ts:53-54, 88-121, 137-142] |
+| Prompt | Store data and the question are fenced and marked as data, not instructions | BUILT | [R src/app/api/ask/route.ts:145, 167-168] |
+| Output contract | Invoice reader output is constrained to a JSON schema by the API | BUILT | [R src/app/api/extract/route.ts:43-67, 108] |
+| Grounding | An Ask answer that names a vendor not in the store data is withheld | BUILT | [R src/app/api/ask/route.ts:185-192] |
+| Human in the loop | The model returns a draft and writes nothing; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it | BUILT | [R src/app/capture/page.tsx:199-238] [R supabase/edit_delete.sql:41-61] |
+| Cost | Daily cap per store, default 100 calls, roughly $10 on a runaway day; fails open so the receiving door is never blocked by the log | BUILT | [R src/lib/aiUsage.ts:8-15, 24-28] |
+| Logging | Metadata only (route, model, tokens, time, outcome), never the prompt, store data or answer | BUILT | [R src/lib/anthropic.ts:162-171] [R supabase/ai_call.sql:4-8] |
+| Failure words | Every failure has a plain sentence and a next step; capture always offers Enter manually | BUILT | [R src/lib/anthropic.ts:174-192] [R src/app/api/extract/route.ts:113-131] |
+| Evals | 24 made-up golden cases scored by fixed rules; never run against the model, so a model change has no regression gate yet | PARTIAL | [R docs/AGENTS.md] |
+| Data residency | The four routes send data to Anthropic in the US; what each sends is in section 7 and docs/PLATFORM.md | BUILT, recorded | Section 7 |
+| Retrieval | The whole store's data goes in the prompt; a vector index waits until the data outgrows one prompt | TARGET | Section 9 |
+
+Risks named after the standards, and where each is handled:
+
+| Risk (OWASP LLM / NIST AI 600-1 term) | Handled by |
+|---|---|
+| Prompt injection | Fenced data in the prompt; issue logging is deterministic, not the model |
+| Sensitive information disclosure | Money withheld by role before the prompt is built; no AI route reads staff tables (section 7) |
+| Improper output handling | JSON schema, `plainText()` strip, grounding check |
+| Excessive agency | The model writes nothing; a person saves. The build agent opens draft pull requests only (section 6) |
+| Unbounded consumption | Daily cap per store; no spend limit on the key yet (AG-02) |
+| Confabulation | Confidence per line, amber lines, the 0.7 database gate |
+
+Gap against the multi-store rule: the Ask and reorder prompts and the alert email name the store
+and its town in code, so a second store's assistant would call itself Robinsons
+[R src/app/api/ask/route.ts:62, 145] [R src/app/api/reorder/route.ts:54, 84]
+[R src/app/api/alerts/route.ts:115, 120]. ARCH-13.
+
+## 9. What is deliberately not here
 
 Not the enterprise stack: no Snowflake, Fabric, Redpanda, MuleSoft, API gateway or MCP
 governance at this scale. One store, thousands of rows a month; the upgrade path is earned
@@ -487,7 +569,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | Supabase Edge Functions, Realtime | Declined | [R docs/PLATFORM.md:174-175] |
 | Vercel AI Gateway, Blob, Workflows | Declined | [R docs/PLATFORM.md:165-167] |
 
-## 9. Open items
+## 10. Open items
 
 | ID | Item | Owner | Blocking? |
 |---|---|---|---|
@@ -503,8 +585,10 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
 | ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
+| ARCH-13 | The store name and town are written into the Ask, reorder and alert prompts (section 8); read them from the store's settings so a second store needs no code change | The developer | Yes, before a second store |
+| ARCH-14 | The AI golden-case evals have never run against the model; run them before any change to `ANTHROPIC_MODEL` or a prompt | The developer | No |
 
-## 10. How this maps to the rest of the docs
+## 11. How this maps to the rest of the docs
 
 Every service and plan, adopted or declined: docs/PLATFORM.md. Who holds each account and
 every secret: docs/HANDOVER.md. The AI agents and whose key each runs on: docs/AGENTS.md.
@@ -525,6 +609,12 @@ the eight killed are the six stale statements this rewrite replaces, the old dia
 after the database writes, and tier A self-merge in the live Slack loop. Added the same day
 by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
 curl of the health route.
+
+**Basis, 2026-10-30 AI view and standards map:** every `[R]` in section 8 opened at the named
+lines against main 3a90f50: `src/lib/anthropic.ts`, `src/lib/aiUsage.ts`, the extract, ask,
+reorder and alerts routes, `supabase/ai_call.sql`, docs/AGENTS.md and the standards reference.
+The standard names in the map are titles only; no conformance to any of them is claimed
+[J-open: none audited].
 
 **Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
 killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not

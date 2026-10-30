@@ -2,7 +2,19 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch architecture-matches-code (latest: the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/architecture-ai-view (latest: the AI view and the standards map in the architecture doc, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+AI view and standards map in the architecture doc, 2026-10-30:
+- docs/ARCHITECTURE.md has a new section 8, AI: one diagram of how a photo or question reaches
+  the model and what checks its answer, a layer table (model, one door, prompt fence, output
+  contract, grounding, human confirmation, cost cap, logging, evals, residency, retrieval) and
+  the AI risks by their OWASP and NIST names. Old sections 8 to 10 are now 9 to 11.
+- A table at the top names the notation or standard each view follows (C4 levels 1 and 2,
+  UML sequence and state, crow's foot ER, DORA, PIPEDA, OWASP, NIST AI RMF, ISO/IEC/IEEE 42010,
+  arc42). Names only; no conformance claimed.
+- Found: the store name and town are written into the Ask, reorder and alert prompts
+  (ARCH-13, blocks a second store). The AI evals have never run against the model (ARCH-14).
+- Docs only; no code, schema, policy or workflow change.
 
 Architecture diagrams corrected against the code, 2026-10-30:
 - An edge-by-edge check of the six diagrams in docs/ARCHITECTURE.md against main found arrows
