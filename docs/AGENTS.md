@@ -20,7 +20,7 @@ current Claude models reject non-default sampling settings [R `src/app/api/extra
 
 | Agent | What it does for the store | Where | Guardrails | State |
 |---|---|---|---|---|
-| **Invoice reader** | Reads an invoice photo or PDF into vendor, invoice number, date, the printed subtotal, HST and total, line items and confidence per line | `/api/extract` [R `src/app/api/extract/route.ts:78`] | Signed-in member resolved first [R `:82`]; strict JSON contract; low-confidence dollar lines cannot save until a person fixes or confirms them [R `RUNBOOK.md:105-107`]; lines that do not add up to the printed totals cannot save until a person ticks that they checked them, with no extra model call [R `src/lib/extractValidate.ts:86`]; a refusal tells staff to enter it by hand [R `:128`] | BUILT |
+| **Invoice reader** | Reads an invoice photo or PDF into vendor, invoice number, date, the printed subtotal, HST and total, line items and confidence per line | `/api/extract` [R `src/app/api/extract/route.ts:78`] | Signed-in member resolved first [R `:82`]; strict JSON contract; low-confidence dollar lines cannot save until a person fixes or confirms them [R `RUNBOOK.md:105-107`]; lines that do not add up to the printed totals cannot save until a person ticks that they checked them, with no extra model call [R `src/lib/extractValidate.ts:92`]; a refusal tells staff to enter it by hand [R `:128`] | BUILT |
 | **Ask the store** | Answers questions from the store's own notes, vendors and invoices, with citations; also logs "log this issue: ..." straight into Suggestions | `/api/ask` [R `src/app/api/ask/route.ts:39`] | Dollar data withheld from roles that cannot see money [R `:36`, `:91`]; issue logging is deterministic, verbatim, attributed and only for signed-in members [R `:95-96`]; answer stripped to plain text [R `:166`] | BUILT |
 | **Reorder summary** | Turns the formula-based reorder list into a short plain-language summary | `/api/reorder` [R `src/app/api/reorder/route.ts:23`] | Money roles only once login is enforced [R `:33`]; plain text [R `:110`] | BUILT |
 | **Suggestion screenshot reader** | Describes a screenshot attached to an owner suggestion, so the developer digest carries it as text | `/api/feedback-triage` [R `src/app/api/feedback-triage/route.ts:12`] | Under 120 words, plain text [R `:21`, `:86`]; best-effort, never blocks saving the suggestion [R `:14`] | BUILT |
@@ -92,6 +92,6 @@ the reviewers and the classifier read the build's bundle before the pull request
 line reference in the six rows re-read. Source: this repository.
 The invoice reader row brought up to date, 2026-10-30, branch capture-invoice-checks: 4 claims
 checked, 4 confirmed. Confirmed: the reader returns the invoice number and printed totals, and
-lines that do not add up to them need a tick before saving (scripts/extractvalidate-check 78 of
-78); the golden cases are 25 (scripts/aievals-check 124 of 124); every line reference in the two
+lines that do not add up to them need a tick before saving (scripts/extractvalidate-check 91 of
+91); the golden cases are 25 (scripts/aievals-check 124 of 124); every line reference in the two
 rows re-read. Source: this repository.

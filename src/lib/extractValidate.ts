@@ -30,13 +30,14 @@ export type Extraction = PrintedTotals & {
   invoice_date: string;
   notes: string;
   line_items: ExtractedLine[];
-  // The lines do not add up to the figures printed on the paper, or a printed figure was
-  // not a usable number. The capture screen makes a person acknowledge it before saving.
+  // A printed subtotal, HST or total was not a usable number and was left blank.
+  printed_unreadable: boolean;
+  // The lines do not add up to the figures printed on the paper (checkTotals). The capture
+  // screen makes a person acknowledge it before saving.
   totals_mismatch: boolean;
 };
 
 const MAX_TEXT = 500;
-const MAX_INVOICE_NUMBER = 64;
 
 function text(v: unknown): string {
   return typeof v === "string" ? v.trim().slice(0, MAX_TEXT) : "";
@@ -78,30 +79,47 @@ export type TotalsCheck = {
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-// The lines match when they make the printed subtotal, or the printed total less the printed
-// HST or less HST at the rate. A misread subtotal is forgiven when the total still agrees with
-// the lines. Lines that make the total as printed (prices that include tax) count only on paper
-// that prints no subtotal and no tax: otherwise they are lines with a tax row read as a
-// purchase. On a mismatch the subtotal is the figure reported, since the lines should make it.
+// The lines match when they make the printed subtotal, or the printed total less the tax. A
+// misread subtotal is forgiven when the total still agrees with the lines. The tax is the one
+// printed when there is one (0.00 on zero-rated goods included); HST at the rate is assumed
+// only when none is printed. Lines that make the total as printed (prices that include tax)
+// count only on paper that prints no subtotal and no tax: otherwise they are lines with a tax
+// row read as a purchase. On a mismatch the subtotal is the figure reported.
+//
+// unreadable: one of the printed figures was not a usable number and is null here. It may
+// have been the tax or the subtotal, so only the printed subtotal itself can vouch for the
+// lines; anything else is a mismatch, nothing printed to check included.
 export function checkTotals(
   lines: { qty: number | null; unit_cost: number | null }[],
   printed: PrintedTotals,
-  taxRate: number = HST_RATE
+  taxRate: number = HST_RATE,
+  unreadable = false
 ): TotalsCheck {
   const computed = round2(lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unit_cost) || 0), 0));
   const { printed_subtotal: sub, printed_hst: hst, printed_total: total } = printed;
-  if (sub === null && total === null) return { computed, status: "unchecked", against: null, printed: null };
   const near = (n: number) => Math.abs(computed - n) <= TOTALS_TOLERANCE + 1e-9;
   if (sub !== null && near(sub)) return { computed, status: "match", against: "subtotal", printed: sub };
-  if (total !== null) {
-    const pretax = [total / (1 + taxRate)];
-    if (hst !== null) pretax.push(total - hst);
-    if (sub === null && hst === null) pretax.push(total);
+  if (!unreadable && sub === null && total === null) return { computed, status: "unchecked", against: null, printed: null };
+  if (!unreadable && total !== null) {
+    const pretax = hst !== null ? [total - hst] : sub === null ? [total / (1 + taxRate), total] : [total / (1 + taxRate)];
     if (pretax.some(near)) return { computed, status: "match", against: "total", printed: total };
   }
-  return sub !== null
-    ? { computed, status: "mismatch", against: "subtotal", printed: sub }
-    : { computed, status: "mismatch", against: "total", printed: total };
+  if (sub !== null) return { computed, status: "mismatch", against: "subtotal", printed: sub };
+  return total !== null
+    ? { computed, status: "mismatch", against: "total", printed: total }
+    : { computed, status: "mismatch", against: null, printed: null };
+}
+
+// An invoice number is a short label, not a sentence. One with a dollar sign or an amount in
+// it, over 40 characters or over four words is left blank: it goes into the notes, which
+// staff see, so reader text carrying a money figure must not get there this way.
+function invoiceNumber(v: unknown, warnings: string[]): string {
+  const s = text(v);
+  if (s && (s.length > 40 || s.split(/\s+/).length > 4 || /\$|\d[.,]\d{2}(?!\d)/.test(s))) {
+    warnings.push("invoice number did not look like one; left blank");
+    return "";
+  }
+  return s;
 }
 
 export function normalizeExtraction(parsed: any): { data: Extraction; warnings: string[] } {
@@ -139,8 +157,8 @@ export function normalizeExtraction(parsed: any): { data: Extraction; warnings: 
   });
 
   // A printed figure that is not a usable number (a negative one included: a credit note
-  // needs a person anyway) is left blank. If that leaves nothing to check the lines against,
-  // the check fails closed: the lines cannot be vouched for against a total nobody could read.
+  // needs a person anyway) is left blank, and the check fails closed unless the lines make the
+  // printed subtotal (see checkTotals).
   let unreadable = false;
   const printedAmount = (field: keyof PrintedTotals, label: string): number | null => {
     const a = amount(src[field], true);
@@ -156,20 +174,25 @@ export function normalizeExtraction(parsed: any): { data: Extraction; warnings: 
     printed_total: printedAmount("printed_total", "total")
   };
 
-  const totals = checkTotals(line_items, printed);
+  const totals = checkTotals(line_items, printed, HST_RATE, unreadable);
   if (totals.status === "mismatch") {
-    warnings.push(`the lines do not add up to the printed ${totals.against}; check each qty and unit cost against the paper`);
+    warnings.push(
+      unreadable && totals.against !== "subtotal"
+        ? "the lines could not be checked against the printed totals; check each qty and unit cost against the paper"
+        : `the lines do not add up to the printed ${totals.against}; check each qty and unit cost against the paper`
+    );
   }
 
   return {
     data: {
       vendor: text(src.vendor),
-      invoice_number: text(src.invoice_number).slice(0, MAX_INVOICE_NUMBER),
+      invoice_number: invoiceNumber(src.invoice_number, warnings),
       invoice_date,
       notes: text(src.notes),
       ...printed,
       line_items,
-      totals_mismatch: totals.status === "mismatch" || (totals.status === "unchecked" && unreadable)
+      printed_unreadable: unreadable,
+      totals_mismatch: totals.status === "mismatch"
     },
     warnings
   };

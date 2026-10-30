@@ -76,7 +76,7 @@
     },
     {
       "id": "extract-no-date",
-      "covers": "No date anywhere on the paper: invoice_date must come back blank, not guessed. An order number must not be read as a date. The lines agree with the one printed figure, Total before tax, whichever field the reader puts it in.",
+      "covers": "No date anywhere on the paper: invoice_date must come back blank, not guessed. An order number must not be read as a date. The one printed figure, Total before tax, is the subtotal before tax: printed_subtotal, with no tax and no total printed.",
       "document": {
         "header": [
           { "bold": "HALIBURTON CANDLE WORKS" },
@@ -96,6 +96,7 @@
       "expect": {
         "vendor": "Haliburton Candle Works",
         "invoice_date": "",
+        "printed_subtotal": 145.80, "printed_hst": null, "printed_total": null,
         "totals_mismatch": false,
         "lines": [
           { "match": ["pine", "forest"], "qty": 8, "unit_cost": 7.80 },

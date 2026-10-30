@@ -14,6 +14,9 @@ export function vendorKey(name: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .replace(/&/g, " and ")
+    // Apostrophes and periods join, other punctuation separates: "O'Reilly" is "OReilly" and
+    // "J.D." is "JD", while "Co-op" stays two words.
+    .replace(/['’.]/g, "")
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
   while (words.length > 1 && SUFFIXES.has(words[words.length - 1])) words.pop();

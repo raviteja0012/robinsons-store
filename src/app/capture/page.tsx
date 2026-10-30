@@ -42,10 +42,12 @@ export default function Capture() {
   const [manual, setManual] = useState(false);
   const [ack, setAck] = useState(false);
   const [lowAck, setLowAck] = useState(false);
-  // The totals printed on the invoice, and whether the route flagged them (lib/extractValidate).
-  // None for a manual entry: there is no paper to check against.
-  const [printed, setPrinted] = useState<(PrintedTotals & { flagged: boolean }) | null>(null);
-  const [totalsAck, setTotalsAck] = useState(false);
+  // The totals printed on the invoice, and whether one of them could not be read
+  // (lib/extractValidate). None for a manual entry: there is no paper to check against.
+  const [printed, setPrinted] = useState<(PrintedTotals & { unreadable: boolean }) | null>(null);
+  // The lines' sum when the person ticked the totals box. The tick holds only while the lines
+  // still add up to that, so a later edit that moves the amounts asks again.
+  const [totalsAckAt, setTotalsAckAt] = useState<number | null>(null);
 
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -103,7 +105,7 @@ export default function Capture() {
     setAck(false);
     setLowAck(false);
     setPrinted(null);
-    setTotalsAck(false);
+    setTotalsAckAt(null);
     setReduced(null);
     setFile(f);
     if (preview) URL.revokeObjectURL(preview);
@@ -122,7 +124,7 @@ export default function Capture() {
     setAck(false);
     setLowAck(false);
     setPrinted(null);
-    setTotalsAck(false);
+    setTotalsAckAt(null);
     setManual(true);
     setDraft({ vendor: "", invoice_date: "", notes: "", line_items: [{ description: "", qty: null, unit_cost: null, retail_price_note: null, confidence: 1 }] });
   }
@@ -146,12 +148,12 @@ export default function Capture() {
       if (!resp.ok) throw new Error(data.error || "extraction failed");
       setAck(false);
       setLowAck(false);
-      setTotalsAck(false);
+      setTotalsAckAt(null);
       setPrinted({
         printed_subtotal: data.printed_subtotal ?? null,
         printed_hst: data.printed_hst ?? null,
         printed_total: data.printed_total ?? null,
-        flagged: data.totals_mismatch === true
+        unreadable: data.printed_unreadable === true
       });
       setDraft({
         vendor: data.vendor || "",
@@ -197,12 +199,11 @@ export default function Capture() {
   const total = round2(subtotal + hst);
 
   // The lines against the totals printed on the invoice (lib/extractValidate), rerun on every
-  // edit, so retyping the misread line clears it. Flagged by the route with nothing left here to
-  // compare means a printed figure the reader could not use: that holds until acknowledged.
-  // The acknowledgement is the amber-line one (low_confidence_ack): both say a person checked
-  // lines the reader may have got wrong.
-  const totalsCheck = draft && printed ? checkTotals(draft.line_items, printed, taxRate) : null;
-  const totalsMismatch = !!totalsCheck && (totalsCheck.status === "mismatch" || (!!printed?.flagged && totalsCheck.status === "unchecked"));
+  // edit, so retyping the misread line clears it. The acknowledgement is the amber-line one
+  // (low_confidence_ack): both say a person checked lines the reader may have got wrong.
+  const totalsCheck = draft && printed ? checkTotals(draft.line_items, printed, taxRate, printed.unreadable) : null;
+  const totalsMismatch = totalsCheck?.status === "mismatch";
+  const totalsAck = totalsCheck !== null && totalsAckAt === totalsCheck.computed;
   const totalsDiff = totalsCheck && totalsCheck.printed !== null ? round2(totalsCheck.computed - totalsCheck.printed) : null;
 
   // Match the read vendor to a known vendor in this department, case, punctuation and a
@@ -280,7 +281,7 @@ export default function Capture() {
       setAck(false);
       setLowAck(false);
       setPrinted(null);
-      setTotalsAck(false);
+      setTotalsAckAt(null);
       setTimeout(() => router.push("/"), 900);
     } catch (e: any) {
       setError(e.message);
@@ -475,15 +476,15 @@ export default function Capture() {
               <p className="help" style={{ marginTop: 8, color: "var(--text-primary)" }}>
                 {!showMoney
                   ? "The lines do not add up to the total printed on the invoice. Check every description and qty against the paper, and that no line is missing or extra."
-                  : totalsCheck.printed === null
-                    ? "The total printed on the invoice could not be read as a number, so the lines could not be checked against it. Check each qty and unit cost against the paper."
+                  : totalsCheck.printed === null || (printed?.unreadable && totalsCheck.against !== "subtotal")
+                    ? "A total printed on the invoice could not be read as a number, so the lines could not be checked against the invoice's totals. Check each qty and unit cost against the paper."
                     : totalsCheck.against === "subtotal"
                       ? `The lines add up to ${formatCAD(totalsCheck.computed)} but the invoice prints a subtotal of ${formatCAD(totalsCheck.printed)}, ${totalsDiff! < 0 ? "short" : "over"} by ${formatCAD(Math.abs(totalsDiff!))}. Check each qty and unit cost against the paper.`
                       : `The lines add up to ${formatCAD(totalsCheck.computed)}, which does not match the invoice's printed total of ${formatCAD(totalsCheck.printed)} with or without HST. Check each qty and unit cost against the paper.`}{" "}
                 If this photo is only part of the invoice, the printed total also covers lines that are not in it.
               </p>
               <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 13 }}>
-                <input type="checkbox" checked={totalsAck} onChange={(e) => setTotalsAck(e.target.checked)} />
+                <input type="checkbox" checked={totalsAck} onChange={(e) => setTotalsAckAt(e.target.checked ? totalsCheck.computed : null)} />
                 I checked the lines against the invoice total
               </label>
             </div>

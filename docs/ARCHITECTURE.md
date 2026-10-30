@@ -288,18 +288,18 @@ any original file is uploaded and the receiving event, its lines and an audit ro
 - The photo is downscaled before sending so a phone picture does not exceed the request body
   limit; the stored file is the original. BUILT [R src/app/capture/page.tsx:114-122].
 - Save is blocked until any discrepancy, any amber line and any mismatch between the lines and
-  the invoice's printed totals is acknowledged [R src/app/capture/page.tsx:229-231]. The
+  the invoice's printed totals is acknowledged [R src/app/capture/page.tsx:230-232]. The
   database refuses a line under 0.7 confidence with a unit cost unless the event carries
   `low_confidence_ack`. BUILT [R supabase/edit_delete.sql:41-61]. The totals mismatch has no
   database check of its own; its tick is stored on the same `low_confidence_ack`
-  [R src/app/capture/page.tsx:256].
+  [R src/app/capture/page.tsx:257].
 - The vendor the reader returns is matched to one on file in the department with case,
-  punctuation, "&" and a trailing company suffix such as Inc, Ltd, Limited or Co ignored; two vendors that match the
+  punctuation (an apostrophe or period joins, "O'Reilly" is "OReilly"), "&" and a trailing company suffix such as Inc, Ltd, Limited or Co ignored; two vendors that match the
   same way match neither, so no order check runs against the wrong vendor. BUILT
-  [R src/lib/vendorMatch.ts:26-38] [R src/app/capture/page.tsx:210].
-- The invoice number goes at the front of the notes unless the reader already wrote it there:
+  [R src/lib/vendorMatch.ts:29-41] [R src/app/capture/page.tsx:211].
+- The invoice number goes at the front of the notes unless the notes already name it as the invoice:
   the form has no box for it and `receiving_event` no column. BUILT
-  [R src/lib/captureLines.ts:38-42] [R src/app/capture/page.tsx:159].
+  [R src/lib/captureLines.ts:39-45] [R src/app/capture/page.tsx:161].
 - Order of writes: file upload first, then `receiving_event`, then `receiving_line`, then
   `activity_log` [R src/app/capture/page.tsx:199-238]. These are four separate requests from
   the browser, not one transaction (see ARCH-07).
@@ -640,9 +640,9 @@ What is in the AI side, layer by layer:
 | One door | Every call goes through `callClaude`: retries 429, 529 and 500, 502, 503, 504 twice with backoff, never retries a timeout or a 400, reads refusal and cut-off from `stop_reason` | BUILT | [R src/lib/anthropic.ts:53-54, 88-121, 137-142] |
 | Prompt | Store data and the question are fenced and marked as data, not instructions | BUILT | [R src/app/api/ask/route.ts:145, 170-175] |
 | Output contract | Invoice reader output is constrained to a JSON schema by the API: vendor, invoice number, date, notes, the subtotal, HST and total as printed, and the lines | BUILT | [R src/app/api/extract/route.ts:48-76, 117] |
-| Totals check | No model involved: the lines (qty x unit cost) are added up and compared with the printed subtotal, or the printed total less HST (or as is, on paper that prints no subtotal and no tax), within 5 cents. A mismatch, or a printed total that is not a usable number, is flagged; Capture reruns the check on every edit and will not save until a person ticks "I checked the lines against the invoice total", stored on `low_confidence_ack`. Staff see that the lines disagree, never by how much | BUILT | [R src/lib/extractValidate.ts:86-105, 141-173] [R src/app/capture/page.tsx:204-205, 231, 256, 471-490] |
+| Totals check | No model involved: the lines (qty x unit cost) are added up and compared with the printed subtotal, or the printed total less the printed tax (HST at the rate only when no tax is printed; the total as is only on paper with no subtotal and no tax), within 5 cents. A mismatch is flagged, and so is any printed figure that is not a usable number unless the lines make the printed subtotal itself. Capture reruns the check on every edit and will not save until a person ticks "I checked the lines against the invoice total", stored on `low_confidence_ack`; the tick lapses when an edit changes what the lines add up to. Staff see that the lines disagree, never by how much. An invoice number carrying an amount is left blank, since it goes into the notes staff see | BUILT | [R src/lib/extractValidate.ts:92-123, 159-198] [R src/app/capture/page.tsx:204-206, 232, 257, 472-491] |
 | Grounding | Checks vendor names the Ask answer mentions against the store data and app guide. Unsupported names withhold the answer; the question excuses them only if all occur in the question and the answer has no figures (no digits) | BUILT | [R src/lib/askGrounding.ts:256-290] [R src/app/api/ask/route.ts:185-196] |
-| Human in the loop | Invoice capture requires a person to confirm and save; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it. Screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved | BUILT | [R src/app/capture/page.tsx:224-231, 256, 498] [R supabase/edit_delete.sql:41-61] [R src/app/api/feedback-triage/route.ts:80-85] [R src/app/ask/page.tsx:23-42] [R src/app/reorder/page.tsx:151-157] |
+| Human in the loop | Invoice capture requires a person to confirm and save; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it. Screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved | BUILT | [R src/app/capture/page.tsx:225-232, 257, 499] [R supabase/edit_delete.sql:41-61] [R src/app/api/feedback-triage/route.ts:80-85] [R src/app/ask/page.tsx:23-42] [R src/app/reorder/page.tsx:151-157] |
 | Cost | Daily cap per store, default 100 calls, roughly $10 on a runaway day; fails open so the receiving door is never blocked by the log | BUILT | [R src/lib/aiUsage.ts:8-15, 24-28] |
 | Logging | Metadata only (route, model, tokens, time, outcome), never the prompt, store data or answer | BUILT | [R src/lib/anthropic.ts:162-171] [R supabase/ai_call.sql:4-8] |
 | Failure words | Every failure has a plain sentence and a next step; capture always offers Enter manually | BUILT | [R src/lib/anthropic.ts:174-192] [R src/app/api/extract/route.ts:113-131] |
@@ -834,13 +834,14 @@ a person starts it; the recorded dev preview and pending automatic dev migration
 `.github/workflows/slack-autopilot.yml:105-121`, `.github/workflows/ci.yml:28-44`,
 `.github/workflows/promote.yml:24-25,84-113`, and `docs/ENVIRONMENTS.md:19-39,54-56,75`.
 
-**Basis, 2026-10-30 invoice totals check: 10 claims checked, 10 confirmed, 0 killed, 3 sources.**
+**Basis, 2026-10-30 invoice totals check: 11 claims checked, 11 confirmed, 0 killed, 4 sources.**
 Sections 3 and 8 on branch capture-invoice-checks. Confirmed: every `[R]` added or re-pointed
 in those sections opened at its line (route schema, totals check, Capture gate, tick, card and
 vendor match, notes prefill, the confidence trigger); the totals check, vendor match and notes
-rule by `scripts/extractvalidate-check` (78 of 78, and failing under each of five deliberate
-breaks of the code); the 25 cases by `scripts/aievals-check` (124 of 124) and by
+rule by `scripts/extractvalidate-check` (91 of 91, and failing under each of seven deliberate
+breaks of the code); the eight findings of an independent read-only review, each fixed and
+covered by a test; the 25 cases by `scripts/aievals-check` (124 of 124) and by
 `npm run eval:ai -- --offline` through the real route (24 of 24, the known gap still failing);
 no code path writes a saved line's confidence below 0.7 with a cost (grep of `src/`). Sources:
-this repository, local test runs, the offline eval. Not verified: a live model run, and the
+this repository, local test runs, the offline eval, the review. Not verified: a live model run, and the
 screen in a browser.

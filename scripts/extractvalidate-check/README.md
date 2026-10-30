@@ -7,10 +7,13 @@ acknowledgement instead of being saved quietly.
 
 The same file adds up the lines (qty x unit cost) and compares them with the subtotal, HST and
 total printed on the invoice (`checkTotals`). The lines match the printed subtotal, or the
-printed total less the printed HST or less HST at the rate, within 5 cents; a total that
-equals the lines counts only when the paper prints no subtotal and no tax, so an HST row read
-as a purchase is not let through. A mismatch, or a printed total that is not a usable number
-with nothing else to check against, sets `totals_mismatch`. The check also runs every eval
+printed total less the printed tax, within 5 cents. HST at the rate is assumed only when no
+tax is printed (0.00 on zero-rated goods is a printed tax), and a total that equals the lines
+counts only when the paper prints no subtotal and no tax, so an HST row read as a purchase is
+not let through. A printed figure that is not a usable number sets `printed_unreadable`, and
+then only the printed subtotal itself can vouch for the lines. A mismatch sets
+`totals_mismatch`. An invoice number with a dollar sign or an amount in it, over 40
+characters or over four words, is left blank, since it goes into the notes staff read. The check also runs every eval
 sample in `scripts/aievals-check/samples/extract.json` through `normalizeExtraction` and
 requires each sample's verdict to be the one this code computes.
 

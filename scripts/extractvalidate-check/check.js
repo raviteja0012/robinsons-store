@@ -69,10 +69,19 @@ const nothing = inv(none);
 t("nothing printed: unchecked, no flag, no warning", nothing.data.totals_mismatch === false && nothing.warnings.length === 0 && checkTotals([line({})], none).status === "unchecked");
 t("fields left out entirely read as not printed", one({}).data.printed_total === null && one({}).data.totals_mismatch === false);
 const credit = inv({ ...none, printed_total: -25 });
-t("a negative printed total is left blank and fails closed", credit.data.printed_total === null && credit.data.totals_mismatch === true && credit.warnings.length === 1);
+t("a negative printed total is left blank and fails closed", credit.data.printed_total === null && credit.data.printed_unreadable === true && credit.data.totals_mismatch === true && credit.warnings.length === 2);
+t("an unreadable figure's warning carries no figure either", !/[$\d]/.test(credit.warnings[1]));
 t("a text printed subtotal is left blank and fails closed", inv({ ...none, printed_subtotal: "see page 2" }).data.totals_mismatch === true);
 const badHst = inv({ printed_subtotal: 25, printed_hst: "n/a", printed_total: null });
 t("an unreadable HST does not flag lines that make the subtotal", badHst.data.printed_hst === null && badHst.data.totals_mismatch === false && badHst.warnings.length === 1);
+const gross = [line({ qty: 1, unit_cost: 113 })];
+t("an unreadable HST does not open the prices-include-tax shortcut", inv({ printed_subtotal: null, printed_hst: -13, printed_total: 113 }, gross).data.totals_mismatch === true);
+t("an unreadable total does not let the rate vouch for the lines", inv({ printed_subtotal: null, printed_hst: null, printed_total: "113,00" }, gross).data.totals_mismatch === true);
+// A printed tax is the tax: HST at the rate is assumed only when none is printed.
+const hundred = [line({ qty: 1, unit_cost: 100 })];
+t("a printed 0.00 tax rules out tax at the rate", inv({ printed_subtotal: 113, printed_hst: 0, printed_total: 113 }, hundred).data.totals_mismatch === true);
+t("a printed tax rules out tax at the rate", inv({ printed_subtotal: 113, printed_hst: 5.65, printed_total: 118.65 }, [line({ qty: 1, unit_cost: 105 })]).data.totals_mismatch === true);
+t("zero-rated goods: tax printed as 0.00, lines make the total", inv({ printed_subtotal: null, printed_hst: 0, printed_total: 100 }, hundred).data.totals_mismatch === false);
 const strSub = inv({ ...none, printed_subtotal: "25.00" });
 t("a numeric string subtotal is kept, warned, and still checked", strSub.data.printed_subtotal === 25 && strSub.data.totals_mismatch === false && strSub.warnings.length === 1);
 const ret = inv({ ...none, printed_subtotal: 15 }, [line({}), line({ description: "RETURN dock line", qty: -2, unit_cost: 5 })]);
@@ -80,7 +89,13 @@ t("a return zeroed by the value checks no longer makes the subtotal", ret.data.t
 t("the screen's tax rate is used when given", checkTotals([{ qty: 1, unit_cost: 100 }], { ...none, printed_total: 105 }, 0.05).status === "match" && checkTotals([{ qty: 1, unit_cost: 100 }], { ...none, printed_total: 105 }).status === "mismatch");
 const partial = checkTotals([{ qty: null, unit_cost: 5 }, { qty: 2, unit_cost: null }, { qty: 2, unit_cost: 12.5 }], { ...none, printed_subtotal: 25 });
 t("a missing qty or cost counts as 0, as on the capture screen", partial.status === "match" && partial.computed === 25);
-t("invoice number trimmed and capped at 64", inv({ ...none, invoice_number: "  " + "9".repeat(80) }).data.invoice_number === "9".repeat(64));
+t("invoice number trimmed, label kept", inv({ ...none, invoice_number: "  INVOICE NO. NB-20417 " }).data.invoice_number === "INVOICE NO. NB-20417");
+// The number goes into the notes, which staff see, so it must not carry an amount.
+const numberOf = (n) => inv({ ...none, invoice_number: n });
+t("an invoice number with a dollar figure is left blank", numberOf("A-1 Total $113.00").data.invoice_number === "" && numberOf("A-1 Total $113.00").warnings.length === 1);
+t("an invoice number with an amount is left blank", numberOf("A-1 113.00").data.invoice_number === "" && numberOf("A-1 113,00").data.invoice_number === "");
+t("an invoice number over 40 characters or four words is left blank", numberOf("9".repeat(41)).data.invoice_number === "" && numberOf("see the second page please").data.invoice_number === "");
+t("ordinary invoice numbers are kept", ["NB-20417", "55-0418", "INV 1,234", "KGD-118840", "7781"].every((n) => numberOf(n).data.invoice_number === n));
 
 // The eval samples are written by hand in the route's response shape. Their totals verdict and
 // warning must be what this code works out from their own lines and printed figures, so the
@@ -89,7 +104,7 @@ const samples = JSON.parse(require("fs").readFileSync(require("path").join(__dir
 const verdicts = samples.filter((s) => s.status === 200 && s.body.totals_mismatch !== undefined);
 const wrong = verdicts.filter((s) => {
   const r = normalizeExtraction(s.body);
-  const warned = (s.body.warnings || []).some((w) => r.warnings.includes(w) && w.startsWith("the lines do not add up"));
+  const warned = (s.body.warnings || []).some((w) => r.warnings.includes(w) && w.startsWith("the lines "));
   return r.data.totals_mismatch !== s.body.totals_mismatch || warned !== s.body.totals_mismatch;
 });
 t("every eval sample's totals verdict is what the route would say", verdicts.length >= 30 && wrong.length === 0, wrong.map((s) => `${s.case}: ${s.label}`).join("; ") || `${verdicts.length} samples`);
@@ -99,6 +114,7 @@ t("suffix, case and punctuation ignored", vendorKey("Northbay Hardware Supply Lt
 t("ampersand reads as and; accents fold", vendorKey("Bancroft Feed & Seed Inc") === vendorKey("bancroft feed and seed") && vendorKey("Distribution Laurentienne Ltée") === "distribution laurentienne");
 t("stacked suffixes all dropped", vendorKey("Algonquin Hardware Co. Ltd.") === "algonquin hardware");
 t("a suffix word is only dropped from the end", vendorKey("Co-op Feed Supply") === "co op feed supply");
+t("apostrophes and periods join rather than split", vendorKey("O'Reilly Supply Ltd.") === vendorKey("OReilly Supply") && vendorKey("J.D. Feed") === vendorKey("JD Feed"));
 const vendors = [
   { id: 1, name: "Northbay Hardware Supply", department_id: "hw" },
   { id: 2, name: "Northbay Hardware Supply", department_id: "garden" },
@@ -117,6 +133,8 @@ t("number into empty notes", notesWithInvoiceNumber("", "NB-20417") === "Invoice
 t("number in front of other notes", notesWithInvoiceNumber("Terms Net 30", "NB-20417") === "Invoice NB-20417. Terms Net 30");
 t("notes that already carry it are left alone", notesWithInvoiceNumber("Invoice nb-20417, terms Net 30", "NB-20417") === "Invoice nb-20417, terms Net 30");
 t("no number, notes unchanged", notesWithInvoiceNumber("x", "  ") === "x");
+t("the same digits as another figure do not count", notesWithInvoiceNumber("Terms Net 30", "30") === "Invoice 30. Terms Net 30");
+t("a number after # or No. counts", notesWithInvoiceNumber("Ref #NB-20417", "NB-20417") === "Ref #NB-20417" && notesWithInvoiceNumber("Facture no 55-0418", "55-0418") === "Facture no 55-0418");
 
 // Capture screen: only a retyped unit cost clears an amber line.
 const amber = line({ confidence: 0.5 });

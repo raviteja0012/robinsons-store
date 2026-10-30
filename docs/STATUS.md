@@ -12,15 +12,18 @@ VERIFICATION.md):
   day.
 - When they disagree by more than 5 cents, Capture shows the printed figure under the Subtotal
   with the difference, and will not save until someone ticks "I checked the lines against the
-  invoice total". Retyping the misread line clears it. Staff see that the lines do not add up,
-  never the amounts. The tick is stored with the amber-line acknowledgement; no database change.
+  invoice total". Retyping the misread line clears it, and a tick lapses if a later edit changes
+  what the lines add up to. A printed figure that cannot be read as a number also needs the tick,
+  unless the lines make the printed subtotal. Staff see that the lines do not add up, never the
+  amounts. The tick is stored with the amber-line acknowledgement; no database change.
 - Expect the tick on the second half of a long invoice photographed in two parts: its printed
   total covers lines that are not in that photo, and the warning says so.
-- Capture's vendor match now ignores case, punctuation, "&" against "and", and a trailing Inc,
+- Capture's vendor match now ignores case, punctuation ("O'Reilly" is "OReilly"), "&" against "and", and a trailing Inc,
   Ltd, Limited or Co, within the department. If two vendors match that way, neither is picked.
-- The invoice number goes at the start of the notes; the form has no box for it.
-- Proven: scripts/extractvalidate-check 78 of 78, failing under each deliberate break of the
-  check; the AI eval scorers 124 of 124, with a new case for a photo of page 2 only; the offline
+- The invoice number goes at the start of the notes; the form has no box for it. One that
+  carries an amount is left blank, since staff read the notes.
+- Proven: scripts/extractvalidate-check 91 of 91, failing under each deliberate break of the
+  check; an independent read-only review found eight issues, all fixed with a test each; the AI eval scorers 124 of 124, with a new case for a photo of page 2 only; the offline
   eval through the real route 24 of 24, the known gap still failing. Of the 12 wrong answers in
   the existing eval samples that change what the lines add up to, the totals check flags all 12. It
   cannot catch a subtotal worked out from the lines instead of copied, or a carried-forward
