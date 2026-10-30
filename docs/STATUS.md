@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/arch-03-money-by-role (latest: money fenced by role at the database, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/arch-03-money-by-role (latest: money fenced by role at the database, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Money fenced by role at the database, 2026-10-25 (branch claude/arch-03-money-by-role; ARCH-03,
 docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
@@ -27,6 +27,32 @@ docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
   ARCH-04 (stored files), and item.cost_price is left out while nothing writes it. Staff
   opening a manager-only screen by its address (Vendors, Payments, Reports, Employees) now see
   an empty list.
+
+AI view and standards map in the architecture doc, 2026-10-30:
+- docs/ARCHITECTURE.md has a new section 8, AI: one diagram of how a photo or question reaches
+  the model and what checks its answer, a layer table (model, one door, prompt fence, output
+  contract, grounding, human confirmation, cost cap, logging, evals, residency, retrieval) and
+  the AI risks by their OWASP and NIST names. Old sections 8 to 10 are now 9 to 11.
+- A table at the top names the notation or standard each view follows (C4 levels 1 and 2,
+  UML sequence and state, crow's foot ER, DORA, PIPEDA, OWASP, NIST AI RMF, ISO/IEC/IEEE 42010,
+  arc42). Names only; no conformance claimed.
+- Found: the store name and town are written into the Ask, reorder and alert prompts
+  (ARCH-13, blocks a second store). The AI evals have never run against the model (ARCH-14).
+- Two more views and a colour key: a target context in section 1 (email intake, QuickBooks,
+  point of sale, Google Sheets sync, Slack questions, a search index, a second store, each
+  with its state and what it waits on) and an AI enablement view in section 8 (Suggestions,
+  the requirements ledger, the rules and templates every Claude session loads, the Slack
+  autopilot). Colour means state only: plain BUILT, amber dashed SCAFFOLDED, grey dashed
+  TARGET; planned pieces stay on the diagrams instead of being dropped.
+- The Slack autopilot was switched on 2026-10-30 (`SLACK_REQUEST_CHANNEL` set at 20:57 UTC,
+  read live). Slack questions and automatic filing of asks are the developer's stated
+  direction with no design yet.
+- The store's Miro board now has all nine diagrams, with the colour key, built in Miro from the doc's Mermaid and
+  named "N. Section, 2026-10-30". The six older ones moved to a separate board, "Robinsons
+  store architecture, archive" (ARCH-12 closed).
+- Docs only; no code, schema, policy or workflow change.
+
+
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
@@ -606,7 +632,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 ## Open items (polish, tractable)
 - AI call hardening, 2026-10-24 (branch ai-call-hardening, see VERIFICATION.md): all four AI
   routes go through src/lib/anthropic.ts (25s timeout, 45s on extract, two retries on
-  429/529/5xx, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
+  429, 529 and 500, 502, 503, 504, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
@@ -614,10 +640,10 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
-  items above are done. Ask withholds any answer that names a vendor not in the store data or
-  the app guide, and shows "Not confirmed" with a plain message instead
-  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question never vouches
-  for a name: it only excuses one in an answer with no digits ("Costco is not on file"). The
+  items above are done. Ask checks vendor names mentioned in answers against the store data
+  and app guide, withholding an unsupported answer with "Not confirmed" and a plain message
+  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question excuses unsupported
+  names only if all occur in the question and the answer has no figures (no digits, as in "Costco is not on file"). The
   model wraps vendor names in [[ ]] for the check; the brackets never reach the screen.
   Unwrapped names are caught only with a legal suffix or after "vendor", "supplier", or
   "order from", so an unwrapped made-up vendor with neither still gets through. Ask now
