@@ -185,9 +185,14 @@ break:
   this codebase has broken: a select missing tax_mode, an inline total bypassing
   invoiceTotal, SQL and TypeScript changed on one side only) and invariant-auditor. Use them
   on any diff that touches money or adds a query. The Slack autopilot runs both on every
-  pull request it opens, in a read-only review job on a fresh runner with instructions from
-  the workflow's own commit; a finding or a missing verdict stops tier A from merging itself
-  (docs/SLACK_AUTOPILOT.md).
+  change it builds, before the pull request opens, in a read-only review job on a fresh
+  runner with instructions from the workflow's own commit; a finding or a missing verdict
+  stops tier A from merging itself (docs/SLACK_AUTOPILOT.md).
+- The runner the Slack autopilot's model builds on holds the Anthropic key and a read-only
+  token and nothing else, and its only product is the commit, handed over as a bundle. The
+  Slack token, the reviewers, the classifier, the push and the merge all live in other jobs
+  on fresh runners. Never add a step after the build on that runner, or a secret to it;
+  slack-autopilot.test.mjs fails if you do.
 
 ## Operational reality (how this repo is actually run)
 - The build and review work happens in an isolated cloud container with no network route to the owner's Supabase or Vercel. Do not try to connect to the database or the live site. Deliver database changes as SQL the owner runs in the Supabase SQL editor, and deploys happen by pushing to the branch (Vercel auto-deploys main).

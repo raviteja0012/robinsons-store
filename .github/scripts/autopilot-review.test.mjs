@@ -41,7 +41,10 @@ t("an errored reviewer is missing", verdict(finalResult(result(`ok\n${PASS_LINE}
 t("a reviewer that never ran is missing", verdict(null) === "missing");
 
 // The card.
-const base = { built: true, tier: "B", automerge: "", reviewed: true, money: "pass", invariant: "pass", says: "Added a phone column." };
+const base = {
+  built: true, packed: true, changed: "true", guard: "ok", opened: true,
+  tier: "B", automerge: "", reviewed: true, money: "pass", invariant: "pass", says: "Added a phone column."
+};
 const clean = cardFor(base);
 t("a clean change reads as ready to look at", clean.stage === "built");
 t("a clean change carries the builder's own words", clean.note.startsWith("Added a phone column."));
@@ -64,11 +67,29 @@ t("a merge says it merged", cardFor({ ...base, tier: "A", automerge: "merged" })
 t("a merge says the reviewers passed it", /both reviewers passed/.test(cardFor({ ...base, tier: "A", automerge: "merged" }).note));
 t("tier A whose CI failed says so", cardFor({ ...base, tier: "A", automerge: "checks_failed" }).stage === "checks_failed");
 
-const stopped = cardFor({ ...base, tier: "none", says: "This touches payments, so I stopped." });
-t("no pull request reads as stopped", stopped.stage === "stopped");
-t("no pull request passes on the builder's reason", /touches payments/.test(stopped.note));
-t("no pull request and no reason still says something", !!cardFor({ ...base, tier: "none", says: "" }).note);
+// Nothing built, on purpose: the builder's own reason goes back.
+const nothing = { ...base, packed: false, changed: "", guard: "", opened: false, tier: "", reviewed: false, money: "", invariant: "" };
+const stopped = cardFor({ ...nothing, says: "This touches payments, so I stopped." });
+t("no bundle reads as stopped", stopped.stage === "stopped");
+t("no bundle passes on the builder's reason", /touches payments/.test(stopped.note));
+t("no bundle and no reason still says something", !!cardFor({ ...nothing, says: "" }).note);
+t("a bundle with no change passes on the builder's reason",
+  /touches payments/.test(cardFor({ ...base, changed: "false", guard: "", opened: false, tier: "", says: "This touches payments, so I stopped." }).note));
 t("a failed build reads as stopped", cardFor({ ...base, built: false }).stage === "stopped");
+
+// Built, but never pushed. The builder's paragraph would claim the work is done, so it is
+// not what the card says.
+const automation = cardFor({ ...base, guard: "automation", opened: false, tier: "", says: "Done, I changed the workflow." });
+t("a change to the automation reads as stopped", automation.stage === "stopped");
+t("a change to the automation says why", /automation's own files/.test(automation.note));
+t("a change to the automation does not pass on the builder's words", !/Done, I changed/.test(automation.note));
+const notOpened = cardFor({ ...base, opened: false, says: "Done, the pull request is ready." });
+t("a pull request ship could not open reads as stopped", notOpened.stage === "stopped");
+t("a pull request ship could not open says so", /could not be opened/.test(notOpened.note));
+t("a pull request ship could not open does not pass on the builder's words", !/Done, the pull/.test(notOpened.note));
+t("a bundle ship could not read reads as not opened",
+  /could not be opened/.test(cardFor({ ...base, changed: "", guard: "", opened: false, tier: "" }).note));
+t("no tier reads as not opened, whatever opened says", /could not be opened/.test(cardFor({ ...base, tier: "" }).note));
 t("a very long builder paragraph is shortened", cardFor({ ...base, says: "x".repeat(5000) }).note.length < 900);
 
 // The public comment carries verdicts, never the reports.
@@ -121,6 +142,25 @@ const written = parseOutputs(readFileSync(output, "utf8"));
 t("a forged line inside a report does not change passed", written.passed === "false", written.passed);
 t("the forged line stays inside the report as text", (written.reports || "").includes("passed=true"));
 t("weigh writes each verdict", written.money === "findings" && written.invariant === "pass");
+
+// `say` reads ship's step results from the environment exactly as the workflow names them.
+function sayWith(env) {
+  const file = join(dir, "say-output");
+  writeFileSync(file, "");
+  execFileSync(process.execPath, [script.pathname.replace(/^\/([A-Za-z]:)/, "$1"), "say"], {
+    env: { ...process.env, COMMENT_OUT: join(dir, "comment.md"), REPORTS_OUT: "", GITHUB_OUTPUT: file, ...env },
+    stdio: "pipe"
+  });
+  return parseOutputs(readFileSync(file, "utf8"));
+}
+const shipped = {
+  BUILT: "true", PACKED: "true", CHANGED: "true", GUARD: "ok", OPENED: "true", TIER: "B",
+  AUTOMERGE: "", REVIEWED: "true", MONEY: "pass", INVARIANT: "pass", SAYS: "Added a phone column."
+};
+t("say: a clean, opened pull request is ready to look at", sayWith(shipped).stage === "built");
+t("say: OPENED false is a pull request that could not be opened", /could not be opened/.test(sayWith({ ...shipped, OPENED: "false" }).note));
+t("say: GUARD automation is stopped", /automation's own files/.test(sayWith({ ...shipped, GUARD: "automation", OPENED: "false", TIER: "" }).note));
+t("say: no PACKED passes on the builder's words", /phone column/.test(sayWith({ ...shipped, PACKED: "", OPENED: "false" }).note));
 
 console.log(`\n${pass}/${pass + fail} passed`);
 process.exit(fail ? 1 : 0);

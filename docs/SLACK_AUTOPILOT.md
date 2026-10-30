@@ -34,7 +34,7 @@ Two things track it, and neither needs anything stored anywhere.
 | 🔴 Checks failed | they did not |
 | 🚀 Merged, going out to the store | somebody merged it, or it was words only and merged itself |
 | 🟢 Live on the store's site | the deploy is confirmed serving it |
-| ✋ Stopped, this one needs a person | it refused to guess, or the build failed |
+| ✋ Stopped, this one needs a person | it refused to guess, the build failed, the change touched the automation's own files, or the pull request could not be opened |
 
 One card that updates, rather than six messages. The alternative buries the answer under its
 own notifications.
@@ -99,6 +99,8 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What it will not do
 
+- **Push a change to the automation.** A change that touches `.github/` or `.claude/` never
+  reaches the repository. The card says a person has to make it.
 - **Merge anything but words.** It opens a draft pull request, and a script labels it with how
   far it may go: `tier-a` words only, `tier-b` the app, `tier-c` money, logins, the database or
   the automation. Only tier A merges itself, after the checks pass, and only while the
@@ -113,9 +115,24 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What reads the work before you see it
 
-The run is three jobs. **autopilot** builds and opens the draft pull request. **review** has
-two read-only reviewers read it. **ship** labels it with its tier, merges tier A if allowed,
-and updates the card. The card does not say "ready" until the review job has finished.
+The run is four jobs, and the pull request opens only after the review:
+
+| Job | Runner | Holds | Does |
+|---|---|---|---|
+| **find** | its own | the Slack token | asks the channel for work and posts the first card; no model |
+| **build** | its own | the Anthropic key, a read-only token | the model builds and commits; the commit leaves as a git bundle |
+| **review** | fresh | the Anthropic key, a read-only token | two read-only reviewers read the bundle |
+| **ship** | fresh | the Slack token, a write token | reads the bundle again, stops a change to the automation, labels the tier, pushes the branch, opens the draft pull request, merges tier A if allowed, updates the card |
+
+**Why the build job holds so little.** The builder has a shell on its runner, and on GitHub's
+runners that shell has `sudo`. Whatever it leaves there (a background process, a line in
+`$GITHUB_ENV`, a program earlier on the `PATH`, a git hook) runs with every later step on
+that runner and can read what those steps hold. So nothing runs there after the build except
+packing the commit, and nothing is there worth taking: no Slack token, no reviewer, and a
+token that cannot write. review and ship each start on a fresh runner, check out the
+workflow's own commit, fetch the bundle as data with `.github/scripts/autopilot-change.mjs`
+and run only scripts from their own checkout. The commit ship pushes is the one review read;
+tier A merges itself only if they match.
 
 | Reviewer | Follows | Looks for |
 |---|---|---|
@@ -126,12 +143,12 @@ How the reviewers are kept honest:
 
 - **A fresh runner.** The builder had a shell on its own runner, and anything it left there
   would run with later steps on that runner. The review job starts clean, like ship.
-- **Their instructions come from the workflow's own commit**, not the change. The pull
-  request's files are laid out under `.autopilot-review/head/` as data, with every
+- **Their instructions come from the workflow's own commit**, not the change. The change's
+  files are laid out under `.autopilot-review/head/` as data, with every
   `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, `.claude/` and `.agents/` removed, so a change cannot
   brief its own reviewer. Changes to those files are still in the diff they read.
 - **They can only read.** Read, Grep and Glob; Bash, Write and Edit are refused by name; the
-  job's token is read-only; nothing from the pull request is executed.
+  job's token is read-only; nothing from the change is executed.
 - **They never see the Slack request.** They judge the code against the store's rules, which
   removes the one route by which somebody typing in Slack could talk a reviewer into passing
   something.
@@ -157,18 +174,19 @@ tier. What the reviewers add is a short list of lines to read first. The decisio
 `.github/scripts/autopilot-review.mjs`, tested by `autopilot-review.test.mjs`.
 
 **CI on these pull requests.** GitHub starts no workflow from a pull request opened with the
-workflow's own token, so ship starts CI on tier A and B pull requests itself. Tier C does not
-get one started, because a dispatched run uses the workflow files on the branch and tier C is
-the only tier that can change them; CI runs on tier C when a person pushes to it.
+workflow's own token, so ship starts CI on tier A and B pull requests itself. That is where
+the three gates run again: in CI, on a runner that holds none of the autopilot's secrets,
+never in a job that does, because running them means running the change. Tier C does not get
+one started; CI runs on tier C when a person pushes to it.
 
-What it costs: the reviewers run only when a request produced a pull request, never on an idle
+What it costs: the reviewers run only when a request produced a commit, never on an idle
 sweep. Each is one `claude-sonnet-5` run of at most 30 turns.
 
 ## What it costs
 
 The expensive things are the model and `npm ci`, in that order. **Neither runs on a sweep
-that finds nothing.** The workflow's step order is checkout, ask Slack, and only then install
-and build, so an idle sweep is a few seconds of Actions time and no model tokens.
+that finds nothing.** The first job is checkout and ask Slack; every other job waits for it to
+find work, so an idle sweep is a few seconds of Actions time and no model tokens.
 
 This is the specific mistake that killed the Jira version, and it is worth recording
 precisely because it was originally diagnosed wrong. That loop had the model correctly gated

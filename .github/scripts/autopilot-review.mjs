@@ -1,17 +1,19 @@
-// The review between "the builder opened a pull request" and "anyone is told it is ready".
+// The review between "the builder committed something" and "anyone is told it is ready".
 //
-// The Slack autopilot runs in three jobs (.github/workflows/slack-autopilot.yml):
+// The Slack autopilot runs in four jobs (.github/workflows/slack-autopilot.yml):
 //
-//   autopilot  the model builds, pushes and opens a draft pull request.
-//   review     a FRESH runner that checks out the workflow's own commit, lays the pull
-//              request's files out as data in a subfolder, and has money-reviewer and
-//              invariant-auditor read them. Read, Grep and Glob only; nothing from the pull
-//              request is executed. `weigh` below turns their answers into verdicts.
-//   ship       classifies, labels, merges tier A only if both reviewers passed the commit
-//              it is merging, and updates the Slack card. `say` below decides the card.
+//   find       reads the channel and posts the first card. No model.
+//   build      the model builds and commits. It cannot push; the commit leaves as a bundle.
+//   review     a FRESH runner that checks out the workflow's own commit, lays the bundle's
+//              files out as data in a subfolder, and has money-reviewer and
+//              invariant-auditor read them. Read, Grep and Glob only; nothing from the
+//              change is executed. `weigh` below turns their answers into verdicts.
+//   ship       reads the bundle again, applies the guard and the tier, pushes the branch,
+//              opens the pull request, merges tier A only if both reviewers passed the
+//              commit it is merging, and updates the Slack card. `say` below decides the card.
 //
 // WHY A FRESH RUNNER. The builder had a shell on the build runner. Anything it left there (a
-// line in $GITHUB_ENV, a program earlier on the PATH, an edited script in the working tree)
+// line in $GITHUB_ENV, a program earlier on the PATH, a background process, a git hook)
 // would run with every later step on that runner, reviewers included. ADR-002 moved the
 // classifier off that runner for the same reason.
 //
@@ -113,11 +115,13 @@ export function prComment(verdicts = {}) {
 /**
  * The status card once ship is done. Pure, so what the person in Slack reads is tested.
  *
- * `reviewed` is whether the review job found the pull request and laid it out; `money` and
- * `invariant` are verdicts. `says` is the builder's own closing paragraph, which its prompt
- * promises goes back to Slack.
+ * `packed` is whether the build handed over a bundle at all; `changed` and `guard` are what
+ * ship read from it; `opened` is whether ship pushed the branch and opened the pull request.
+ * `reviewed` is whether the review job laid the change out; `money` and `invariant` are
+ * verdicts. `says` is the builder's own closing paragraph, which its prompt promises goes
+ * back to Slack.
  */
-export function cardFor({ built, tier, automerge, reviewed, money, invariant, says }) {
+export function cardFor({ built, packed, changed, guard, opened, tier, automerge, reviewed, money, invariant, says }) {
   const said = oneLine(says, 600);
   if (automerge === "merged") {
     return {
@@ -134,9 +138,23 @@ export function cardFor({ built, tier, automerge, reviewed, money, invariant, sa
   if (!built) {
     return { stage: "stopped", note: "I could not finish this one, so nothing has changed. It needs a person to look." };
   }
-  if (!tier || tier === "none") {
-    // The build finished but no pull request exists: the builder stopped on purpose.
-    return { stage: "stopped", note: said || "I stopped without opening a pull request. The reason is in the run log." };
+  if (!packed || changed === "false") {
+    // The build finished and committed nothing: the builder stopped on purpose.
+    return { stage: "stopped", note: said || "I stopped without changing anything. The reason is in the run log." };
+  }
+  if (guard === "automation") {
+    return {
+      stage: "stopped",
+      note: "This would change the automation's own files, so I did not open a pull request. A person has to make that change."
+    };
+  }
+  if (!opened || !tier) {
+    // Something was built, but ship could not read it, push it or open the pull request.
+    // Not the builder's paragraph: that would say the work is done when nobody can see it.
+    return {
+      stage: "stopped",
+      note: "The change was built, but the pull request could not be opened. It needs a person to look."
+    };
   }
 
   const problems = [];
@@ -197,6 +215,10 @@ function weigh(env) {
 function say(env) {
   const card = cardFor({
     built: env.BUILT === "true",
+    packed: env.PACKED === "true",
+    changed: env.CHANGED,
+    guard: env.GUARD,
+    opened: env.OPENED === "true",
     tier: env.TIER,
     automerge: env.AUTOMERGE,
     reviewed: env.REVIEWED === "true",

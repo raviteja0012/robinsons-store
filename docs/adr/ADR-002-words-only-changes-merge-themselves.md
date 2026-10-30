@@ -59,7 +59,11 @@ two months.
    request whose base is not the one the run chose is tier C. The build job's token can push
    and open pull requests and nothing more [R `.github/workflows/slack-autopilot.yml:68-79`],
    and it expires when that job ends [V-src, docs.github.com GITHUB_TOKEN concepts page,
-   2026-10-24].
+   2026-10-24]. Update 2026-10-30: the build job's token can now only read, and it holds no
+   Slack token. The model's commit leaves as a git bundle; ship reads it on its fresh runner,
+   refuses any change to `.github/` or `.claude/`, classifies it, then pushes the branch and
+   opens the pull request itself, after the review job (docs/SLACK_AUTOPILOT.md). The rulings
+   below are unchanged; line references in this record are to the workflow as it was then.
 2. **Every Slack pull request carries its tier.** It gets a `tier-a`, `tier-b` or `tier-c`
    label and a one-line comment saying why [R `.github/workflows/slack-autopilot.yml:259-282`].
    The label is for people. The merge never reads it. The step calls GitHub's REST label and

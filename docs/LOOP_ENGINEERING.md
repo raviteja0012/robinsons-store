@@ -85,17 +85,29 @@ plus any `.sql`, manifest or configuration file wherever it sits. CLAUDE.md is t
 looks like words and is not: the autopilot reads it first on every run, so a "documentation"
 change to it rewrites the next run's rules (ADR-002).
 
-**How the Slack loop applies it** (ADR-002, since 2026-10-24). After the model opens its pull
-request and its job ends, a second job on a fresh runner checks out the workflow's own commit,
-runs the classifier on the pull request's head commit against the pull request's own base,
-labels the pull request `tier-a`, `tier-b` or `tier-c`, and comments the reason. Nothing the
-model left on its runner reaches that job, and a pull request aimed at another base is tier C.
+**How the Slack loop applies it** (ADR-002, since 2026-10-24; the build job made commit-only
+on 2026-10-30). The model builds in a job that holds the Anthropic key and a read-only token
+and nothing else. It cannot push; its commit leaves the runner as a git bundle. A later job
+on a fresh runner checks out the workflow's own commit, fetches the bundle as data, refuses
+any change to `.github/` or `.claude/`, runs the classifier on that commit against the base
+the run chose, pushes the branch, opens the draft pull request, labels it `tier-a`, `tier-b`
+or `tier-c`, and comments the reason. Nothing the model left on its runner reaches that job.
 For tier A, and only while the repository variable `AUTOMERGE_TIER_A` is `true`, it starts CI
 on that commit itself, waits for it, reads the pull request again, and merges with the head
 commit pinned. It starts CI itself because the pull request was opened with `GITHUB_TOKEN`,
 and an event made with that token starts no workflow. Anything unexpected leaves the pull
 request open for a person; the step fails closed and never fails the run. Rules tested in
 `.github/scripts/classify-change.test.mjs`, which CI runs.
+
+**The runner the model builds on holds nothing worth taking.** The builder has a shell, and
+on GitHub's runners that shell has `sudo`. Anything it leaves behind (a background process,
+a line in `$GITHUB_ENV` or `$GITHUB_PATH`, a git hook, a gitignored settings file) runs with
+every later step in the same job and can read what those steps hold. Moving a script to a
+safe copy does not help when the step that runs it is still on that runner. So the Slack loop
+splits by runner, not by step: the Slack token lives in the job before the build and the job
+after it, the reviewers and every script that judges the change run on fresh runners, and
+the build job's only product is the commit. `.github/scripts/slack-autopilot.test.mjs`
+fails if any of that moves back.
 
 That last exclusion is the one people forget. **A loop that can edit its own limits does not
 have limits, and a loop that can edit its own reviewer has no reviewer.** The automation is
@@ -198,8 +210,8 @@ tier classifier is the strong one, because it does not read the request.
 Both have `tools: Read, Grep, Glob` and no write access at all. That is config, not
 instruction: they cannot edit even if asked to.
 
-Since 2026-10-30 the Slack autopilot runs both on every pull request it opens, in a review
-job between the build and ship (docs/SLACK_AUTOPILOT.md, "What reads the work before you see
+Since 2026-10-30 the Slack autopilot runs both on every change it builds, before the pull
+request opens, in a review job between the build and ship (docs/SLACK_AUTOPILOT.md, "What reads the work before you see
 it"). Four choices there follow from the rules above. They run on a fresh runner, because the
 builder had a shell on its own. Their instructions come from the workflow's own commit and
 the change's agent instruction files are removed from what they read, because a loop that can
