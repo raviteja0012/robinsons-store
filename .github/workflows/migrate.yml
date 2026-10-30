@@ -71,10 +71,13 @@ jobs:
             echo "This run targets the PRODUCTION database."
           fi
 
+      # Each ref names its own secret. `a && b || c` returns c whenever b is empty, so the
+      # expression ends in an empty string rather than another secret: on develop only
+      # SUPABASE_DB_URL_DEV is ever read, and without it this step reports skipped.
       - name: Check the connection secret is set
         id: gate
         env:
-          PGCONN: ${{ github.ref_name == 'develop' && secrets.SUPABASE_DB_URL_DEV || secrets.SUPABASE_DB_URL }}
+          PGCONN: ${{ github.ref_name == 'develop' && secrets.SUPABASE_DB_URL_DEV || github.ref_name != 'develop' && secrets.SUPABASE_DB_URL || '' }}
           WHICH: ${{ steps.env.outputs.name }}
         run: |
           # The length, never the value. A length of 0 means the job cannot see the secret,
@@ -108,7 +111,7 @@ jobs:
       - name: Apply the scripts in order
         if: steps.gate.outputs.ready == 'true'
         env:
-          PGCONN: ${{ github.ref_name == 'develop' && secrets.SUPABASE_DB_URL_DEV || secrets.SUPABASE_DB_URL }}
+          PGCONN: ${{ github.ref_name == 'develop' && secrets.SUPABASE_DB_URL_DEV || github.ref_name != 'develop' && secrets.SUPABASE_DB_URL || '' }}
           WHICH: ${{ steps.env.outputs.name }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
