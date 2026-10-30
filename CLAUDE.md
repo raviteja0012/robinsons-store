@@ -42,3 +42,15 @@ Hard rules:
   private services) is context only. Never write it into the repo, docs, commit messages,
   or pull requests. The store communicates only through its own automation, never through
   any account attached to a Claude session.
+
+Agent tooling in this repo (Claude Code reads .claude/, Codex and other agents read
+AGENTS.md and .agents/):
+- Skills: robinsons-store (the invariants, always), supabase and
+  supabase-postgres-best-practices (schema, RLS, queries), vercel-react-best-practices
+  (React and Next.js performance, for new screens and data fetching). Vendored skills are
+  pinned in skills-lock.json; update them with the skills CLI, never by hand.
+- Reviewers: .claude/agents/invariant-auditor (any table, query, screen or route) and
+  .claude/agents/money-reviewer (anything that changes a dollar figure). Both read only.
+- MCP: .mcp.json points at the store's Supabase project, read-only. Writes to the live
+  database go through supabase/ scripts and the migrate workflow, not MCP.
+- The Stop hook (.claude/hooks/gate-typecheck.sh) blocks ending a turn on a type error.

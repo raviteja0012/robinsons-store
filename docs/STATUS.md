@@ -4,6 +4,17 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-25, on branch claude/architecture-ai-call-ruleset (latest: the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Agent tooling, 2026-10-30 (branch agent-skills-setup):
+- AGENTS.md at the root points Codex and other agents at CLAUDE.md and the robinsons-store
+  skill, so every agent follows one set of rules. CLAUDE.md lists the skills, reviewers, MCP
+  server and Stop hook the repo carries.
+- vercel-react-best-practices is vendored from vercel-labs/agent-skills into .claude/skills
+  and .agents/skills and pinned in skills-lock.json. web-design-guidelines from the same
+  source was not taken: it downloads its rules from the network on every run.
+- The robinsons-store skill description is cut to 915 characters; the Agent Skills limit
+  is 1,024 and the old one was 1,244. The skill body is unchanged.
+- Instructions and skills only; no code, schema, policy or workflow change.
+
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
 - docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes
   the daily per-store cap (default 100 calls a day, `AI_DAILY_CAP_PER_STORE`); section 5 lists
