@@ -1,6 +1,6 @@
 ---
 name: robinsons-store
-description: Build, extend, debug, and operate the entire Robinsons General Store platform, a capture-first store operations app for a Canadian general store. This covers the whole build, not just one area: the receiving and capture loop, inventory and counts, the vendor and order ledger, invoices and payments and due-date alerts, retail pricing and price signs, property maintenance, HR, the Ontario pesticide licence and its expiry, the tribal-knowledge base, the document-extraction and reorder and ask-your-store AI agents, the Postgres schema and its row-level security, Supabase Auth and login, the color and form design system, Canadian tax and privacy rules, the Vercel deploy, and the common runtime errors and how to fix them. Use it whenever the work touches the Robinsons app, Ravikiran's store, the receiving screen, the login or auth, the Supabase schema, or any store feature, even without naming this skill. Also use it for writing or reviewing anything in docs/ (handover, decision records, onboarding, the agents register) and for reviewing any change before merge: references/standards.md holds the documentation and review standard. Apply the locked architecture, the invariants, the standards, and the output rules here on every task.
+description: Build, extend, debug, and operate the Robinsons General Store platform, a capture-first store operations app for a Canadian general store: receiving and capture, inventory and counts, the vendor and order ledger, invoices, payments and due dates, retail pricing and price signs, property, HR, the Ontario pesticide licence, the tribal-knowledge base, the extraction, reorder and ask-your-store AI agents, the Postgres schema and row-level security, Supabase Auth, the design system, Canadian tax and privacy rules, the Vercel deploy, and common runtime errors. Use it whenever the work touches the Robinsons app, the receiving screen, login, the Supabase schema, or any store feature, even without naming this skill. Also use it to write or review anything in docs/ and to review any change before merge (references/standards.md). Apply the locked architecture, invariants, standards and output rules on every task.
 ---
 
 # Robinsons General Store, Store Operations Platform
@@ -16,6 +16,8 @@ Store facts:
 - The 2026 bookings spreadsheet is the schema and the seed data. About 120 vendors with order amount, ship date, delivery status, invoiced amount, terms, due date, payment status.
 
 The full plan with evidence, pricing, and citations is in robinsons_store_build_spec.md. Read it for depth. This skill is the working summary plus the rules and the playbooks to apply on every task.
+
+Product direction, delivery states and configuration gaps: docs/REQUIREMENTS.md, "Product direction".
 
 ## Locked architecture (do not re-debate)
 - Frontend and API: Next.js App Router on Vercel, TypeScript. Client components fetch with useEffect; route handlers under src/app/api do the AI calls.
@@ -45,8 +47,7 @@ robinsons-store/
     importSchedule, nav (grouped sidebar model), view (View-as preview),
     edit (canEdit, soft-delete voidRow, hard deleteRow), notify (bell items)
   vercel.json                the daily /api/alerts cron
-  docs/  STATUS, VERIFICATION (per-feature sign-off record), ARCHITECTURE, DATA_SOURCES,
-    DATA_INVENTORY, SOURCES
+  docs/  every doc, indexed with a learning path in docs/README.md; decision records in docs/adr/
   RUNBOOK.md, CONTRIBUTING.md
   .claude/skills/robinsons-store/  this skill, so it travels with the code
 ```
@@ -184,7 +185,15 @@ break:
 - Two read-only reviewers live in .claude/agents: money-reviewer (knows the specific ways
   this codebase has broken: a select missing tax_mode, an inline total bypassing
   invoiceTotal, SQL and TypeScript changed on one side only) and invariant-auditor. Use them
-  on any diff that touches money or adds a query.
+  on any diff that touches money or adds a query. The Slack autopilot runs both on every
+  change it builds, before the pull request opens, in a read-only review job on a fresh
+  runner with instructions from the workflow's own commit; a finding or a missing verdict
+  stops tier A from merging itself (docs/SLACK_AUTOPILOT.md).
+- The runner the Slack autopilot's model builds on holds the Anthropic key and a read-only
+  token and nothing else, and its only product is the commit, handed over as a bundle. The
+  Slack token, the reviewers, the classifier, the push and the merge all live in other jobs
+  on fresh runners. Never add a step after the build on that runner, or a secret to it;
+  slack-autopilot.test.mjs fails if you do.
 
 ## Operational reality (how this repo is actually run)
 - The build and review work happens in an isolated cloud container with no network route to the owner's Supabase or Vercel. Do not try to connect to the database or the live site. Deliver database changes as SQL the owner runs in the Supabase SQL editor, and deploys happen by pushing to the branch (Vercel auto-deploys main).
@@ -234,4 +243,4 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, what the store owns on each service, every secret, and what is still open.
 - ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
-- robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.
+- robinsons_store_build_spec.md, the original plan kept for history. The Drive links are in docs/DATA_SOURCES.md.
