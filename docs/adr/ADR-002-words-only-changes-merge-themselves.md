@@ -113,7 +113,7 @@ two months.
    permissions allow read and write. Approving pull requests is not needed: nothing here
    approves.
 3. Main takes changes only through a pull request, with no required approvals and no required
-   status checks [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`,
+   status checks [V-run, `gh api` on ruleset 25802611 of the repository before its move,
    2026-10-25], so tier A merging its own pull request is allowed. If approvals are ever
    required, tier A cannot merge and fails closed. Either accept that (labels only) or exempt
    the Actions bot. That is the developer's call [Q: the developer].

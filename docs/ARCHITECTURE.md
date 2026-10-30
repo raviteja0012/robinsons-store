@@ -8,7 +8,7 @@ watching it.** The one thing to know before changing anything: an invoice's paid
 never typed, it is derived in the database from payment allocations by the payment engine,
 so every money change goes through those functions or it is wrong.
 
-Evidence tags follow `.claude/skills/store-standards/SKILL.md`: `[R path:line]` read from
+Evidence tags follow `.claude/skills/robinsons-store/references/standards.md`: `[R path:line]` read from
 this repository this session, `[V-run]` checked live this session, `[J-open]` believed and
 not checked (with what would prove it wrong), `[Q: owner]` an open question. States: BUILT,
 PARTIAL (gaps named), SCAFFOLDED (built, switched off; the switch named), TARGET (not built).
@@ -403,7 +403,7 @@ healthy and tells Slack when that changes. It does not confirm which deploy it i
 | Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-79] [R .github/workflows/slack-autopilot.yml:197-282] [R .github/workflows/ci.yml:93] |
 | Tier A self-merge | Starts CI on the head commit, waits, reads the pull request again (open, same commit, same base), merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:284-343] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
+| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api` on ruleset 25802611 of the repository before its move, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
 | Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose; then asks `/api/health` and tells Slack the result | BUILT | [R .github/workflows/migrate.yml:33-39, 131, 150, 154-159, 166-185] [R supabase/run-order.txt:10-16] |
 | Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
@@ -411,7 +411,7 @@ healthy and tells Slack when that changes. It does not confirm which deploy it i
 | Dev site and promotion | `promote.yml` merges `develop` into `main` when a person runs it; inert because no `develop` branch exists | SCAFFOLDED, switch is creating `develop` and the dev Supabase project | [R .github/workflows/promote.yml:16-24, 47-53] [V-run, git ls-remote --heads origin, 2026-10-24: main and two claude/ branches, no develop] |
 | Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
 
-Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
+Working in Claude Code: the `robinsons-store` skill, with its standards reference, loads from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
 [R .claude/settings.json:14-19]; update docs/STATUS.md and docs/VERIFICATION.md in the same
 pull request as the work [R CLAUDE.md:21-22]. Human review of every dollar field stays

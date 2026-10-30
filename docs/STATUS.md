@@ -2,7 +2,26 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/gracious-mccarthy-lexvp5 (latest: the docs organized into one entry path, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Docs organized into one entry path, 2026-10-30:
+- docs/README.md now routes by reader (new member, builder or AI session, owner, checker),
+  lists the rules every session loads, adds a 13-step learning path (one component per
+  sitting: read the doc, open the code, answer one question) and states the six rules that
+  keep AI-written docs trustworthy. It also lists the Slack app manifest, which was missing.
+- The root README.md and CONTRIBUTING.md are rewritten. Both still described login, signed
+  URLs and the confidence gate as to-do, integer cents as planned, CI as lint and build only,
+  and no tests. They now route to the current docs and list every CI step.
+- docs/LOOP_ENGINEERING.md: the watchdog runs after CI, not after the deploy; the Refine
+  section no longer calls the parked Jira board the queue; Costs describes the Slack sweep;
+  two improvement items no longer mention a ticket or a dev database still to build.
+- Pointers fixed: the standards path in ARCHITECTURE.md, docs/SOURCES.md in the skill and the
+  build spec, the doc count in CLAUDE.md, the invariant count in VERIFICATION.md; a personal
+  account name removed from two evidence lines. The build spec carries a history banner.
+- Left until the open pull requests merge, to avoid a conflict: one evidence line in
+  VERIFICATION.md still names the repository's old path.
+- Docs only; no code, schema, policy or workflow change. Tier C, because it edits CLAUDE.md,
+  the skill, LOOP_ENGINEERING.md and an ADR: a person merges.
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it

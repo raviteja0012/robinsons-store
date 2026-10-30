@@ -45,8 +45,7 @@ robinsons-store/
     importSchedule, nav (grouped sidebar model), view (View-as preview),
     edit (canEdit, soft-delete voidRow, hard deleteRow), notify (bell items)
   vercel.json                the daily /api/alerts cron
-  docs/  STATUS, VERIFICATION (per-feature sign-off record), ARCHITECTURE, DATA_SOURCES,
-    DATA_INVENTORY, SOURCES
+  docs/  every doc, indexed with a learning path in docs/README.md; decision records in docs/adr/
   RUNBOOK.md, CONTRIBUTING.md
   .claude/skills/robinsons-store/  this skill, so it travels with the code
 ```
@@ -234,4 +233,4 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, what the store owns on each service, every secret, and what is still open.
 - ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
-- robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.
+- robinsons_store_build_spec.md, the original plan kept for history. The Drive links are in docs/DATA_SOURCES.md.

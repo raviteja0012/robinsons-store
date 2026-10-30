@@ -110,9 +110,11 @@ approvals and no status checks: the tier classifier decides what may merge, and
 
 ### 4. Watch: catching what we broke
 
-`.github/workflows/post-deploy-watch.yml` runs after every deploy to main and every two
-hours. It asks the live site `/api/health`, which is answered by the app itself and checks
-the things a green build cannot see:
+`.github/workflows/post-deploy-watch.yml` runs when CI completes on main, every two hours,
+and by hand [R `.github/workflows/post-deploy-watch.yml:16-28`]. It runs after CI, not after
+the deploy, so it does not confirm which commit is live (docs/ARCHITECTURE.md section 6). It
+asks the live site `/api/health`, which is answered by the app itself and checks the things a
+green build cannot see:
 
 - The deployed app and the deployed **database agree on what an invoice owes**. It asks the
   database what a tax-included invoice of 113 with 13 of embedded HST owes, and compares
@@ -145,9 +147,12 @@ It never reports a dollar figure, so the endpoint is safe to call from anywhere.
 
 ### 5. Refine
 
-The board is the queue for everything: the owner's asks, the health watchdog's bugs, and
-anything the Suggestions screen collects in the app. There is one place to look and one way
-in.
+Since the board was parked on 2026-08-12 there is no single queue, and this section says
+where each kind of input lands instead. The owner's asks arrive by phone and WhatsApp, are
+recorded verbatim in docs/OWNER_NOTES.md and triaged into docs/REQUIREMENTS.md, which is the
+list of what is agreed. Feedback typed in the app lands on the Suggestions screen (the
+`feedback` table). Watchdog, migration and RLS audit results land in Slack. Work is asked for
+in the Slack requests channel. A person reads all four; nothing joins them automatically.
 
 ## Why not just let it merge everything
 
@@ -262,22 +267,26 @@ and check it loads before trusting it.
 
 ## Costs
 
-A run with an empty board stops before any model call. A real ticket costs roughly what one
-build conversation costs. Fifteen minutes is the polling interval, not the run rate.
+A Slack sweep with no new request stops after a checkout and before `npm ci` and any model
+call [R `.github/workflows/slack-autopilot.yml:9-10, 101-137`]. A real request costs roughly what one build conversation
+costs. The sweep runs twice an hour, at minutes 13 and 43
+[R `.github/workflows/slack-autopilot.yml:56-57`]; that is the polling interval, not the run
+rate.
 
 ## What would make this better
 
 Honest list, in the order I would do them:
 
 1. **A revert path for tier A.** If a words-only change ever does break something, the
-   watchdog currently raises a ticket. For tier A specifically, an automatic revert is
+   watchdog currently posts to Slack. For tier A specifically, an automatic revert is
    defensible, because the change was words.
 2. **Runtime error signal.** The health endpoint checks correctness, not crashes. Wiring the
    Vercel runtime errors API in would catch the class of bug that only appears under real
    use.
 3. **A staging database.** Today a migration is verified by running it on production and
    watching the health check. That works because the store is small and the scripts are
-   idempotent, but it is the weakest link in the chain. The dev database that closes it is
-   designed in docs/ENVIRONMENTS.md and waits on its first step.
+   idempotent, but it is the weakest link in the chain. The dev database that closes it
+   exists since 2026-10-30 (docs/ENVIRONMENTS.md); scripts run there first only once the
+   `SUPABASE_DB_URL_DEV` secret is set, so this stays open until then.
 4. **Screenshot verification.** The gates prove it compiles, not that it looks right. A
    Playwright pass over the key screens would close that gap.
