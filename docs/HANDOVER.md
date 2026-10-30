@@ -83,7 +83,7 @@ Every name the code and workflows read. Values are never written here.
 | Name | What |
 |---|---|
 | `PRODUCTION_URL` | The address the watchdog checks: `https://app.robinsonsgeneralstore.ca` |
-| `DEV_URL` | The dev site, `https://robinsons-store-git-develop-robinsons-store1.vercel.app`. **Not set yet** (docs/ENVIRONMENTS.md step 5) |
+| `DEV_URL` | The dev site, `https://robinsons-store-git-develop-robinsons-store1.vercel.app`. Set 2026-10-30 [V-run, `gh variable list`] |
 | `VERCEL_TEAM_ID` | Optional. The team the Vercel workflows ask; unset, they use `team_pEEbrKESMFC4HpgFi3pa26P8` [R `.github/workflows/vercel-diagnose.yml:39`] |
 | `SLACK_REQUEST_CHANNEL` | The Slack channel ID the autopilot reads (accepted as a secret too) |
 | `SLACK_REQUIRE_MENTION` | Optional. `false` only for a requests-only channel |

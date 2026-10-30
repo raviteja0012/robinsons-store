@@ -25,8 +25,8 @@ Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
   seed_dev and every run-order script (2 stores, 46 vendors, 37 invoices, RLS on every
   table, columns identical to production apart from the login column); Vercel Preview reads
   it and Production alone reads the live database; branch `develop` exists and deploys to
-  robinsons-store-git-develop-robinsons-store1.vercel.app. Still open for admin@: the
-  `SUPABASE_DB_URL_DEV` secret and `DEV_URL` variable, which no tool here can set. Dev runs
+  robinsons-store-git-develop-robinsons-store1.vercel.app. `DEV_URL` is set. Still open for
+  admin@: the `SUPABASE_DB_URL_DEV` secret, which holds the dev database password. Dev runs
   in open demo mode while production enforces login. docs/ENVIRONMENTS.md is rewritten around one Vercel
   project (Preview becomes dev) instead of two.
 

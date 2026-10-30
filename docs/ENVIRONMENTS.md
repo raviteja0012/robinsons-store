@@ -5,9 +5,9 @@ Status: ACCEPTED, 2026-10-30. Owner: the developer. Approver: Ravi Kiran.
 **Both environments exist. Production is the live site on the store's database; dev is the
 `develop` branch, deployed by the same Vercel project to its own address, on a separate
 database holding the repository's seed data, never the live ledger [V-run, Supabase list_projects, Vercel
-create_project_env and create_deployment, GitHub create_branch, 2026-10-30].** Two GitHub
-settings are still missing, so a database script merged to `develop` is not yet applied to dev
-by itself, and the ticket comment cannot link the dev site (step 2 and step 5 below). Asked
+create_project_env and create_deployment, GitHub create_branch, 2026-10-30].** One GitHub
+secret is still missing, so a database script merged to `develop` is not yet applied to dev
+by itself (step 2 below). Asked
 for on 2026-07-31: build to a dev site first, test there with dummy data, and promote to
 production only when Ravi says yes.
 
@@ -34,7 +34,7 @@ reaches the live site only when a person runs the promotion workflow.
 | Scripts | `supabase/run-order.txt`, on a push to `main` | The same list, on a push to `develop`, via `SUPABASE_DB_URL_DEV` |
 | Daily email cron | Runs | Does not: Vercel runs crons on production deployments only |
 | Login | Enforced (`auth_setup.sql` applied, `NEXT_PUBLIC_REQUIRE_AUTH` on) | Open demo mode: `auth_setup.sql` not run, the flag not set for Preview. Every column matches production except `app_user.auth_id`, which that script adds [V-run, information_schema on both, 2026-10-30] |
-| State | BUILT | PARTIAL: steps 2, 5 and 6 below are open |
+| State | BUILT | PARTIAL: steps 2 and 6 below are open |
 
 ## Three decisions, and why
 
@@ -75,7 +75,7 @@ since 2026-08-12.
 | 2 | Repository secret `SUPABASE_DB_URL_DEV`: the dev project's **session pooler** URI on port 5432 (docs/SUPABASE_SETUP.md). Needs the dev database password: Supabase, `robinsons-store-dev`, Project settings, Database, Reset database password | admin@ | TARGET. Until it exists, a merge to `develop` reports the dev script step as `skipped` |
 | 3 | Vercel Preview gets the dev database: `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for Preview hold the dev values; the production values are Production only | The developer | BUILT 2026-10-30. No `SUPABASE_SERVICE_ROLE_KEY` for Preview, so the Team page cannot create logins on dev; add it from the dev project's API settings if that is needed |
 | 4 | Branch `develop` from `main`. The Slack autopilot now targets it, and promotion to `main` is Actions, Promote develop to production | The developer | BUILT 2026-10-30 |
-| 5 | Repository variable `DEV_URL` = `https://robinsons-store-git-develop-robinsons-store1.vercel.app` | admin@ | TARGET |
+| 5 | Repository variable `DEV_URL` = `https://robinsons-store-git-develop-robinsons-store1.vercel.app` | The developer | BUILT 2026-10-30 [V-run, `gh variable list`] |
 | 6 | Let Ravi open the dev site. Preview addresses need a Vercel login on the team; or add `dev.robinsonsgeneralstore.ca` to the project for branch `develop` and ask Vianet for its CNAME by phone, since custom domains skip the login | Ravi Kiran | TARGET |
 
 **Keep `develop` level with `main`.** Anything merged straight to `main` (this change, for
