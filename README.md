@@ -20,7 +20,7 @@ operations data.
 | Data | Supabase Postgres, Auth and Storage in Canada Central (Toronto), row-level security per store | BUILT (docs/ARCHITECTURE.md section 5) |
 | AI | Four features on the Anthropic API: invoice reader, Ask the store, reorder summary, screenshot reader | BUILT (docs/AGENTS.md) |
 | Dev site | Branch `develop`, its own Supabase project holding seed data, never the live ledger | PARTIAL (docs/ENVIRONMENTS.md) |
-| Build loop | Slack request to draft pull request, CI gates, a script that decides what may merge, health watchdog | BUILT, tier A self-merge SCAFFOLDED (docs/LOOP_ENGINEERING.md) |
+| Build loop | Slack request to draft pull request, CI gates, a script that decides what may merge, health watchdog | PARTIAL: the classifier's rules are tested but it has not yet run on a live request; tier A self-merge SCAFFOLDED (docs/ARCHITECTURE.md section 6, docs/AGENTS.md) |
 
 ## Start here
 
@@ -36,7 +36,7 @@ operations data.
 
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and fill in the values (RUNBOOK.md lists each one).
-   With the file blank the app still builds and every screen shows a Connection card.
+   With the file blank the app still builds and starts; it simply has no data.
 3. `npm run dev`, then open http://localhost:3000.
 
 A fresh Supabase project needs `supabase/schema.sql` then `supabase/seed.sql` in the SQL
@@ -46,8 +46,10 @@ the live database; use the dev project (docs/ENVIRONMENTS.md).
 
 ## How a change ships
 
-Branch, draft pull request, CI (lint, `tsc --noEmit`, a blank-env build, the module checks and
-the automation tests), a person merges. `main` accepts changes only through a pull request;
+Branch, draft pull request, checks (lint, `tsc --noEmit`, a blank-env build, the module checks
+and the automation tests), a person merges. CI starts by itself only for pull requests into
+`main`; a pull request into `develop` needs the gates run by hand or CI started from the
+Actions tab (CONTRIBUTING.md). `main` accepts changes only through a pull request;
 Vercel deploys `main`; merged database scripts apply themselves from `supabase/run-order.txt`.
 The details, and why the automation may never merge money, access, database or automation
 changes on its own, are in [CONTRIBUTING.md](CONTRIBUTING.md) and
@@ -59,8 +61,10 @@ This file only routes. Every fact above has its home in the file it links to, an
 [docs/README.md](docs/README.md) indexes them all. The original plan with evidence and
 pricing is [robinsons_store_build_spec.md](robinsons_store_build_spec.md), kept for history.
 
-**Basis: 9 claims checked this session (2026-10-30), 9 confirmed, 0 killed, 1 source.** Each
+**Basis: 11 claims checked this session (2026-10-30), 9 confirmed, 2 killed, 1 source.** Each
 state in the table and each step above was read from the linked file in this repository:
-ARCHITECTURE sections 2 and 5, AGENTS, ENVIRONMENTS, LOOP_ENGINEERING section 3,
-SUPABASE_SETUP, RUNBOOK step 2, `.github/workflows/ci.yml` and `supabase/run-order.txt`.
-Source: this repository.
+ARCHITECTURE sections 2, 5 and 6, AGENTS, ENVIRONMENTS, SUPABASE_SETUP, RUNBOOK step 2,
+`.github/workflows/ci.yml` lines 4 to 7 and `supabase/run-order.txt`. Killed by a refutation
+read from a separate session: the build loop marked BUILT (the classifier is PARTIAL), and
+"every screen shows a Connection card" with blank env (several screens show none). Source:
+this repository.

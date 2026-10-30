@@ -14,8 +14,7 @@ how to work day to day.
    Point it at the dev project, never the live one (docs/ENVIRONMENTS.md).
 3. `npm run dev`, then open http://localhost:3000.
 
-The app builds and degrades to a Connection card with blank env, so nothing may depend on env
-at build time.
+The app must build with blank env, so nothing may depend on env at build time.
 
 ## The gates
 
@@ -33,7 +32,7 @@ CI then runs the checks that pin behaviour, each without a model or a key:
 |---|---|---|
 | Module checks | Every `scripts/*-check/run.sh`, in name order | `for f in scripts/*-check/run.sh; do bash "$f"; done` |
 | Extraction, Ask grounding, AI eval scorers, AI usage cap, import and export | The invoice reader's values, that Ask names only vendors it was given, the golden-case scorers, the daily AI cap, schedule names and export paging | The commands under each step in `.github/workflows/ci.yml` |
-| Automation rules | The tier classifier, the database guard, the watchdog and the Slack scripts | `for f in .github/scripts/*.test.mjs; do node "$f"; done` |
+| Automation rules | The tier classifier, the database guard, the watchdog, the Slack scripts, the parked Jira scripts, and that `supabase/run-order.txt` never names a seed file | `for f in .github/scripts/*.test.mjs; do node "$f"; done` |
 
 A new check adds its own `run.sh` (contract in `scripts/vendorfields-check/README.md`) or its own
 `.test.mjs`, and needs no edit to `ci.yml`. The live AI evals spend the API key and run only by
@@ -46,6 +45,11 @@ hand: `npm run eval:ai`.
 - The documented path for app changes is a pull request into `develop`, checked on the dev site,
   then a person runs Actions, Promote develop to production (docs/ENVIRONMENTS.md). A change
   merged straight to `main` needs a `main` to `develop` pull request after it.
+- CI starts by itself only on pull requests into `main` and pushes to `main`
+  [R `.github/workflows/ci.yml:4-7`]. A pull request into `develop` gets no automatic run, so run
+  the gates above yourself and start CI on the branch from Actions, CI, Run workflow before
+  anyone merges it. The promotion pull request is opened with the workflow's own token, which
+  may start no CI at all (ADR-002, context item 3), so check that its checks actually ran.
 - Open pull requests as drafts. Commit messages are short imperative sentences.
 - Name the reviewers the change needs before the work, from the table in
   `.claude/skills/robinsons-store/references/standards.md`: `money-reviewer` for amounts and
@@ -54,8 +58,10 @@ hand: `npm run eval:ai`.
 - Anything under `.github/`, `.claude/` or `supabase/`, every agent instruction file, and
   `docs/adr/` is tier C: the automation never merges it, a person does
   (docs/LOOP_ENGINEERING.md section 3).
-- A change that adds a table or column ships as a script in `supabase/` and a line in
-  `supabase/run-order.txt`, plus its policy in `auth_setup.sql` (CLAUDE.md, hard rules).
+- A new table goes in `schema.sql`, in `auth_setup.sql` section 3a and in a migration for live
+  databases (CLAUDE.md, hard rules). The migration is a script in `supabase/` named in
+  `supabase/run-order.txt`, which is the only list the migrate workflow applies
+  (docs/SUPABASE_SETUP.md).
 
 ## Coding conventions
 
@@ -100,7 +106,11 @@ Rules: CLAUDE.md and the robinsons-store skill. Architecture: docs/ARCHITECTURE.
 go-live: RUNBOOK.md and docs/SUPABASE_SETUP.md. Dev and production: docs/ENVIRONMENTS.md. Why
 the automation is limited the way it is: docs/LOOP_ENGINEERING.md. Every doc: docs/README.md.
 
-**Basis: 12 claims checked this session (2026-10-30), 12 confirmed, 0 killed, 1 source.**
+**Basis: 15 claims checked this session (2026-10-30), 12 confirmed, 3 killed, 1 source.**
+Killed by a refutation read from a separate session and corrected above: that the documented
+`develop` path keeps CI green by itself (CI does not start on it), that a blank env shows a
+Connection card on every screen, and that a new table needs only `auth_setup.sql` beside the
+script (CLAUDE.md names three places).
 Read from this repository: the CI steps and loops in `.github/workflows/ci.yml`; the
 `eval:ai` and `typecheck` scripts in `package.json`; the `run.sh` contract pointer; the main
 ruleset and tier rules in docs/ARCHITECTURE.md section 6 and docs/LOOP_ENGINEERING.md section

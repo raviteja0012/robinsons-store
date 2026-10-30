@@ -81,7 +81,7 @@ answer the question in the last column without looking.
 
 | # | Component | Read | Then open | You can now answer |
 |---|---|---|---|---|
-| 1 | The store and the idea | [../robinsons_store_build_spec.md](../robinsons_store_build_spec.md) section 1, the skill's "What this project is" | `src/lib/departments.ts` | Who uses the app, the four roles, and why it is capture-first |
+| 1 | The store and the idea | [../robinsons_store_build_spec.md](../robinsons_store_build_spec.md) sections 1 and 4, the skill's "What this project is" | `src/lib/auth.ts` (the roles and `canSeeMoney`), `src/lib/departments.ts` (the department order) | Who uses the app, the four roles, and why it is capture-first |
 | 2 | Where it runs | [ARCHITECTURE.md](ARCHITECTURE.md) sections 1 and 2, [PLATFORM.md](PLATFORM.md) | `vercel.json`, `src/app/api/` | Which services it depends on, why Toronto and Montreal, and the two open plan risks |
 | 3 | Data and the store fence | [ARCHITECTURE.md](ARCHITECTURE.md) section 5, the skill's data-model reference | `supabase/schema.sql`, `supabase/auth_setup.sql` | How every row is fenced to a store, and why a new table needs a policy in two places |
 | 4 | The capture loop | [ARCHITECTURE.md](ARCHITECTURE.md) section 3 | `src/app/capture/page.tsx`, `src/app/api/extract/route.ts` | How a photo becomes a record, and why a low-confidence dollar line cannot post |
@@ -113,17 +113,19 @@ answer the question in the last column without looking.
 Most of these files are drafted by Claude Code sessions. Six rules keep them trustworthy, and
 each one is in a file or a script rather than in anyone's memory:
 
-1. **The rules load every time.** CLAUDE.md, the skill and its standards file are read by every
-   session before it writes, so the tenth session works to the same rules as the first.
+1. **The rules load every time.** CLAUDE.md loads automatically in every Claude Code session and
+   names the skill and its standards file as required reading before building or writing, so
+   the tenth session works to the same rules as the first.
 2. **Evidence beside every claim.** `[R path:line]` read from the repo, `[V-run]` checked live,
    `[V-src]` read from vendor docs that session, `[D]` reported and awaiting a named person,
    `[J-open]` believed with a kill condition, `[Q]` an open question with an owner. A decision
    never rests on `[J-open]`.
 3. **One state per capability.** BUILT, PARTIAL, SCAFFOLDED (with its switch) or TARGET, and
    present tense only for BUILT.
-4. **A count at the bottom.** Every document ends with a basis footer: claims checked,
-   confirmed, killed, sources. The killed number is the point: it shows the check found
-   something.
+4. **A count at the bottom.** A document written to the standard ends with a basis footer:
+   claims checked, confirmed, killed, sources. The killed number is the point: it shows the
+   check found something. A document with no footer is a draft, whatever its status line says;
+   on 2026-10-30, 10 of the 27 files at the root, in `docs/` and in `docs/adr/` carry one.
 5. **Nothing verdicted by its writer.** A claim-making document gets a refutation read by a
    session that did not write it, and code changes get the read-only reviewer agents. A model
    asked whether its own work is right will usually say yes.

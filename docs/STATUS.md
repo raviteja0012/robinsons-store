@@ -10,8 +10,9 @@ Docs organized into one entry path, 2026-10-30:
   sitting: read the doc, open the code, answer one question) and states the six rules that
   keep AI-written docs trustworthy. It also lists the Slack app manifest, which was missing.
 - The root README.md and CONTRIBUTING.md are rewritten. Both still described login, signed
-  URLs and the confidence gate as to-do, integer cents as planned, CI as lint and build only,
-  and no tests. They now route to the current docs and list every CI step.
+  URLs and the confidence gate as to-do; CONTRIBUTING also called integer cents planned, CI
+  lint and build only, and the repository untested. They now route to the current docs, list
+  every CI step, and say that CI does not start by itself on pull requests into `develop`.
 - docs/LOOP_ENGINEERING.md: the watchdog runs after CI, not after the deploy; the Refine
   section no longer calls the parked Jira board the queue; Costs describes the Slack sweep;
   two improvement items no longer mention a ticket or a dev database still to build.
