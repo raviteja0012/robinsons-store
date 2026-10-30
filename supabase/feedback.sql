@@ -4,8 +4,8 @@
 --
 -- Each note can carry a screenshot and a voice recording (stored in the documents bucket
 -- under <store_id>/feedback/). When a screenshot is attached, the app reads it with the store's
--- Anthropic key and stores a text description in ai_summary, so the request is searchable
--- and the developer digest carries the full picture without the image.
+-- Anthropic key and stores a text description in feedback_summary (supabase/feedback_summary.sql),
+-- so the developer digest carries the full picture without the image.
 
 create table if not exists public.feedback (
   id uuid primary key default gen_random_uuid(),
@@ -16,7 +16,6 @@ create table if not exists public.feedback (
   body text,                -- the note itself
   screenshot_path text,     -- storage path under <store_id>/feedback/ in the documents bucket
   audio_path text,          -- voice recording path under <store_id>/feedback/
-  ai_summary text,          -- what the screenshot shows, read by the store's AI at submit time
   status text not null default 'new' check (status in ('new','planned','done','declined')),
   created_at timestamptz default now(),
   voided_at timestamptz,
