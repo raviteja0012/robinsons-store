@@ -107,14 +107,15 @@ When you leave, the same table runs in reverse [R docs/HANDOVER.md:93-95].
   TypeScript broken [R docs/LOOP_ENGINEERING.md:60].
 - Do not put production values in your local env. Use the dev project's URL and anon key
   [R docs/ENVIRONMENTS.md:32], and production data never copies to anywhere else
-  [R docs/ENVIRONMENTS.md:64]. Ask before connecting to any database [Q: the developer].
+  [R docs/ENVIRONMENTS.md:74]. Ask before connecting to any database [Q: the developer].
 
 ### 3.3 Standing invariants (never regress these)
 
 Copied from docs/REQUIREMENTS.md [R docs/REQUIREMENTS.md:41]:
 
 1. Every read and write is store-scoped; new tables get store_id, RLS, and a line in
-   auth_setup.sql section 3a.
+   auth_setup.sql section 3a (section 3e and supabase/money_by_role.sql if the table holds a
+   dollar figure).
 2. Money visibility fails closed: null/unknown role sees no dollars (canSeeMoney).
 3. Editing is role-gated (canEdit); destructive actions are soft voids (voidRow /
    void_payment) filtered with .is("voided_at", null); user-facing label is Void.
@@ -138,7 +139,7 @@ Copied from docs/REQUIREMENTS.md [R docs/REQUIREMENTS.md:41]:
 - **Dev then production (PARTIAL):** changes merge to `develop`, which deploys to the dev
   site on its own database of invented data; a person promotes to `main` and the live site
   [R docs/ENVIRONMENTS.md:14-37]. Dev scripts do not apply themselves until
-  `SUPABASE_DB_URL_DEV` is set [R docs/ENVIRONMENTS.md:75].
+  `SUPABASE_DB_URL_DEV` is set [R docs/ENVIRONMENTS.md:85].
 - **Watched (BUILT):** "Post-deploy watch" runs after CI on `main` and every two hours, and
   asks the live site `/api/health` [R .github/workflows/post-deploy-watch.yml:17]
   [R .github/workflows/post-deploy-watch.yml:22]. It checks `PRODUCTION_URL`, the custom
@@ -153,7 +154,7 @@ that section warns its lines go stale [R docs/REQUIREMENTS.md:180].
 | Item | Waiting on | Blocks |
 |---|---|---|
 | Supabase and Vercel on Pro (A-01) | Ravi Kiran | Closes both platform risks: Vercel Hobby is not licensed for commercial use, Supabase Free takes no backups [R docs/PLATFORM.md:20-26] |
-| Finish dev: the `SUPABASE_DB_URL_DEV` secret and the `DEV_URL` variable | admin@ | Dev scripts applying themselves [R docs/ENVIRONMENTS.md:75] |
+| Finish dev: the `SUPABASE_DB_URL_DEV` secret and the `DEV_URL` variable | admin@ | Dev scripts applying themselves [R docs/ENVIRONMENTS.md:85] |
 | Domain renewal not seen, due 2026-10-16 (A-04) | Ravi Kiran | Anything on the domain |
 | Reissue the original keys under the store (A-02) | The developer, with admin@ | Nothing |
 | Which password vault (A-03) | Ravi Kiran | Nothing |
