@@ -84,11 +84,11 @@ two months.
    agents, but its name makes it instructions to every tool that follows the AGENTS.md
    convention. `skills-lock.json`, `docs/LOOP_ENGINEERING.md` and `docs/adr/` are tier C too,
    as is every other doc CLAUDE.md tells an agent to read before building (`ONBOARDING.md`,
-   and `docs/` README, REQUIREMENTS, PLATFORM, HANDOVER, OWNER_NOTES and SUPABASE_SETUP),
-   except `docs/STATUS.md` and `docs/VERIFICATION.md`, which every pull request updates; a
-   test reads that list from CLAUDE.md itself. So is any `.sql` file and any manifest or
-   configuration file (`.yml`, `.yaml`, `.json`, `.toml`, `.ini`, `.env` files, `.npmrc`)
-   wherever it sits. Every tier C rule ignores case.
+   and `docs/` README, REQUIREMENTS, PLATFORM, HANDOVER, OWNER_NOTES, SUPABASE_SETUP and
+   ENVIRONMENTS), except `docs/STATUS.md` and `docs/VERIFICATION.md`, which every pull
+   request updates; a test reads that list from CLAUDE.md itself. So is any `.sql` file and
+   any manifest or configuration file (`.yml`, `.yaml`, `.json`, `.toml`, `.ini`, `.env`
+   files, `.npmrc`) wherever it sits. Every tier C rule ignores case.
    A file name with a control character is tier C, and is kept out of the reason, which the
    script writes to the job's outputs one value per line, the tier last
    [R `.github/scripts/classify-change.mjs:25-68`, `:85-101`, `:150-181`].
@@ -98,9 +98,9 @@ two months.
    the executable bit is never words, whatever its name: git counts a binary file as zero
    lines, so the line limit could not see its size
    [R `.github/scripts/classify-change.mjs:70-79`, `:120-148`].
-7. **The rules are tested.** `classify-change.test.mjs` pins 109 cases across all tiers,
+7. **The rules are tested.** `classify-change.test.mjs` pins 110 cases across all tiers,
    including every rule above and the parsing of git's output, and runs in CI
-   [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 109 passed, 0 failed]
+   [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 110 passed, 0 failed]
    [R `.github/workflows/ci.yml:93`].
 
 ## Conditions
@@ -176,8 +176,9 @@ the merge step fails closed when CI does not start. Sources: this repository, th
 12 further claims checked, 12 confirmed, 0 killed, 1 source added (GitHub's documentation).**
 Condition 3 re-read on 2026-10-25 against the ruleset main gained that day. On 2026-10-30 the
 docs CLAUDE.md names as required reading joined tier C (decision 5), checked by a test that
-reads CLAUDE.md (109 passed).
-Confirmed by running the classifier tests (109 passed); the classifier on this branch (tier C);
+reads CLAUDE.md (110 passed). The same test then caught `docs/ENVIRONMENTS.md`, added to that
+list on main, and it joined tier C.
+Confirmed by running the classifier tests (110 passed); the classifier on this branch (tier C);
 the classifier end to end on a scratch repository (a binary `.md`, an executable `.md` and a
 link named `.md` rate B, a `CLAUDE.md` under a folder with a non-ASCII name rates C, an
 unreadable commit rates C, and a file name holding a carriage return rates C with clean
