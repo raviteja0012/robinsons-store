@@ -1,4 +1,4 @@
--- Which questions each department's vendor and invoice forms ask, as the owner or a manager
+-- Which questions each department's vendor and invoice forms ask, as the owner
 -- chose them on the Department fields screen (src/app/department-fields).
 -- Run once in the Supabase SQL editor. Idempotent: safe to run again.
 --
@@ -30,8 +30,8 @@ create index if not exists department_field_store_idx on public.department_field
 -- A database with login on gets its real policies here as well, rather than waiting for
 -- somebody to rerun auth_setup.sql: until then the table would deny everyone, the forms
 -- would fall back to the code lists, and the settings screen could not save. Every member
--- of the store reads the choices, because every form needs them. Only owners and managers
--- write them, and only for a department of their own store. Nobody deletes.
+-- of the store reads the choices, because every form needs them. Only the owner
+-- writes them, and only for a department of their own store. Nobody deletes.
 alter table public.department_field enable row level security;
 do $$
 begin
@@ -45,22 +45,24 @@ begin
       to authenticated
       using (store_id = app_auth.my_store_id());
     drop policy if exists manager_insert on public.department_field;
-    create policy manager_insert on public.department_field
+    drop policy if exists owner_insert on public.department_field;
+    create policy owner_insert on public.department_field
       for insert
       to authenticated
       with check (
         store_id = app_auth.my_store_id()
-        and app_auth.my_role() in ('manager','owner')
+        and app_auth.my_role() = 'owner'
         and exists (select 1 from public.department d
                     where d.id = department_field.department_id and d.store_id = department_field.store_id));
     drop policy if exists manager_update on public.department_field;
-    create policy manager_update on public.department_field
+    drop policy if exists owner_update on public.department_field;
+    create policy owner_update on public.department_field
       for update
       to authenticated
-      using (store_id = app_auth.my_store_id() and app_auth.my_role() in ('manager','owner'))
+      using (store_id = app_auth.my_store_id() and app_auth.my_role() = 'owner')
       with check (
         store_id = app_auth.my_store_id()
-        and app_auth.my_role() in ('manager','owner')
+        and app_auth.my_role() = 'owner'
         and exists (select 1 from public.department d
                     where d.id = department_field.department_id and d.store_id = department_field.store_id));
   end if;
