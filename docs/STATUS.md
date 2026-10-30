@@ -14,6 +14,15 @@ AI view and standards map in the architecture doc, 2026-10-30:
   arc42). Names only; no conformance claimed.
 - Found: the store name and town are written into the Ask, reorder and alert prompts
   (ARCH-13, blocks a second store). The AI evals have never run against the model (ARCH-14).
+- Two more views and a colour key: a target context in section 1 (email intake, QuickBooks,
+  point of sale, Google Sheets sync, Slack questions, a search index, a second store, each
+  with its state and what it waits on) and an AI enablement view in section 8 (Suggestions,
+  the requirements ledger, the rules and templates every Claude session loads, the Slack
+  autopilot). Colour means state only: plain BUILT, amber dashed SCAFFOLDED, grey dashed
+  TARGET; planned pieces stay on the diagrams instead of being dropped.
+- Found: the Slack autopilot is built but off; `SLACK_REQUEST_CHANNEL` is not set (read live
+  2026-10-30). Slack questions and automatic filing of asks are the developer's stated
+  direction with no design yet.
 - The store's Miro board now has all seven diagrams, built in Miro from the doc's Mermaid and
   named "N. Section, 2026-10-30". The six older ones are still there; ARCH-12 stays open
   until they are removed.

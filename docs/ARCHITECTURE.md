@@ -19,15 +19,21 @@ out after arc42; the diagrams are Mermaid, per `.claude/skills/robinsons-store/r
 
 | Section | View | Notation or standard |
 |---|---|---|
-| 1. Context | Who and what the app depends on | C4 model, level 1 (System Context) |
+| 1. Context | Who and what the app depends on today, and the planned pieces | C4 model, level 1 (System Context), current and target |
 | 2. Containers | Deployable pieces and how they talk. "Container" is the C4 term for a separately running unit, not Docker; there are no Docker containers | C4 model, level 2 (Container) |
 | 3. Capture loop | One flow, step by step | UML 2.5 sequence diagram |
 | 4. Money | How an invoice status moves | UML 2.5 state machine |
 | 5. Data | Tables and keys | Entity relationship, crow's foot notation |
 | 6. Build and release | Request to live site | Delivery pipeline (continuous delivery); measured, when it is, by the four DORA metrics |
 | 7. Security and privacy | What is fenced and what leaves Canada | PIPEDA for personal data; OWASP Top 10 for the web app |
-| 8. AI | How the model is called and checked | Same C4 container notation; risks named after NIST AI RMF 1.0 and its Generative AI Profile (NIST AI 600-1), and the OWASP Top 10 for LLM Applications |
+| 8. AI | How the model is called and checked, and how requests, requirements and rules reach Claude | Same C4 container notation; risks named after NIST AI RMF 1.0 and its Generative AI Profile (NIST AI 600-1), and the OWASP Top 10 for LLM Applications |
 | 9 to 11 | Out of scope, open items, map | arc42 section 11 (risks and technical debt) in short form; decisions live in docs/adr (arc42 section 9) |
+
+Colour key, the same in every diagram, and colour means state only: a plain box is BUILT; an
+amber dashed box is SCAFFOLDED (built, switched off); a grey dashed box is TARGET (planned,
+not built). A dotted arrow is a flow that is switched off or planned. Planned pieces stay on
+the diagrams in their colour instead of being left out, and a box changes colour when its
+state changes.
 
 ## 1. Context
 
@@ -67,6 +73,8 @@ flowchart LR
   GH -- "migrations, weekly RLS audit" --> SB
   GH -- "GET /api/health" --> APP
   GH -- "status and alarms" --> SL
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  class RS scaffolded
 ```
 
 Plain flow: staff and the owner open app.robinsonsgeneralstore.ca, which Vianet's DNS points
@@ -98,6 +106,55 @@ Facts behind the picture:
   the health watchdog calls the app, not the database [R .github/scripts/health-check.mjs:33].
   BUILT.
 
+### Target context: what is planned
+
+Question: which outside services and features is the store planning to add, and how would
+they connect?
+
+```mermaid
+flowchart LR
+  APP["Robinson's store app<br/>everything built today"]
+  AN["Anthropic API<br/>in-app AI"]
+  MAIL["invoices@ mailbox<br/>email invoice intake"]
+  QB["QuickBooks<br/>accounting"]
+  POS["Point of sale<br/>till sales"]
+  GS["Google Sheets<br/>the owner's live sheets"]
+  SLK["Slack<br/>questions to the assistant"]
+  VEC["Search index or tool use<br/>Ask at larger data sizes"]
+  S2["A second store<br/>same app, own settings"]
+  APP -- "extract, ask, reorder, triage" --> AN
+  MAIL -. "vendor invoices from allowed senders" .-> APP
+  APP -. "export invoices and payments" .-> QB
+  POS -. "daily sales for margin, shrinkage, demand reorder" .-> APP
+  GS -. "pull live sheets; push FromApp tabs" .-> APP
+  SLK -. "questions answered from store data" .-> APP
+  APP -. "Ask looks things up instead of preloading" .-> VEC
+  S2 -. "own store_id, row-level security, settings" .-> APP
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  classDef target fill:#eef2f7,stroke:#64748b,stroke-dasharray:5 3
+  class MAIL scaffolded
+  class QB,POS,GS,SLK,VEC,S2 target
+```
+
+Plain flow: today's app and its AI stay as they are; planned next are vendor invoices arriving
+by email, an export to QuickBooks, till sales from the point of sale, a two-way sync with the
+owner's Google Sheets, questions asked in Slack, a search index once the data outgrows one
+prompt, and a second store on the same app.
+
+| Planned piece | State | Waits on | Evidence |
+|---|---|---|---|
+| Email invoice intake | SCAFFOLDED: AgentMail installed, not wired | The owner creating the invoices@ mailbox | [R docs/REQUIREMENTS.md:154-157] [R docs/PLATFORM.md:85, 155] |
+| QuickBooks export, point-of-sale import | TARGET, QUEUED | Nothing recorded; the owner confirmed the store runs both | [R docs/REQUIREMENTS.md:149-150] |
+| Google Sheets sync, phases 2 and 3 | TARGET, QUEUED | The live sheets shared with the developer's Google account | [R docs/REQUIREMENTS.md:146-148] |
+| Slack questions answered by the assistant | TARGET, not designed | A design; stated as the direction by the developer on 2026-10-30 | [Q: owner] which channel, who may ask, and whether money answers are allowed there |
+| Search index or tool use for Ask | TARGET, deferred | The data outgrowing one prompt | [R docs/PLATFORM.md:179] |
+| A second store | TARGET; the database is already per store | ARCH-13, and the product direction in open pull request #78 | Section 2, section 8 |
+
+Planned inside the app, with no new outside service, all QUEUED: three-way match before
+payment, a food-safety compliance module, recurring obligations and renewals from the
+payments workbook, department photo tiles, and a price-check list
+[R docs/REQUIREMENTS.md:138-158].
+
 ## 2. Containers
 
 Question: what are the deployable pieces, and how do they talk to each other?
@@ -125,6 +182,8 @@ flowchart LR
   API -. "due email when keys set" .-> RS
   GHA -- "run-order.txt scripts" --> DB
   GHA -- "GET /api/health" --> API
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  class RS scaffolded
 ```
 
 Plain flow: the browser signs in with Supabase Auth, reads and writes the database directly,
@@ -552,6 +611,53 @@ and its town in code, so a second store's assistant would call itself Robinsons
 [R src/app/api/ask/route.ts:62, 145] [R src/app/api/reorder/route.ts:54, 84]
 [R src/app/api/alerts/route.ts:115, 120]. ARCH-13.
 
+### AI enablement: how requests, requirements and rules reach Claude
+
+Question: how does a request or a piece of owner feedback become a change, and what tells
+Claude how to build it?
+
+```mermaid
+flowchart LR
+  OWN["Owner and staff"]
+  SUG["Suggestions page<br/>notes, voice, screenshots"]
+  SLK["Slack<br/>store workspace"]
+  DEV["Developer<br/>Claude Code sessions"]
+  LED["Requirements ledger<br/>OWNER_NOTES, REQUIREMENTS"]
+  RUL["Rules and templates<br/>CLAUDE.md, skill, standards, reviewers"]
+  AP["Slack autopilot<br/>Claude Code in Actions"]
+  PR["Draft pull request<br/>tier label, CI, merge"]
+  ASK["Ask the store<br/>diagram above"]
+  OWN -- "notes, voice, screenshots" --> SUG
+  OWN -- "requests in the channel" --> SLK
+  SUG -- "developer digest, pasted by hand" --> DEV
+  DEV -- "triages each ask into" --> LED
+  RUL -- "loaded by every session" --> DEV
+  RUL -- "same rules for the build" --> AP
+  SLK -. "request; off until SLACK_REQUEST_CHANNEL is set" .-> AP
+  SLK -. "questions, planned" .-> ASK
+  SUG -. "asks filed into the ledger, planned" .-> LED
+  DEV -- "opens" --> PR
+  AP -- "opens and labels the tier" --> PR
+  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
+  class AP scaffolded
+```
+
+Plain flow: owner and staff leave notes, voice and screenshots on the Suggestions page, and the
+developer pastes its digest into a Claude Code session, files each ask in the requirements
+ledger and opens a pull request; the same rules and templates load into every session and
+into the Slack autopilot, which is built but off; questions in Slack and automatic filing of
+asks are planned.
+
+| Piece | What it does | State | Evidence |
+|---|---|---|---|
+| Suggestions page | Notes, voice and screenshots from the owner and staff; the screenshot reader describes images; "Copy developer digest" makes one block for a build session | BUILT | [R src/app/suggestions/page.tsx:7, 168, 244] |
+| Requirements ledger | Every ask lands verbatim in docs/OWNER_NOTES.md, then gets a SHIPPED, QUEUED or OPEN line in docs/REQUIREMENTS.md. A person triages it in a session | BUILT, by hand | [R docs/REQUIREMENTS.md:284-291] |
+| Rules and templates | CLAUDE.md; the robinsons-store skill and its invariants; the standards file's templates for every document, claim, decision record, diagram, review and basis footer; two read-only reviewers (money, invariants); a typecheck gate on every session | BUILT | [R .claude/skills/robinsons-store/references/standards.md:8-80] [R docs/AGENTS.md] |
+| Slack autopilot | Turns a request in the channel into a draft pull request with Claude Code; the tier classifier labels it | SCAFFOLDED: off until the repository variable `SLACK_REQUEST_CHANNEL` is set | [R docs/SLACK_AUTOPILOT.md:138] [V-run, `gh variable list`, 2026-10-30: only `DEV_URL` and `PRODUCTION_URL` set] |
+| Review job on Slack-built pull requests | Two read-only reviewers read every Slack-built pull request before it ships | TARGET, open pull request #82 | Section 6 when it merges |
+| Slack questions | Questions asked in Slack answered from the store's data by Ask the store | TARGET, not designed; the developer's stated direction, 2026-10-30 | [Q: owner] as in section 1 |
+| Automatic filing of asks | Suggestions filed into the requirements ledger without a person | TARGET, not designed; the developer's stated direction, 2026-10-30 | None yet |
+
 ## 9. What is deliberately not here
 
 Not the enterprise stack: no Snowflake, Fabric, Redpanda, MuleSoft, API gateway or MCP
@@ -613,6 +719,11 @@ by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01),
 curl of the health route.
 Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
 script, 6 claims checked, 6 confirmed. Source: this repository.
+
+**Basis, 2026-10-30 target context, AI enablement and colour key:** every `[R]` in the two new
+tables opened at the named lines on this branch; the autopilot switch read live with
+`gh variable list`. Slack questions and automatic filing are recorded as the developer's
+stated direction with no design behind them [J-open: none designed].
 
 **Basis, 2026-10-30 AI view and standards map:** every `[R]` in section 8 opened at the named
 lines against main 3a90f50: `src/lib/anthropic.ts`, `src/lib/aiUsage.ts`, the extract, ask,
