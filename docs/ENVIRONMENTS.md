@@ -1,139 +1,107 @@
 # Dev and production: two environments, and how a change crosses between them
 
-Asked for on 2026-07-31: build to a dev site first, test it there with dummy data covering
-the real scenarios, and promote to production only when Ravi approves the ticket.
+Status: ACCEPTED, 2026-10-30. Owner: the developer. Approver: Ravi Kiran.
 
-Both open questions were left to "best standards", so here they are with the reasoning,
-because a convention nobody can justify gets abandoned the first time it is inconvenient.
+**Production is BUILT. The dev environment is not: there is no `develop` branch and no dev
+database yet [V-run, GitHub list_branches, 2026-10-30], and every pull request preview reads
+and writes the live database today [V-run, Vercel filter_project_envs: the Supabase URL and
+key target Production and Preview, 2026-10-30].** The workflows that run dev are built and
+waiting. Three settings, done in the order below, turn it on. Asked for on 2026-07-31: build
+to a dev site first, test there with dummy data, and promote to production only when Ravi
+says yes.
 
 ## The shape
 
-```
-  a ticket          develop branch            main branch
-  on the board  ->  dev site + dev database  ->  live site + live database
-                    Ravi tests here             the store uses this
-```
-
-- **`develop`** is the integration line. Every change lands here first. It deploys to the
-  dev site, which points at a **separate Supabase project** holding only dummy data.
-- **`main`** is production. It changes only by promotion from `develop`, and only after a
-  human approves the ticket on the board.
-
-## Decision 1: real QA and Approved statuses on the board
-
-Chosen over reusing In Review and Done, and over approving by comment.
-
-The workflow becomes:
-
-```
-To Do -> In Progress -> In Review -> QA -> Approved -> Done
+```mermaid
+flowchart LR
+  PR["A pull request"] -- "merge" --> DEV["develop branch"]
+  DEV -- "deploys" --> DSITE["Dev site + dev database"]
+  DEV -- "a person runs Promote" --> MAIN["main branch"]
+  MAIN -- "deploys" --> LIVE["app.robinsonsgeneralstore.ca + live database"]
 ```
 
-- **QA** means it is built and sitting on the dev site. The autopilot moves it here itself
-  and comments the dev link.
-- **Approved** is Ravi's word that it is right. Moving a ticket here is what promotes the
-  change to production.
-- **Done** means it is live. The promotion sets it.
+Plain flow: a change merges into `develop`, shows up on the dev site against dummy data, and
+reaches the live site only when a person runs the promotion workflow.
 
-Why not overload Done: because Done would then mean "approved to ship" in one place and
-"finished" in another, and six months later nobody remembers which. Why not a comment:
-because approval belongs on the board where it is visible at a glance, not buried in a
-thread. Since 2026-08-12 approval is the act of running the promotion workflow: a person
-starts it, and nothing on a schedule can start it for them.
+| | Production | Dev |
+|---|---|---|
+| Branch | `main` | `develop` |
+| Site | `app.robinsonsgeneralstore.ca` | `robinsons-store-git-develop-robinsons-store1.vercel.app`, or `dev.robinsonsgeneralstore.ca` once its DNS record exists |
+| Vercel | Project `robinsons-store`, Production environment | **The same project**, Preview environment |
+| Database | Supabase project `robinsons-store` (ref `mhcjreqvvhnrtgwtuwvr`) | A second Supabase project, `robinsons-store-dev`, in a separate Free organization owned by admin@ |
+| Data | The store's | Invented, from `supabase/seed_dev.sql` |
+| Scripts | `supabase/run-order.txt`, on a push to `main` | The same list, on a push to `develop`, via `SUPABASE_DB_URL_DEV` |
+| Daily email cron | Runs | Does not: Vercel runs crons on production deployments only |
+| State | BUILT | TARGET |
 
-**You add these two statuses** (Project settings, Workflows). Until they exist the
-promotion workflow stays inert and everything behaves as it does today.
+## Three decisions, and why
 
-## Decision 2: a separate Supabase project for dev
+**One Vercel project, not two.** The dev site is the Preview environment of the existing
+project, with its own database settings. A second project would mean a second set of
+variables to keep in step, and it would run the daily email cron against dev, because crons
+follow a project's production branch. This replaces the 2026-07-31 plan of a second project.
 
-Chosen over a "Test Store" row in the live database, and over a throwaway CI database.
+**A separate Supabase project, not a test store in the live database.** Test rows in the same
+tables as the real ledger, and a bad migration hitting both at once, is exactly what dev
+exists to prevent. A free second project costs nothing and keeps the two apart.
 
-The multi-store support would technically allow a test store inside the real database, and
-it is tempting because it is free and instant. It is also wrong here: test data would sit
-in the same tables as real vendor records, and a migration that goes bad hits both at once.
-The whole reason for a dev environment is that a mistake there costs nothing, and that
-stops being true the moment it shares a database with the store's money.
+**Every preview uses the dev database, not only `develop`.** Today a pull request preview
+can write to the store's real vendors and invoices. Once dev exists, Preview points at dev
+for every branch, so the live database is reachable only from the live site.
 
-A throwaway CI database was the other option. It is cheaper still, but it gives Ravi
-nothing to click on, and "let him try it before it goes live" was the actual request.
-
-So: a second free Supabase project, seeded from `supabase/seed_dev.sql`, which is written
-to cover the cases that have actually broken before rather than a tidy happy path.
+Approval is a person running **Actions, Promote develop to production**: it opens and merges
+a `develop` to `main` pull request once the checks pass [R `.github/workflows/promote.yml:1-21`].
+Nothing on a schedule can start it. Jira, which once carried QA and Approved statuses, is off
+since 2026-08-12.
 
 ## What crosses, and what does not
 
-**Code crosses.** `develop` to `main` by pull request, opened automatically when a ticket
-reaches Approved.
+- **Code crosses** from `develop` to `main` by the promotion pull request.
+- **Schema crosses as scripts.** The same `run-order.txt` runs on dev first and production
+  second, so every migration is exercised on dev before it touches the ledger.
+- **Data never crosses.** Nothing copies either way. If dev needs to look more like
+  production, extend `seed_dev.sql`. `run-order.txt` may never name a seed file, and CI
+  enforces that, so dummy data cannot reach any database through the pipeline.
+- **The guard.** Before any script runs on dev, `.github/scripts/distinct-databases.mjs`
+  stops the run if the dev connection string points at the production project.
 
-**Data never crosses.** Dev data is invented and stays in dev; production data is the
-store's and stays in production. Nothing copies either way. If dev needs to look like
-production, extend `seed_dev.sql`, do not clone the live database: it holds real vendor
-terms and real payment history.
+## Turning it on
 
-**Schema crosses as scripts.** The same files in `supabase/run-order.txt` run against dev
-on a push to `develop`, and against production on a push to `main`. A migration is
-therefore always exercised on dev first, which is the point: `order_invoice_fields.sql`
-rewrote how invoice totals work, and finding that out on dev is much cheaper than finding
-it out on the store's ledger.
+Do these in order. Until step 3, nothing changes for production or for the autopilots.
 
-## The full path of one change
+| # | What | Who | Where |
+|---|---|---|---|
+| 1 | Create a Free organization and in it a project `robinsons-store-dev`, region Canada Central. Run `schema.sql`, then `seed.sql`, then `seed_dev.sql` in its SQL editor | admin@ | supabase.com |
+| 2 | Add repository secret `SUPABASE_DB_URL_DEV`: the dev project's **session pooler** URI on port 5432 (docs/SUPABASE_SETUP.md) | admin@ or the developer | GitHub, Settings, Secrets and variables, Actions |
+| 3 | In Vercel, project `robinsons-store`, Environment Variables: change `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to **Production only**, then add both again for **Preview** with the dev project's values, plus a dev `SUPABASE_SERVICE_ROLE_KEY` for Preview. Redeploy one preview and check its URL ends in the dev project ref | The developer | vercel.com |
+| 4 | Create branch `develop` from `main`. From here the Slack autopilot targets `develop`, and pushes there run the dev scripts | The developer | GitHub |
+| 5 | Add repository variable `DEV_URL` = `https://robinsons-store-git-develop-robinsons-store1.vercel.app` | The developer | GitHub, Settings, Variables |
+| 6 | Let Ravi open the dev site. Either add him to the Vercel team (preview addresses require a Vercel login), or add domain `dev.robinsonsgeneralstore.ca` to the project for branch `develop` and ask Vianet for its CNAME by phone; custom domains skip the login | Ravi Kiran | vercel.com, Vianet |
 
-1. A ticket lands on the board, or a comment arrives on an existing one.
-2. The autopilot builds it on a branch and opens a pull request into **`develop`**.
-3. On merge, `develop` deploys to the dev site and the dev database gets the scripts.
-4. The autopilot moves the ticket to **QA** and comments the dev link.
-5. Ravi tries it on the dev site, against dummy data, with no risk to anything.
-6. He moves the ticket to **Approved**.
-7. The promotion workflow opens a `develop` to `main` pull request, and merges it once the
-   checks pass. Production deploys and the production scripts run.
-8. The ticket moves to **Done**, and the post-deploy watchdog confirms the live site still
-   agrees with its database.
+**Check it worked:** Actions, Apply database scripts, on `develop`: the gate prints a
+non-zero length for the dev secret and the guard passes. Then a pull request preview shows
+the dev vendors, not the store's.
 
-Steps 2, 3, 4, 7 and 8 are automatic. Steps 5 and 6 are the human ones, and they are the
-whole point of the arrangement.
+## What could still go wrong
 
-## What is built, as of 2026-08-09
+- **The dev site pointed at the live database.** A copy-paste mistake in step 3. Compare the
+  Preview `NEXT_PUBLIC_SUPABASE_URL` with the Production one before trusting anything.
+- **Schemas drifting.** The pipeline runs the same list on both, but a script run by hand in
+  one and not the other drifts them. `/api/health` on each site catches it.
+- **Works on dummy data, fails on real data.** Dev holds hundreds of rows; production holds
+  the full ledger. Volume bugs still reach production first.
 
-The design above was written first and the code came after. All of it now exists:
+## How this maps to the rest of the docs
 
-| Piece | Where |
-|---|---|
-| Scripts apply to dev on a push to `develop`, to production on a push to `main` | `.github/workflows/migrate.yml` |
-| Running the promotion workflow opens and merges a `develop` to `main` pull request | `.github/workflows/promote.yml` |
-| Dev dummy data, built from the shapes that have actually broken this code | `supabase/seed_dev.sql` |
+Accounts and every secret: docs/HANDOVER.md. Script order and the connection string:
+docs/SUPABASE_SETUP.md. The automation that targets `develop`: docs/LOOP_ENGINEERING.md and
+docs/SLACK_AUTOPILOT.md. Services and plans: docs/PLATFORM.md.
 
-Every piece is inert until its secret, branch or status exists, and that is deliberate: the
-autopilot targets `main` exactly as before until a `develop` branch appears, the promotion
-workflow finds nothing until the Approved status exists, and the dev migration is skipped
-until `SUPABASE_DB_URL_DEV` is set. There is no flag day and nothing half-configured breaks.
-
-One rule enforced by CI rather than by remembering it: `supabase/run-order.txt` may never
-name a seed file, so `seed_dev.sql` cannot reach any database through the pipeline. Dev data
-is put there by hand, once.
-
-## Setting it up
-
-Each piece is inert until its secret or setting exists, so this can be done in any order
-and nothing breaks half-configured.
-
-| What | Where | Why |
-|---|---|---|
-| Create a second Supabase project, name it something like `robinsons-store-dev` | supabase.com | The dev database |
-| Run `schema.sql`, then `seed.sql`, then `seed_dev.sql` in it | Supabase SQL editor | Builds and fills the dev database |
-| Add repository secret `SUPABASE_DB_URL_DEV` | GitHub, Settings, Secrets and variables, **Actions** | Lets the scripts run against dev. The session pooler URI on port 5432, from Supabase. Not the direct connection (IPv6-only, unreachable from a runner) and not the 6543 transaction pooler. See docs/SUPABASE_SETUP.md |
-| Create a second Vercel project from the same repo, set its production branch to `develop` | vercel.com | The dev site |
-| Point that project's env vars at the DEV Supabase | Vercel, dev project, Environments | So the dev site never reads the real database. Check this twice |
-| Add repository variable `DEV_URL` with the dev site address | GitHub, Settings, Variables | So the ticket comment can link to it |
-| Add `SLACK_WEBHOOK_URL` as a repository secret | Settings, Secrets and variables, Actions | The health watchdog can tell somebody |
-
-## What could still go wrong, honestly
-
-- **The dev site pointed at the live database.** This is the one real hazard in the whole
-  arrangement, and it is a copy-paste mistake, not a subtle one. Check the dev project's
-  `NEXT_PUBLIC_SUPABASE_URL` against the live one before trusting anything.
-- **Dev and production schemas drifting.** They cannot drift through the pipeline, because
-  both run the same ordered list, but they can drift if somebody runs something by hand in
-  one and not the other. The health check on each environment is what catches it.
-- **A change that works on dummy data and fails on real data.** Dev holds hundreds of rows;
-  production holds the real ledger. Volume-sensitive bugs will still reach production
-  first, and that is a known limit of this design rather than something it solves.
+**Basis: 5 claims checked this session (2026-10-30), 5 confirmed, 0 killed, 3 sources.**
+Confirmed: no `develop` branch; the Supabase URL and key target Production and Preview; the
+team slug `robinsons-store1` that the dev address is built from; the promotion workflow is
+started by hand only; migrate picks `SUPABASE_DB_URL_DEV` on `develop` and runs the guard
+first [R `.github/workflows/migrate.yml:66-106`]. Not checked: Vercel's cron-on-production
+rule and branch alias format were taken from prior use, not read this session, `[J-open]`,
+kill condition: the dev site's address differs after step 4 or a cron fires on a preview.
+Sources: GitHub API, Vercel API, this repository.

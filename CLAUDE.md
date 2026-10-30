@@ -16,8 +16,10 @@ Read before building:
 - docs/PLATFORM.md — every service and plan in use, what is adopted and what is declined
   and why. Carries two open risks: the Vercel plan does not license commercial use, and
   Supabase Free takes no backups. Check it before adding any service.
-- docs/HANDOVER.md — who holds each account, the order to move them to the store, and the
-  register of every secret and variable. Add any new secret or service there.
+- docs/HANDOVER.md — what the store owns on each service, the register of every secret and
+  variable, and what is still open. Add any new secret or service there.
+- docs/ENVIRONMENTS.md — production and the dev site. Dev is not on yet; until it is, every
+  pull request preview reads the live database.
 - docs/STATUS.md and docs/VERIFICATION.md — build state and sign-off; update both in the
   same PR as the work.
 - docs/OWNER_NOTES.md — the owner's feedback verbatim (Telugu translated), round by round.
