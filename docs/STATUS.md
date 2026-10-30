@@ -8,9 +8,9 @@ The first accounts moved to the store, 2026-10-25:
 - The code now lives at `robinsons-store/robinsons-store`, on admin@'s GitHub user rather
   than an organization (HANDOVER HO-08). Secrets, variables, the main ruleset and open pull
   requests came with it.
-- The Vercel project has left the developer's personal team and the site still answers from
-  Montreal, but Vercel no longer builds pull requests until Git is reconnected on the store's
-  team (checklist 6.7).
+- The Vercel project is on the store's team (slug `robinsons-store1`), builds pull request
+  previews from the moved repository, and the site still answers from Montreal. The first
+  production deploy there comes with the next merge to main.
 - admin@ is in the Supabase organization; the plan is still Free, so there are still no
   backups. The watchdog now checks app.robinsonsgeneralstore.ca.
 - Docs only; progress recorded in docs/HANDOVER.md and the handover checklist.

@@ -133,13 +133,15 @@ open in docs/HANDOVER.md (HO-08). Steps that need repository admin now belong to
 ## Task 6. Vercel: the hosting (25 minutes)
 
 2026-10-25: 6.5 done by 16:04 UTC; the project is gone from the personal team and the site
-still answers from yul1. Until 6.4 is done, only ADMIN can read the 6.6 checks. Vercel built
-no preview for pull request #70, so 6.7 is needed before any merge is expected to deploy.
+still answers from yul1. Until 6.4 is done, only ADMIN can read the 6.6 checks. 6.7 done:
+the store team has built pull request previews since 16:28 UTC the same day. The team's slug
+is `robinsons-store1`, not the planned one.
 
-- [ ] 6.1 **ADMIN** (private window): https://vercel.com/signup, continue with email, admin@,
+- [x] 6.1 **ADMIN** (private window): https://vercel.com/signup, continue with email, admin@,
       code from the inbox. Turn on two-factor.
-- [ ] 6.2 **ADMIN**: https://vercel.com/teams/create. Name "Robinson's General Store", slug
-      `robinsons-general-store`. Plan **Pro**, store card.
+- [x] 6.2 **ADMIN**: https://vercel.com/teams/create. Name "Robinson's General Store", slug
+      `robinsons-general-store`. Plan **Pro**, store card. Done as slug `robinsons-store1`;
+      the plan is not readable from YOUR account yet.
 - [ ] 6.3 **ADMIN**: the new team, Settings, Members, invite your personal Vercel account as
       **Member**, so the project can be moved into a team you belong to.
 - [ ] 6.4 **YOU** (normal window): accept the team invite.
@@ -151,7 +153,7 @@ no preview for pull request #70, so 6.7 is needed before any merge is expected t
   - [ ] Environment Variables lists every name in the HANDOVER register
   - [ ] Functions, Function Region is **Montreal (yul1)**
   - [ ] Cron Jobs lists `/api/alerts`
-- [ ] 6.7 **ADMIN**: Settings, Git: connect the repository at its **new** GitHub address,
+- [x] 6.7 **ADMIN**: Settings, Git: connect the repository at its **new** GitHub address,
       production branch `main`. Install the Vercel GitHub app on the store's organization
       when asked. Today that address is `robinsons-store/robinsons-store`, so install the app
       on the `robinsons-store` user account; if the repository later moves into an
@@ -267,10 +269,11 @@ Each key goes straight from the service into Vercel or GitHub. Nobody copies it 
       whether to add a "not answered yet" vendor list.
 - [ ] Upload Departments&WorkFlow.xlsx so the payment-record fields can be checked.
 
-**Basis of the 2026-10-25 ticks: 6 claims checked this session (2026-10-25), 6 confirmed, 0
-killed, 3 sources.** 3.4, 5.1, 5.6, 5.8 and the PR #70 note from the GitHub API; 6.5 from the
-Vercel API; 5.7 from `git ls-remote` against the new address. 4.1 to 4.5 are `[D]`, reported
-by the developer.
+**Basis of the 2026-10-25 ticks, rechecked 2026-10-30: 7 claims checked this session, 7
+confirmed, 0 killed, 3 sources.** 3.4, 5.1, 5.6 and 5.8 from the GitHub API; 6.1, 6.2 and 6.7
+from the store team's preview addresses in GitHub deployment statuses; 6.5 from the Vercel
+API; 5.7 from `git ls-remote` against the new address. 4.1 to 4.5 are `[D]`, reported by the
+developer.
 
 **Basis: 4 claims checked this session (2026-10-24), 4 confirmed, 0 killed, 2 sources.** The
 Supabase organization id and Owner-only rights (Supabase API and docs), the Vianet support
