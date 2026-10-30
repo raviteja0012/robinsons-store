@@ -99,9 +99,10 @@ Facts behind the picture:
   SCAFFOLDED, switch is `RESEND_API_KEY`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` in Vercel
   [R src/app/api/alerts/route.ts:98-105] [R docs/STATUS.md:392-393].
 - Slack carries build requests in and watchdog and migration messages out, through a bot app
-  and an incoming webhook. BUILT [R docs/PLATFORM.md:80].
-- The Slack build runs Claude Code in GitHub Actions on the app's Anthropic key
-  [R .github/workflows/slack-autopilot.yml:138-140]. Migrations and the RLS audit connect to the
+  and an incoming webhook. BUILT [R docs/PLATFORM.md:80]. Build requests are switched on since
+  2026-10-30, when `SLACK_REQUEST_CHANNEL` was set (section 8).
+- The Slack build runs Claude Code in GitHub Actions
+  [R .github/workflows/slack-autopilot.yml:87-102, 152-167]. Migrations and the RLS audit connect to the
   database with `psql` [R .github/workflows/migrate.yml:150] [R .github/workflows/rls-audit.yml:43];
   the health watchdog calls the app, not the database [R .github/scripts/health-check.mjs:33].
   BUILT.
@@ -554,28 +555,31 @@ answer and the store's records?
 flowchart LR
   P["Staff or owner"]
   R["AI route<br/>extract, ask, reorder, triage"]
-  DB[("Postgres<br/>store-scoped reads")]
+  DB[("Postgres<br/>store data, feedback summaries")]
   CC["callClaude<br/>the one door"]
   LOG[("ai_call log<br/>daily cap per store")]
   AN["Anthropic API, US<br/>claude-sonnet-5"]
   CHK["Answer checks<br/>schema, stop reason, grounding"]
-  H["Person confirms<br/>amber lines, I checked"]
+  H["Invoice capture: person confirms<br/>amber lines, I checked"]
   REC[("Receiving records")]
   P -- "photo or question, session" --> R
-  R -- "store data; dollars only for money roles" --> DB
+  R -- "Ask/reorder: store data by role" --> DB
   R -- "fenced prompt" --> CC
   CC -- "reserve; refused past the cap" --> LOG
   CC -- "Messages API, retries, timeout" --> AN
   AN -- "answer and stop reason" --> CHK
-  CHK -- "draft or plain answer" --> H
-  H -- "saves only after confirming" --> REC
+  CHK -- "invoice draft for review" --> H
+  H -- "saves receiving only after confirming" --> REC
+  CHK -- "Ask/reorder: display answer only" --> P
+  CHK -- "triage: automatically save feedback.ai_summary" --> DB
 ```
 
-Plain flow: a route checks who is asking, reads that store's data (dollars only for roles that
-see money), and hands a fenced prompt to `callClaude`, which counts the call against the
-store's daily cap and then asks Anthropic; the answer is checked against a schema, its stop
-reason and the store's own vendor names, and nothing the model says becomes a record until a
-person confirms it.
+Plain flow: a route checks who is asking, reads store data where needed (Ask and reorder limit
+dollar data by role), and hands a fenced prompt to `callClaude`, which counts the call against
+the store's daily cap and then asks Anthropic. Checks include the invoice schema, the stop
+reason and, for Ask, vendor names against the store data and app guide. Invoice capture saves
+receiving records after a person confirms; `/api/feedback-triage` automatically saves the
+screenshot description to `feedback.ai_summary`. Ask and reorder answers are displayed, not saved.
 
 What is in the AI side, layer by layer:
 
@@ -583,11 +587,11 @@ What is in the AI side, layer by layer:
 |---|---|---|---|
 | Agents | Four in the app (invoice reader, Ask the store, reorder summary, suggestion screenshot reader); the build side has the Slack autopilot and two read-only reviewers. Full register: docs/AGENTS.md | BUILT | [R docs/AGENTS.md] |
 | Model | `claude-sonnet-5`; `ANTHROPIC_MODEL` overrides; no temperature or other sampling setting is sent | BUILT | [R src/lib/anthropic.ts:11-12, 56-58] |
-| One door | Every call goes through `callClaude`: retries 429, 529 and 5xx twice with backoff, never retries a timeout or a 400, reads refusal and cut-off from `stop_reason` | BUILT | [R src/lib/anthropic.ts:53-54, 88-121, 137-142] |
-| Prompt | Store data and the question are fenced and marked as data, not instructions | BUILT | [R src/app/api/ask/route.ts:145, 167-168] |
+| One door | Every call goes through `callClaude`: retries 429, 529 and 500, 502, 503, 504 twice with backoff, never retries a timeout or a 400, reads refusal and cut-off from `stop_reason` | BUILT | [R src/lib/anthropic.ts:53-54, 88-121, 137-142] |
+| Prompt | Store data and the question are fenced and marked as data, not instructions | BUILT | [R src/app/api/ask/route.ts:145, 170-175] |
 | Output contract | Invoice reader output is constrained to a JSON schema by the API | BUILT | [R src/app/api/extract/route.ts:43-67, 108] |
-| Grounding | An Ask answer that names a vendor not in the store data is withheld | BUILT | [R src/app/api/ask/route.ts:185-192] |
-| Human in the loop | The model returns a draft and writes nothing; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it | BUILT | [R src/app/capture/page.tsx:199-238] [R supabase/edit_delete.sql:41-61] |
+| Grounding | Checks vendor names the Ask answer mentions against the store data and app guide. Unsupported names withhold the answer; the question excuses them only if all occur in the question and the answer has no figures (no digits) | BUILT | [R src/lib/askGrounding.ts:256-290] [R src/app/api/ask/route.ts:185-196] |
+| Human in the loop | Invoice capture requires a person to confirm and save; the database refuses a line under 0.7 confidence with a cost unless a person acknowledged it. Screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved | BUILT | [R src/app/capture/page.tsx:183-229, 432-439] [R supabase/edit_delete.sql:41-61] [R src/app/api/feedback-triage/route.ts:80-85] [R src/app/ask/page.tsx:23-42] [R src/app/reorder/page.tsx:151-157] |
 | Cost | Daily cap per store, default 100 calls, roughly $10 on a runaway day; fails open so the receiving door is never blocked by the log | BUILT | [R src/lib/aiUsage.ts:8-15, 24-28] |
 | Logging | Metadata only (route, model, tokens, time, outcome), never the prompt, store data or answer | BUILT | [R src/lib/anthropic.ts:162-171] [R supabase/ai_call.sql:4-8] |
 | Failure words | Every failure has a plain sentence and a next step; capture always offers Enter manually | BUILT | [R src/lib/anthropic.ts:174-192] [R src/app/api/extract/route.ts:113-131] |
@@ -602,8 +606,8 @@ Risks named after the standards, and where each is handled:
 | Prompt injection | Fenced data in the prompt; issue logging is deterministic, not the model |
 | Sensitive information disclosure | Money withheld by role before the prompt is built; no AI route reads staff tables (section 7) |
 | Improper output handling | JSON schema, `plainText()` strip, grounding check |
-| Excessive agency | The model writes nothing; a person saves. The build agent opens draft pull requests; only a words-only tier A change may merge itself, and that is off until `AUTOMERGE_TIER_A` is set (section 6) |
-| Unbounded consumption | Daily cap per store; no spend limit on the key yet (AG-02) |
+| Excessive agency | Invoice capture requires a person to confirm and save; screenshot descriptions save automatically to `feedback.ai_summary`; Ask and reorder answers are displayed, not saved. The build agent opens draft pull requests; only a words-only tier A change may merge itself, and that is off until `AUTOMERGE_TIER_A` is set (section 6) |
+| Unbounded consumption | Daily cap per store |
 | Confabulation | Confidence per line, amber lines, the 0.7 database gate |
 
 Gap against the multi-store rule: the Ask and reorder prompts and the alert email name the store
@@ -633,19 +637,18 @@ flowchart LR
   DEV -- "triages each ask into" --> LED
   RUL -- "loaded by every session" --> DEV
   RUL -- "same rules for the build" --> AP
-  SLK -. "request; off until SLACK_REQUEST_CHANNEL is set" .-> AP
+  SLK -- "request in the channel" --> AP
   SLK -. "questions, planned" .-> ASK
   SUG -. "asks filed into the ledger, planned" .-> LED
   DEV -- "opens" --> PR
   AP -- "opens and labels the tier" --> PR
-  classDef scaffolded fill:#fff4d6,stroke:#b7791f,stroke-dasharray:5 3
-  class AP scaffolded
 ```
 
 Plain flow: owner and staff leave notes, voice and screenshots on the Suggestions page, and the
 developer pastes its digest into a Claude Code session, files each ask in the requirements
 ledger and opens a pull request; the same rules and templates load into every session and
-into the Slack autopilot, which is built but off; questions in Slack and automatic filing of
+into the Slack autopilot, which turns a channel request into a pull request; questions in
+Slack and automatic filing of
 asks are planned.
 
 | Piece | What it does | State | Evidence |
@@ -653,7 +656,7 @@ asks are planned.
 | Suggestions page | Notes, voice and screenshots from the owner and staff; the screenshot reader describes images; "Copy developer digest" makes one block for a build session | BUILT | [R src/app/suggestions/page.tsx:7, 168, 244] |
 | Requirements ledger | Every ask lands verbatim in docs/OWNER_NOTES.md, then gets a SHIPPED, QUEUED or OPEN line in docs/REQUIREMENTS.md. A person triages it in a session | BUILT, by hand | [R docs/REQUIREMENTS.md:284-291] |
 | Rules and templates | CLAUDE.md; the robinsons-store skill and its invariants; the standards file's templates for every document, claim, decision record, diagram, review and basis footer; two read-only reviewers (money, invariants); a typecheck gate on every session | BUILT | [R .claude/skills/robinsons-store/references/standards.md:8-80] [R docs/AGENTS.md] |
-| Slack autopilot | Turns a request in the channel into a draft pull request with Claude Code; the tier classifier labels it | SCAFFOLDED: off until the repository variable `SLACK_REQUEST_CHANNEL` is set | [R docs/SLACK_AUTOPILOT.md:138] [V-run, `gh variable list`, 2026-10-30: only `DEV_URL` and `PRODUCTION_URL` set] |
+| Slack autopilot | Turns a request in the channel into a draft pull request with Claude Code; the tier classifier labels it | BUILT; switched on 2026-10-30 when the repository variable `SLACK_REQUEST_CHANNEL` was set | [R docs/SLACK_AUTOPILOT.md:138] [V-run, `gh variable list`, 2026-10-30: `SLACK_REQUEST_CHANNEL` set at 20:57 UTC] |
 | Review job on Slack-built pull requests | Two read-only reviewers read every Slack-built pull request before it ships | TARGET, open pull request #82 | Section 6 when it merges |
 | Slack questions | Questions asked in Slack answered from the store's data by Ask the store | TARGET, not designed; the developer's stated direction, 2026-10-30 | [Q: owner] as in section 1 |
 | Automatic filing of asks | Suggestions filed into the requirements ledger without a person | TARGET, not designed; the developer's stated direction, 2026-10-30 | None yet |
