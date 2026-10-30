@@ -45,11 +45,11 @@ hand: `npm run eval:ai`.
 - The documented path for app changes is a pull request into `develop`, checked on the dev site,
   then a person runs Actions, Promote develop to production (docs/ENVIRONMENTS.md). A change
   merged straight to `main` needs a `main` to `develop` pull request after it.
-- CI starts by itself only on pull requests into `main` and pushes to `main`
-  [R `.github/workflows/ci.yml:4-7`]. A pull request into `develop` gets no automatic run, so run
-  the gates above yourself and start CI on the branch from Actions, CI, Run workflow before
-  anyone merges it. The promotion pull request is opened with the workflow's own token, which
-  may start no CI at all (ADR-002, context item 3), so check that its checks actually ran.
+- CI starts by itself on every pull request into `main` or `develop` and every push to either
+  [R `.github/workflows/ci.yml:3-7`]. Merge only once that run is green. The promotion pull
+  request is opened with the workflow's own token, which may start no CI (ADR-002, context
+  item 3), so the promotion starts CI on the exact commit itself and merges only after it
+  passes (docs/ENVIRONMENTS.md).
 - Open pull requests as drafts. Commit messages are short imperative sentences.
 - Name the reviewers the change needs before the work, from the table in
   `.claude/skills/robinsons-store/references/standards.md`: `money-reviewer` for amounts and
@@ -115,3 +115,5 @@ ruleset and tier rules in docs/ARCHITECTURE.md section 6 and docs/LOOP_ENGINEERI
 3; the develop path in docs/ENVIRONMENTS.md; ARCH-03, ARCH-09 and A-01; the conventions in
 the skill. The automation tests were run: all eight `.github/scripts/*.test.mjs` passed
 [V-run, 2026-10-30]. Source: this repository.
+Updated the same day when CI was turned on for `develop`: the branches paragraph now reads
+`ci.yml:3-7` [R] and the promotion's merge step [R `.github/workflows/promote.yml:107-194`].

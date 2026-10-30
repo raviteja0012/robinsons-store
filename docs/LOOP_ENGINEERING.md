@@ -97,6 +97,19 @@ and an event made with that token starts no workflow. Anything unexpected leaves
 request open for a person; the step fails closed and never fails the run. Rules tested in
 `.github/scripts/classify-change.test.mjs`, which CI runs.
 
+**Promotion to `main` merges the same way** (since 2026-10-30). `promote.yml` opens the
+`develop` to `main` pull request with `GITHUB_TOKEN` too, so it starts CI on that pull
+request's head commit itself, waits, reads the pull request again, and merges with the head
+commit pinned. It first requires `develop` to hold everything on `main`, then confirms that
+`main` is still at its recorded commit immediately before merging. Anything unexpected leaves
+the pull request open and fails the run, because a person started it and is waiting to see
+production change. After the
+merge it starts CI on `main`, for the watchdog, and Apply database scripts when `supabase/`
+changed, since a merge made with that token may start neither. Promotion merges immediately
+after these checks pass
+[R `.github/workflows/promote.yml:119-187`]. CI itself starts on pull requests into
+`develop` and pushes to it exactly as on `main` [R `.github/workflows/ci.yml:3-7`].
+
 That last exclusion is the one people forget. **A loop that can edit its own limits does not
 have limits, and a loop that can edit its own reviewer has no reviewer.** The automation is
 not allowed to modify the automation. Changing what the autopilot may do requires a human
@@ -157,12 +170,12 @@ in the Slack requests channel. A person reads all four; nothing joins them autom
 ## Why not just let it merge everything
 
 Because of the exposure, not the capability. The useful frame is: **private data, external
-action, untrusted input — pick at most two without a human.**
+action, untrusted input: pick at most two without a human.**
 
 This system has private data (the store's vendors and payments) and untrusted input (Slack
 request text, which anyone in the channel can write, and before it ticket text, both of which
-the model reads as instructions). That is two. Adding unrestricted external action — merging and deploying
-whatever it likes — makes three, and three is where an instruction hidden in a ticket
+the model reads as instructions). That is two. Adding unrestricted external action (merging and deploying
+whatever it likes) makes three, and three is where an instruction hidden in a ticket
 becomes a deployed change to how the store pays people.
 
 So external action is not off, it is **bounded to a tier where the blast radius is words**.
