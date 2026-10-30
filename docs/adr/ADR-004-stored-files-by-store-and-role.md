@@ -16,7 +16,7 @@ import route:
 | Kind | Saved by | What it can show |
 |---|---|---|
 | Invoice photos | Capture, any member, the photo of the invoice in their hand [R `src/app/capture/page.tsx:209-215`] | Prices |
-| Screenshots and voice notes | Suggestions, any member [R `src/app/suggestions/page.tsx:133-147`] | Any screen, money screens included |
+| Screenshots and voice notes | Suggestions, any member [R `src/app/suggestions/page.tsx:145-159`] | Any screen, money screens included |
 | Imported workbooks | `/api/import`, owner or manager only [R `src/app/api/import/route.ts:415-420`] | Vendor ledgers, schedules, stock |
 
 ADR-003 keeps dollar figures from staff in the tables; it does not cover files. A file's rule
@@ -47,7 +47,7 @@ Not deciding has a specific failure: staff logins wait on this (docs/ARCHITECTUR
 1. **Store folders.** Every file is saved under `<store_id>/<kind>/`, with kind `invoices`,
    `feedback` or `imports`, built by one helper [R `src/lib/documentPath.ts:7-11`] that
    Capture, Suggestions and the import route use [R `src/app/capture/page.tsx:213`]
-   [R `src/app/suggestions/page.tsx:137`] [R `src/app/api/import/route.ts:26`].
+   [R `src/app/suggestions/page.tsx:149`] [R `src/app/api/import/route.ts:26`].
 2. **Who opens a file.** Only members of its store, and by kind: invoice photos lead, manager
    and owner; screenshots and voice notes those three and the account that saved the file;
    workbooks owner and manager, the roles that may import. One policy, `documents_open`,
