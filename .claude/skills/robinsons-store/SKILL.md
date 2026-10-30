@@ -166,9 +166,11 @@ break:
   which is what actually ran the Actions allowance dry. Its model step was always correctly
   gated; the install was not.
 - How far a change travels is decided by a SCRIPT reading the diff
-  (.github/scripts/classify-change.mjs), never by the model's own judgement. Words only
-  merge themselves; app changes wait for a person; money, access, the database, and the
-  automation's own files never merge.
+  (.github/scripts/classify-change.mjs), never by the model's own judgement. The Slack loop
+  labels every pull request with its tier. Words only merge themselves once CI passes, and
+  only while AUTOMERGE_TIER_A is "true"; app changes wait for a person; money, access, the
+  database, the automation's own files and its instructions (CLAUDE.md included) never
+  merge. ADR-002.
 - **`.github/**` and `.claude/**` are tier C.** The automation cannot edit the automation. A
   loop that can change its own limits does not have limits, and one that can change its own
   reviewer has no reviewer. Changing what the autopilot may do takes a human merging it.
@@ -183,8 +185,9 @@ break:
   this codebase has broken: a select missing tax_mode, an inline total bypassing
   invoiceTotal, SQL and TypeScript changed on one side only) and invariant-auditor. Use them
   on any diff that touches money or adds a query. The Slack autopilot runs both on every
-  change it builds, with their instructions read from the base branch, before it opens the
-  pull request; the builder commits and never pushes (docs/SLACK_AUTOPILOT.md).
+  pull request it opens, in a read-only review job on a fresh runner with instructions from
+  the workflow's own commit; a finding or a missing verdict stops tier A from merging itself
+  (docs/SLACK_AUTOPILOT.md).
 
 ## Operational reality (how this repo is actually run)
 - The build and review work happens in an isolated cloud container with no network route to the owner's Supabase or Vercel. Do not try to connect to the database or the live site. Deliver database changes as SQL the owner runs in the Supabase SQL editor, and deploys happen by pushing to the branch (Vercel auto-deploys main).

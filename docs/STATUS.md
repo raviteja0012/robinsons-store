@@ -2,25 +2,49 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/slack-autopilot-review (latest: the Slack autopilot checks its work before the pull request opens, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/slack-autopilot-review (latest: two read-only reviewers read every Slack pull request, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
-The Slack autopilot checks its work before the pull request opens, 2026-10-30:
+Two read-only reviewers read every Slack pull request, 2026-10-30:
 - The autopilot is built but not running: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are set,
   `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step. Setting that one
   variable, with the bot invited to the channel, switches it on (docs/SLACK_AUTOPILOT.md).
-- The builder now commits and stops. The workflow runs the three gates again, the tier
-  classifier, and money-reviewer and invariant-auditor as two read-only model runs with their
-  instructions read from the base branch, then opens the draft pull request itself. A change
-  under `.github/` or `.claude/` is not pushed. Verdicts go on the pull request; the reports go
-  to the Slack thread, because the repository is public.
-- The decision is a tested script, `.github/scripts/autopilot-review.mjs`; CI picks up its
-  test by the convention above. `slack-status.mjs` can post one extra thread reply
-  (`DETAIL_FILE`) for the reports.
-- New open item ARCH-13: a pull request opened with the workflow's token starts no CI run, so
-  CI first runs when a person marks it ready. The workflow's own gate run covers the gap.
-- docs/ARCHITECTURE.md section 6, AGENTS.md, SLACK_AUTOPILOT.md, LOOP_ENGINEERING.md,
+- A new `review` job sits between build and ship, on a fresh runner at the workflow's own
+  commit, with a read-only token. It lays the pull request out as data with agent instruction
+  files removed and runs money-reviewer and invariant-auditor as two read-only model runs
+  without the Slack text. No verdict line counts as not passed.
+- Ship now needs both verdicts to pass, on the same commit, before tier A may merge itself;
+  puts the verdicts on the pull request and the reports in the Slack thread (the repository
+  is public); starts CI on tier A and B pull requests that did not go through the merge step;
+  and sets the card from a tested script, `.github/scripts/autopilot-review.mjs`, which also
+  carries the builder's own closing paragraph to Slack as its prompt promised.
+- `slack-status.mjs` can post one extra thread reply (`DETAIL_FILE`) for the reports.
+- docs/SLACK_AUTOPILOT.md, ARCHITECTURE.md section 6, AGENTS.md, LOOP_ENGINEERING.md,
   HANDOVER.md (Slack row now PARTIAL) and the skill updated in the same change. The store's
   Miro board needs section 6 redrawn (ARCH-12).
+
+Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
+- The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
+  `tier-a`, `tier-b` or `tier-c`, and comments why. It does this in a second job on a fresh
+  runner, from the workflow's own commit, against the pull request's real base; the build job's
+  token can only push and open pull requests [R `.github/workflows/slack-autopilot.yml:68-79`,
+  `:197-282`]. PARTIAL until the first live request shows a label.
+- Tier A (words only, 300 lines or fewer) merges itself after CI passes on its exact head
+  commit, with the pull request read again and the merge pinned to that commit; anything
+  unexpected leaves it for a person [R `.github/workflows/slack-autopilot.yml:284-343`].
+  SCAFFOLDED: off until the repository variable `AUTOMERGE_TIER_A` is `true`. Before setting
+  it, see ADR-002 conditions 2 to 4.
+- Instructions and configuration are never words, whatever the switch: every agent
+  instruction file by name at any depth (CLAUDE.md, AGENTS.md with docs/AGENTS.md, GEMINI.md,
+  SKILL.md and the like), agent folders, `skills-lock.json`, LOOP_ENGINEERING.md, `docs/adr/`,
+  and any `.sql`, manifest or config file are tier C. Words means `.md` and `.txt` under
+  `docs/` and `.md` at the root, as plain text; scripts, pages, images, links and binary files
+  are tier B, as is the in-app guide [R `.github/scripts/classify-change.mjs:25-79`].
+- The rules are pinned by `classify-change.test.mjs`, 110 cases, run in CI
+  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 110 passed].
+- Open: whether GitHub's `GITHUB_TOKEN` rule is what kept CI off Slack pull requests, and
+  whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
+  ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
+  `--auto`; replace that step before waking it (ADR-002 condition 5).
 
 Module checks and automation tests run in CI by convention, 2026-10-30:
 - CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops
