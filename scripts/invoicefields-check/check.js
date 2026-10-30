@@ -119,7 +119,7 @@ const ROWS = [
   { department_id: "bak", form: "invoice", field_key: "delivery", asked: false },
   { department_id: "bak", form: "invoice", field_key: "terms", asked: false },
   { department_id: "bak", form: "invoice", field_key: "amount", asked: false },
-  { department_id: "bak", form: "vendor", field_key: "freight", asked: false },
+  { department_id: "bak", form: "vendor", field_key: "terms", asked: true },
   { department_id: "pm", form: "invoice", field_key: "property_work", asked: false }
 ];
 const bak = C.choicesFor(ROWS, "bak", "invoice");
@@ -132,7 +132,7 @@ t("a tick adds the PO number to Bakery", R.asksInvoice("Bakery", "po_number", ba
 t("an untick removes delivery from Bakery", R.asksInvoice("Bakery", "delivery", bak) === false);
 t("terms can be unticked", R.asksInvoice("Bakery", "terms", bak) === false);
 t("an untick on amount is ignored", R.asksInvoice("Bakery", "amount", bak) === true);
-t("a vendor-form row does not leak into the invoice form", R.asksInvoice("Bakery", "freight", bak) === true);
+t("a vendor-form row does not leak into the invoice form", R.asksInvoice("Bakery", "terms", bak) === false);
 t("Property Maintenance can drop the contractor block",
   R.asksInvoice("Property Maintenance", "property_work", C.choicesFor(ROWS, "pm", "invoice")) === false);
 t("another department's rows change nothing for Bakery",

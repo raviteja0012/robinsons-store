@@ -52,8 +52,8 @@
 // destroy or strand data. Changing this map changes which questions get asked, nothing else.
 
 // THE DEPARTMENT FIELDS SCREEN, added 2026-10-25. The scopes below are now the USUAL answer.
-// The owner or a manager can change any unlocked question per department on that screen,
-// and their ticks arrive here as `choices` (fieldChoices.ts). The locked questions are the
+// The owner can change any unlocked question per department; managers can read the choices.
+// The owner's ticks arrive here as `choices` (fieldChoices.ts). The locked questions are the
 // ones what-is-owed and the filing rule depend on: number, date, amount, tax, freight,
 // filing, due date and status. The screen cannot change them, because hiding one would let
 // an invoice save without the facts that decide what the store owes and when. Freight keeps

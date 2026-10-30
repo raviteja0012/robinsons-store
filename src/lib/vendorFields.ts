@@ -14,9 +14,9 @@
 // Grocery plus a PO number; Maintenance Payments keeps who the contractor is and what they
 // specialize in.
 //
-// HOW TO CHANGE THE MAP. The owner or a manager changes it themselves on the Department
-// fields screen (Admin), which stores their ticks in department_field and passes them in
-// here as `choices` (fieldChoices.ts). The `departments` line on each field below is now the
+// HOW TO CHANGE THE MAP. Only the owner changes it on the Department fields screen (Admin).
+// Managers can read it. Ticks are stored in department_field and passed here as `choices`
+// (fieldChoices.ts). The `departments` line on each field below is now the
 // USUAL answer, what a department gets until somebody changes a box, and it is still DATA: a
 // new default is one edit to one array. A field marked `locked` ignores the screen.
 //

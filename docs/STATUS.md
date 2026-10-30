@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch dev-copy-of-production (latest: dev holds a copy of production behind login, below; before it department field export error handling, below; before it screenshot descriptions follow the screenshot, below; before it the nine-diagram Miro board and separate archive, below; before it product direction and skill precedence, below; before it stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch dev-copy-of-production (latest: dev holds a copy of production behind login, below; before it department field follow-ups, below; before it department field export error handling, below; before it screenshot descriptions follow the screenshot, below; before it the nine-diagram Miro board and separate archive, below; before it product direction and skill precedence, below; before it stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Dev holds a copy of production behind login, 2026-10-30:
 - Dev's database (`robinsons-store-dev`) now holds a copy of production taken at 19:47 UTC:
@@ -22,13 +22,24 @@ Dev holds a copy of production behind login, 2026-10-30:
 - Later the same day `money_by_role.sql` and `documents_by_role.sql` from `develop` were
   applied to dev by hand, so dev's money and stored-file policies match production's.
 
+Department field follow-ups, 2026-10-30:
+- BUILT. The invoice check uses opposite vendor and invoice choices for unlocked terms
+  [R scripts/invoicefields-check/check.js:121-135]. Department field docs and the in-app
+  guide now describe owner edits and manager reads [R src/lib/appGuide.ts:97-101].
+- Architecture references now include the department field table, export and health checks
+  [R docs/ARCHITECTURE.md:214-216, 437-442].
+- Verification: JavaScript syntax and diff checks passed. The invoice module check needs
+  a TypeScript compile; it and the app gates were skipped because node_modules is absent.
+
+
 Department field export error handling, 2026-10-30:
 - BUILT. Export marks department fields as not set up only for missing-table codes; other read errors return a failed export [R src/app/api/export/route.ts:98]. Paging preserves the error code and table name [R src/lib/exportPaging.ts:59].
 - Verified offline: scripts/importexport-check, 36 passed; export handler with a fake database, four cases passed (two missing-table codes, a timeout code and no code). App gates deferred because node_modules is absent [V-run, local checks, 2026-10-30].
 
 The Department fields screen, 2026-10-25:
 - PARTIAL. The owner picks, per department, which questions the vendor and invoice
-  forms ask, on Admin, Department fields [R src/app/department-fields/page.tsx:172]. It
+  forms ask, on Admin, Department fields; managers can read the choices
+  [R src/app/department-fields/page.tsx:64, 202-210, 235-236]. It
   answers the ask relayed on 2026-10-25 for the vendor and invoice profiles. The payment
   profile is not on it: which payment questions should vary is open [Q: the requester].
 - The ticks live in a new store-scoped table, `department_field`, one row per changed box
@@ -45,11 +56,10 @@ The Department fields screen, 2026-10-25:
   [R src/app/vendors/[id]/page.tsx:144], so a Gifts vendor was asked DryGoods' questions when
   it was created and every question when it was edited. One visible change follows: Garden
   Center invoices now ask for a PO number, as Hardware's do.
-- Only the owner can write the table (owner-only since 2026-10-30). The migration applies those policies itself
-  on a database with login on [R supabase/department_field.sql:43], so it works from the
-  merge without a rerun of auth_setup.sql; auth_setup.sql carries the same block for a fresh
-  cutover. /api/health names the script when the table is missing
-  [R src/app/api/health/route.ts:75].
+- Only the owner can change the choices (owner-only since PR #93); every store member,
+  including managers, can read them [R supabase/auth_setup.sql:170-199]
+  [R supabase/department_field.sql:43-67]. /api/health checks that the table is present
+  [R src/app/api/health/route.ts:75-77, 271-293].
 - Not yet checked: the screen against the live database and the upsert under the live
   policies. Both are the first thing to try on the preview after merge [Q: owner].
 
