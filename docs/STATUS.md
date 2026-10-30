@@ -20,9 +20,9 @@ Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10
   SKILL.md and the like), agent folders, `skills-lock.json`, LOOP_ENGINEERING.md, `docs/adr/`,
   and any `.sql`, manifest or config file are tier C. Words means `.md` and `.txt` under
   `docs/` and `.md` at the root, as plain text; scripts, pages, images, links and binary files
-  are tier B, as is the in-app guide [R `.github/scripts/classify-change.mjs:25-75`].
-- The rules are pinned by `classify-change.test.mjs`, 94 cases, run in CI
-  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-24: 94 passed].
+  are tier B, as is the in-app guide [R `.github/scripts/classify-change.mjs:25-79`].
+- The rules are pinned by `classify-change.test.mjs`, 109 cases, run in CI
+  [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 109 passed].
 - Open: whether GitHub's `GITHUB_TOKEN` rule is what kept CI off Slack pull requests, and
   whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
   ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with

@@ -55,6 +55,10 @@ export const BLOCKED = [
   /^skills-lock\.json$/i,
   /^docs\/LOOP_ENGINEERING\.md$/i,
   /^docs\/adr\//i,
+  // The rest of what CLAUDE.md tells every agent to read before building. STATUS.md and
+  // VERIFICATION.md stay words: CLAUDE.md has every pull request update both.
+  /^ONBOARDING\.md$/i,
+  /^docs\/(README|REQUIREMENTS|PLATFORM|HANDOVER|OWNER_NOTES|SUPABASE_SETUP)\.md$/i,
   /^vercel\.json$/i,
   /^package\.json$/i,
   /^package-lock\.json$/i,

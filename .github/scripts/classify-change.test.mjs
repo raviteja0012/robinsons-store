@@ -4,6 +4,7 @@
 // here: a rule that silently widens tier A is invisible in review and only shows up as a
 // change that merged itself.
 
+import { readFileSync } from "node:fs";
 import { classify, parseDiff, outputLine, MAX_AUTO_LINES } from "./classify-change.mjs";
 
 let pass = 0, fail = 0;
@@ -113,6 +114,20 @@ for (const f of [
 ]) {
   t(`${f} is C`, tier([f]) === "C");
 }
+// Every doc CLAUDE.md tells an agent to read is C, except the two every pull request updates.
+// Read from CLAUDE.md itself, so a doc added to that list later is checked too.
+{
+  const claude = readFileSync(new URL("../../CLAUDE.md", import.meta.url), "utf8");
+  const named = [...new Set(claude.match(/[\w./-]+\.md|docs\/adr\//g))]
+    .map((p) => (p.endsWith("/") ? `${p}ADR-009-example.md` : p));
+  const wordsAllowed = new Set(["docs/STATUS.md", "docs/VERIFICATION.md"]);
+  t("CLAUDE.md names docs to read", named.length >= 10, `named=${named.length}`);
+  for (const p of named) {
+    const want = wordsAllowed.has(p) ? "A" : "C";
+    t(`${p}, named in CLAUDE.md, is ${want}`, tier([p]) === want);
+  }
+}
+
 t("one blocked file among docs makes the whole change C",
   tier(["docs/STATUS.md", "CLAUDE.md"]) === "C");
 t("an instruction file among docs makes the whole change C",
