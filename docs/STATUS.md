@@ -60,7 +60,7 @@ Docs organized into one entry path, 2026-10-30:
 
 Stored files fenced by store and role, 2026-10-25 (branch claude/arch-04-stored-files; ARCH-04,
 docs/adr/ADR-004-stored-files-by-store-and-role.md, see VERIFICATION.md):
-- Ravi Kiran chose who opens which stored file: invoice photos only lead, manager and owner;
+- Who opens which stored file: invoice photos only lead, manager and owner;
   screenshots and voice notes those three and whoever attached them. The workbook archive
   opens to owner and manager, the roles that import. Each member sees only their own store's.
 - New files are saved under the store's folder and a kind folder. Staff still save the invoice
@@ -95,8 +95,7 @@ docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
   app read and write paths pass through PostgREST v14.18; the AI evals pass offline, 23 of 23.
 - After the merge: nothing to run on the live database. Read the two checks in ADR-003
   condition 3 once. The dev database runs in demo mode, so the script only adds the views
-  there. Still open:
-  ARCH-04 (stored files), and item.cost_price is left out while nothing writes it. Staff
+  there. Stored files are covered by ARCH-04 (ADR-004). Staff
   opening a manager-only screen by its address (Vendors, Payments, Reports, Employees) now see
   an empty list.
 
@@ -837,7 +836,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 5. Second store: seed a few maintenance, HR, and compliance rows so its screens are not empty.
 6. ~~Reorder and extract API routes: return 200 with a clear message on a model error instead of 502.~~ Reversed 2026-10-24 by PR #58: every AI route returns a non-2xx status on a model failure (502, or 422 for a refusal on Ask) with the plain sentence from `failureMessage()` in `src/lib/anthropic.ts`.
 7. Decide whether the Acting-as user list stays store-wide or scopes per store.
-8. Storage policy scopes to the bucket, not the store: a signed-in member of store two could read store one's documents. Fine while both stores are the same owner; scope object paths by store before onboarding an outside store.
+8. Stored files are scoped by store and role (ADR-004, merged 2026-10-30).
 9. View as previews navigation and home, not money hiding; verifying what staff see still needs signing in as (or acting as) a staff member.
 10. Import: if a bookings import fails partway, the vendors already inserted are skipped on re-run and their missing children are not backfilled. Re-import after deleting the partial vendors, or add child-level idempotency.
 11. Vendor detail loads by id without checking the vendor belongs to the active store (harmless single-store; the DB policies enforce it once auth is on).
