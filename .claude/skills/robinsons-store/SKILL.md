@@ -1,6 +1,6 @@
 ---
 name: robinsons-store
-description: Build, extend, debug, and operate the entire Robinsons General Store platform, a capture-first store operations app for a Canadian general store. This covers the whole build, not just one area: the receiving and capture loop, inventory and counts, the vendor and order ledger, invoices and payments and due-date alerts, retail pricing and price signs, property maintenance, HR, the Ontario pesticide licence and its expiry, the tribal-knowledge base, the document-extraction and reorder and ask-your-store AI agents, the Postgres schema and its row-level security, Supabase Auth and login, the color and form design system, Canadian tax and privacy rules, the Vercel deploy, and the common runtime errors and how to fix them. Use it whenever the work touches the Robinsons app, Ravikiran's store, the receiving screen, the login or auth, the Supabase schema, or any store feature, even without naming this skill. Also use it for writing or reviewing anything in docs/ (handover, decision records, onboarding, the agents register) and for reviewing any change before merge: references/standards.md holds the documentation and review standard. Apply the locked architecture, the invariants, the standards, and the output rules here on every task.
+description: Build, extend, debug, and operate the Robinsons General Store platform, a capture-first store operations app for a Canadian general store: receiving and capture, inventory and counts, the vendor and order ledger, invoices, payments and due dates, retail pricing and price signs, property, HR, the Ontario pesticide licence, the tribal-knowledge base, the extraction, reorder and ask-your-store AI agents, the Postgres schema and row-level security, Supabase Auth, the design system, Canadian tax and privacy rules, the Vercel deploy, and common runtime errors. Use it whenever the work touches the Robinsons app, the receiving screen, login, the Supabase schema, or any store feature, even without naming this skill. Also use it to write or review anything in docs/ and to review any change before merge (references/standards.md). Apply the locked architecture, invariants, standards and output rules on every task.
 ---
 
 # Robinsons General Store, Store Operations Platform
@@ -16,6 +16,8 @@ Store facts:
 - The 2026 bookings spreadsheet is the schema and the seed data. About 120 vendors with order amount, ship date, delivery status, invoiced amount, terms, due date, payment status.
 
 The full plan with evidence, pricing, and citations is in robinsons_store_build_spec.md. Read it for depth. This skill is the working summary plus the rules and the playbooks to apply on every task.
+
+Product direction, delivery states and configuration gaps: docs/REQUIREMENTS.md, "Product direction".
 
 ## Locked architecture (do not re-debate)
 - Frontend and API: Next.js App Router on Vercel, TypeScript. Client components fetch with useEffect; route handlers under src/app/api do the AI calls.
