@@ -11,7 +11,7 @@ Read before building:
   written: status line, evidence tags, BUILT/PARTIAL/SCAFFOLDED/TARGET, basis footer.
 - docs/AGENTS.md — every AI agent, in the app and in the build loop, and whose key it uses.
 - docs/adr/ — decision records. ONBOARDING.md — forms and first week for a new member.
-- docs/README.md — the index to all eighteen docs and which one to open.
+- docs/README.md — the index to every doc and the order to learn the components in.
 - docs/REQUIREMENTS.md — the living requirements ledger (asks, states, open items).
 - docs/PLATFORM.md — every service and plan in use, what is adopted and what is declined
   and why. Carries two open risks: the Vercel plan does not license commercial use, and
@@ -31,7 +31,9 @@ Hard rules:
 - Payments only through the engine RPCs (record_payment / void_payment / edit_payment /
   reconcile_postdated). Post-dated is a future-dated cheque, never a method.
 - Store scoping + RLS on everything new (schema.sql AND auth_setup.sql 3a AND feedback-style
-  migration for live databases). Money fails closed (canSeeMoney). Soft voids only.
+  migration for live databases). Money fails closed (canSeeMoney), in the database too: a table
+  with a dollar figure goes in auth_setup.sql 3e and money_by_role.sql, not 3a. Stored files go
+  under documentPath() (auth_setup.sql 3f and documents_by_role.sql). Soft voids only.
 - Builds must pass with blank env. Gates: npx tsc --noEmit, npm run build, npm run lint.
 - AI routes: grounded prompts, plain-text output (src/lib/aiText.ts strip), no temperature
   override (current models reject non-default sampling), default model claude-sonnet-5

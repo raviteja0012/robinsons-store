@@ -58,16 +58,28 @@ show how a change behaves on the store's real vendors, departments and invoices;
 Because the copy includes staff and pay, dev runs the same policies and login as production,
 so the dev public key alone reads nothing.
 
-Approval is a person running **Actions, Promote develop to production**: it opens and merges
-a `develop` to `main` pull request once the checks pass [R `.github/workflows/promote.yml:1-21`].
-Nothing on a schedule can start it. Jira, which once carried QA and Approved statuses, is off
-since 2026-08-12.
+Approval is a person running **Actions, Promote develop to production**
+[R `.github/workflows/promote.yml:1-24`]. It opens a `develop` to `main` pull request, starts
+CI on that pull request's head commit, waits for it, and merges with that commit pinned, only
+if CI passed, `develop` already holds everything on `main`, and `main` is unchanged since CI
+started. Anything else leaves the pull
+request open and turns the run red, so production has not changed
+[R `.github/workflows/promote.yml:119-168`]. After the merge it starts CI on `main`, and Apply
+database scripts when the promotion touched `supabase/`, because a merge made with the
+workflow's own token may start neither [R `.github/workflows/promote.yml:170-187`] [J-open:
+kill condition in ADR-002 context item 3]. Nothing on a schedule can start it. Jira, which once
+carried QA and Approved statuses, is off since 2026-08-12.
+
+**CI runs on `develop` as on `main`:** every pull request into it and every push to it starts
+a run by itself [R `.github/workflows/ci.yml:3-7`]. Before 2026-10-30 neither did, so pull
+requests into `develop` merged with no checks unless someone started CI by hand.
 
 ## What crosses, and what does not
 
 - **Code crosses** from `develop` to `main` by the promotion pull request.
-- **Schema crosses as scripts.** The same `run-order.txt` runs on dev first and production
-  second, so every migration is exercised on dev before it touches the ledger.
+- **Schema crosses as scripts.** Once `SUPABASE_DB_URL_DEV` is set, the same `run-order.txt`
+  runs on dev first and production second [R `.github/workflows/migrate.yml:66-106`].
+  Before promoting any SQL, a person confirms that the dev script run succeeded.
 - **Data crosses one way, by hand.** On 2026-10-30 dev's tables and logins were replaced with
   a copy of production's (the table above). Nothing copies on its own, and nothing ever goes
   from dev to production. `run-order.txt` may never name a seed file, and CI enforces that,
@@ -90,8 +102,9 @@ since 2026-08-12.
 | 7 | Dev holds a copy of production and requires login: `department_field.sql` then `auth_setup.sql` applied from branch `department-field-settings` at `0269970`, every `public` table and the login accounts copied, `NEXT_PUBLIC_REQUIRE_AUTH=true` for Preview, `develop` redeployed at `cae5104` | The developer | BUILT 2026-10-30 [V-run, script hashes against the branch copies, per-table counts and checksums, Vercel deployment READY on the git-develop alias in `yul1`] |
 
 **Keep `develop` level with `main`.** Anything merged straight to `main` (this change, for
-one) must also reach `develop`, or the next promotion pull request will try to undo it. Open
-a `main` to `develop` pull request after any such merge.
+one) must also reach `develop`. Open a `main` to `develop` pull request after any such merge.
+The promotion refuses to merge until it has, because otherwise CI on `develop` would not have
+checked what lands on `main`.
 
 **Check it worked:** signed out, the dev site opens on its login page; signed in with a store
 login, it lists the store's vendors as they stood at the copy, and nothing entered on the
@@ -130,3 +143,8 @@ lands on `/login`; without a service-role key the health route uses the signed-o
 Not checked: signing in to dev with a production login, `[J-open]` above.
 Claims from earlier sessions keep their own inline tags. Sources: Supabase API, Vercel API,
 the dev site, this repository.
+Added the same day, with CI on `develop` and the promotion's merge step: 4 claims checked, 4
+confirmed (the trigger lists, the merge step's guards and order, the post-merge dispatches,
+and that no `claude/great-johnson-CFSbi` branch exists [V-run, `git ls-remote --heads origin`,
+2026-10-30]); the merge step was run against a stubbed `gh` in eight cases (docs/VERIFICATION.md).
+Still `[J-open]`: that a merge made with the workflow's token starts no push workflow.
