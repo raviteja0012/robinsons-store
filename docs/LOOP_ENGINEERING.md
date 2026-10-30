@@ -261,6 +261,7 @@ Honest list, in the order I would do them:
    use.
 3. **A staging database.** Today a migration is verified by running it on production and
    watching the health check. That works because the store is small and the scripts are
-   idempotent, but it is the weakest link in the chain.
+   idempotent, but it is the weakest link in the chain. The dev database that closes it is
+   designed in docs/ENVIRONMENTS.md and waits on its first step.
 4. **Screenshot verification.** The gates prove it compiles, not that it looks right. A
    Playwright pass over the key screens would close that gap.

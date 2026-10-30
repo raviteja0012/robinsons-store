@@ -577,13 +577,13 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-02 | `NEXT_PUBLIC_REQUIRE_AUTH` production value not read this session | The developer | No |
 | ARCH-03 | Money is hidden from staff in the UI and API only; database policies are store-scoped, not role-scoped | The developer | Yes, before staff logins are made |
 | ARCH-04 | `documents` bucket open to any signed-in member, not scoped by store | The developer | No while there is one store |
-| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER Step 2) | Ravi Kiran | Yes |
-| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
+| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER A-01) | Ravi Kiran | Yes |
+| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER A-01) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
-| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
+| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
 | ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
 | ARCH-13 | The store name and town are written into the Ask, reorder and alert prompts (section 8); read them from the store's settings so a second store needs no code change | The developer | Yes, before a second store |
 | ARCH-14 | The AI golden-case evals have never run against the model; run them before any change to `ANTHROPIC_MODEL` or a prompt | The developer | No |
