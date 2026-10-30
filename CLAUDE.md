@@ -31,7 +31,8 @@ Hard rules:
 - Payments only through the engine RPCs (record_payment / void_payment / edit_payment /
   reconcile_postdated). Post-dated is a future-dated cheque, never a method.
 - Store scoping + RLS on everything new (schema.sql AND auth_setup.sql 3a AND feedback-style
-  migration for live databases). Money fails closed (canSeeMoney). Soft voids only.
+  migration for live databases). Money fails closed (canSeeMoney), in the database too: a table
+  with a dollar figure goes in auth_setup.sql 3e and money_by_role.sql, not 3a. Soft voids only.
 - Builds must pass with blank env. Gates: npx tsc --noEmit, npm run build, npm run lint.
 - AI routes: grounded prompts, plain-text output (src/lib/aiText.ts strip), no temperature
   override (current models reject non-default sampling), default model claude-sonnet-5
