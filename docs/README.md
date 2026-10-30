@@ -21,9 +21,8 @@ written for, and how current it is. Start here.
 | [AGENTS.md](AGENTS.md) | Every AI agent: the four inside the app for staff, and the ones that build and watch it. What each does, its guardrails, and whose key it runs on |
 | [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account. ADR-002: words-only changes from the Slack loop merge themselves |
 | [../ONBOARDING.md](../ONBOARDING.md) | For a new team member: what we need from them, what access they get and why, and their first week |
-| [owner-notes/handover-checklist.md](owner-notes/handover-checklist.md) | The handover as tickable steps, each labelled with which account does it: your personal accounts give, admin@ receives |
-| [HANDOVER.md](HANDOVER.md) | **Who holds each account today, and the order to move every one to the store.** Includes the register of every secret and variable, and the checks that prove the move worked |
-| [ENVIRONMENTS.md](ENVIRONMENTS.md) | The practice site and the live site, and how a change crosses from one to the other |
+| [HANDOVER.md](HANDOVER.md) | **What the store owns on each service, every secret and variable the app reads, and what is still open** |
+| [ENVIRONMENTS.md](ENVIRONMENTS.md) | Production and the dev site: what each one is, how a change crosses, and the six steps that turn dev on |
 | [SUPABASE_SETUP.md](SUPABASE_SETUP.md) | Every SQL script and the exact order to run it, fresh install and live upgrade |
 | [../RUNBOOK.md](../RUNBOOK.md) | Go live, and the five-minute "turn on login" cutover |
 | [DOMAIN_EMAIL.md](DOMAIN_EMAIL.md) | The domain, the ten mailboxes, and the design for email invoice intake |

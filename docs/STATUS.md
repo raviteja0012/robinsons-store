@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
@@ -27,6 +27,32 @@ Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10
   whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
   ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
   `--auto`; replace that step before waking it (ADR-002 condition 5).
+
+Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
+- The move to the store's accounts is done and the docs now say so: the Vercel project is
+  on the store's team `robinsons-store1` and the code is at `robinsons-store/robinsons-store`,
+  read live today. docs/HANDOVER.md is now the register of what the store owns and every
+  secret, with eight open items (A-01 to A-08) in place of the move's steps. The two
+  step-by-step move notes under docs/owner-notes/ are deleted; ADR-001 is ACCEPTED with its
+  outcome recorded. ONBOARDING, PLATFORM, REQUIREMENTS, AGENTS, ARCHITECTURE, DOMAIN_EMAIL,
+  RUNBOOK, the docs index, the skill and CLAUDE.md no longer describe the move as pending.
+- Still open and not part of the move: Supabase was on Free when last read and the Vercel
+  plan is unconfirmed (A-01, both platform risks stay open); the Anthropic key in Vercel is
+  the original from 2026-05-29 and `CRON_SECRET` is not set in Vercel (A-02).
+- The Vercel diagnose and protect workflows asked the old personal team, so they would have
+  answered "not found" since the move. They now ask the store's team, or `VERCEL_TEAM_ID`
+  when that variable is set.
+- Dev environment: still not on (no `develop` branch, no dev database). Found today: every
+  pull request preview read and wrote the live database, because the Supabase URL and key
+  targeted Preview as well as Production. Fixed the same day, and dev is now on: Supabase
+  project `robinsons-store-dev` (Canada Central) loaded from main with schema, seed,
+  seed_dev and every run-order script (2 stores, 46 vendors, 37 invoices, RLS on every
+  table, columns identical to production apart from the login column); Vercel Preview reads
+  it and Production alone reads the live database; branch `develop` exists and deploys to
+  robinsons-store-git-develop-robinsons-store1.vercel.app. `DEV_URL` is set. Still open for
+  admin@: the `SUPABASE_DB_URL_DEV` secret, which holds the dev database password. Dev runs
+  in open demo mode while production enforces login. docs/ENVIRONMENTS.md is rewritten around one Vercel
+  project (Preview becomes dev) instead of two.
 
 Architecture diagrams corrected against the code, 2026-10-30:
 - An edge-by-edge check of the six diagrams in docs/ARCHITECTURE.md against main found arrows
@@ -83,11 +109,9 @@ Pull requests on main and a read-only Supabase MCP config, 2026-10-24 (branch re
   conventions (model failures return a non-2xx status) now match.
 
 The handover written to the standard, 2026-10-24:
-- docs/HANDOVER.md now names exactly what the store will own and under which names (team,
-  organization, roles, billing), all opened with admin@robinsonsgeneralstore.ca, with a
-  progress table and open items HO-01 to HO-07. ADR-001 records the decision itself for
-  Ravi Kiran to approve. Nothing has moved yet: read live today, Supabase is still on Free and
-  the Vercel project is still on the developer's personal team.
+- docs/HANDOVER.md and ADR-001 recorded that every account is opened with
+  admin@robinsonsgeneralstore.ca and owned by the store. The move itself is done; see the
+  2026-10-30 entry above.
 - docs/AGENTS.md registers every agent: four inside the app for staff (invoice reader, Ask the
   store, reorder summary, suggestion screenshot reader) and the build side (Slack autopilot,
   lifecycle, tier classifier, watchdog, two reviewer agents, the stop hook, parked Jira).
@@ -98,7 +122,6 @@ The handover written to the standard, 2026-10-24:
   statements, now fixed: the skill described the login cutover as still to do, gave 1062 Main
   St, described money as integer cents, listed three agents of four, and CLAUDE.md said AI
   routes run at low temperature when none sets a temperature.
-- docs/owner-notes/handover-call-agenda.md is the run sheet for the handover call.
 - docs/ARCHITECTURE.md rebuilt to the standard: numbered sections, nine routes not four,
   context and container diagrams with the automation and the custom domain, the capture
   sequence corrected (the file uploads before the database writes, and the writes are
@@ -107,7 +130,7 @@ The handover written to the standard, 2026-10-24:
   logins are made: dollar amounts are hidden from staff by the app and API only, because the
   database policies are scoped by store and not by role (ARCH-03, blocking); and invoice files
   are readable by any signed-in member of any store (ARCH-04, harmless while there is one
-  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so the region checks in HANDOVER and the checklist now test the second field, not "starts with yul1".
+  store). It also found that nothing runs the tier classifier now that Jira is parked. Later the same day, Montreal was confirmed and ARCH-01 closed: `x-vercel-id` reads `<edge>::<function region>::<id>` and answered `cle1::yul1::...`, so region checks test the second field, not "starts with yul1".
 
 What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICATION.md):
 - docs/PLATFORM.md "What leaves Canada": one row per flow (the four Anthropic routes, the
@@ -131,10 +154,8 @@ What leaves Canada, written down, 2026-10-24 (branch ai-data-flows, see VERIFICA
 - Open: the owner's published page changes only when the developer republishes it.
 
 The handover is prepared, 2026-10-18:
-- docs/HANDOVER.md now registers who holds every account, what it costs after the move, and
-  the order to move each one to the store, with the full list of secrets and variables and
-  the checks that prove the move worked. The store already owns its domain; hosting,
-  database, code, the AI key and the Slack app are still on accounts the developer opened.
+- docs/HANDOVER.md first registered every account and the full list of secrets and
+  variables. The move it planned is done; see the 2026-10-30 entry above.
 - Read live the same day, not copied from older docs: Supabase is on **Free** (no backups;
   PLATFORM.md risk 2 is now confirmed, not suspected), Vercel is on a personal **Hobby** team
   (risk 1), and the last production deploy was the merge of PR #54 on 2026-09-01, Ready.
@@ -147,8 +168,6 @@ The handover is prepared, 2026-10-18:
   active Jira board; RUNBOOK.md still named a deleted branch.
 - Open and urgent: the domain was due to renew 2026-10-16 and nobody has seen it renew. The
   watchdog would not catch a lapse while `PRODUCTION_URL` is unset. Check the Vianet panel.
-- The dev environment is still not stood up (no `develop` branch). HANDOVER.md Step 6 builds
-  it straight onto the store's accounts, so it is done after the move, not before.
 
 The dev guard, 2026-09-01 (PR #54, recorded here late):
 - Before any script runs against dev, `.github/scripts/distinct-databases.mjs` compares
@@ -516,7 +535,7 @@ Cross-cutting
    exists, so staff logins are still to be made, from the Team page once
    `SUPABASE_SERVICE_ROLE_KEY` is set in Vercel.
 3. Owner: set the Resend key and alert addresses so due-date emails send. Do it under the
-   store's own Resend account (docs/HANDOVER.md Step 5).
+   store's own Resend account (docs/HANDOVER.md, Resend row).
 4. Owner: delete or redact the Lawson "PO Details.docx" in Drive; it holds a full credit card number in plain text. Never import it.
 
 Both build gates shipped 2026-07-07 on the owner's make-it-production-ready instruction:

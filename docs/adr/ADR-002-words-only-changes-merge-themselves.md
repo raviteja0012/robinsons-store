@@ -39,7 +39,10 @@ Wiring the classifier in as written would have opened three holes:
 
 There is no `develop` branch [V-run, `git ls-remote --heads origin`, 2026-10-24: main and two
 `claude/` branches], so a tier A merge lands on main and is live on the store's site within
-minutes.
+minutes. Update 2026-10-30: `develop` now exists [V-run, `git ls-remote --heads origin`,
+2026-10-30], and the Slack loop opens its pull requests against `develop` whenever it does
+[R `.github/workflows/slack-autopilot.yml:140-148`], so a tier A merge now lands on the dev
+site, and reaches the store's site only when `develop` is promoted to main.
 
 Not deciding has a specific failure: the documents promise one loop, the code runs another,
 and the next person to wake the Jira loop gets an unattended merge path nobody has reviewed in
