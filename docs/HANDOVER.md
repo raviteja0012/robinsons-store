@@ -30,6 +30,7 @@ same change that adds it.
 | Slack | Workspace robinsonsgeneralstore.slack.com [R `docs/DOMAIN_EMAIL.md:18`] and the bot app from `docs/slack-app-manifest.yml` | PARTIAL. `SLACK_BOT_TOKEN` and `SLACK_REQUEST_CHANNEL` are set; the token belongs to this workspace: the first request's run read the channel, posted and updated its card [V-run, Actions run 41127237310, 2026-10-30]. That run's build stopped because the Anthropic account behind `ANTHROPIC_API_KEY` is out of credit. Primary Owner not recorded (A-07) |
 | Resend | Not opened. The daily due-date email stays off until it is | TARGET |
 | Google | The store's own Google account, which owns the live sheets [R `docs/SYNC_PLAN.md:67`] | BUILT. Address not recorded (A-07) |
+| Miro | The store's board **"Robinsons store architecture"** shows the nine diagrams of docs/ARCHITECTURE.md, built in Miro from the doc's Mermaid with the same colour key and named by section and date. The six older diagrams and their labels moved to the separate board **"Robinsons store architecture, archive"** [R pr/81:docs/ARCHITECTURE.md:695]. docs/ARCHITECTURE.md stays the source; redraw the matching board diagram whenever its Mermaid changes | BUILT. ARCH-12 closed 2026-10-30 |
 | Password vault | Bitwarden or 1Password, opened with admin@ | TARGET (A-03) |
 
 ## Still open
@@ -113,3 +114,8 @@ confirmed, 1 killed. Confirmed: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are Gi
 `SLACK_REQUEST_CHANNEL` is neither a variable nor a secret. Killed: the Slack row's BUILT,
 now PARTIAL, because the request loop has never passed its first step. Sources: GitHub CLI,
 Actions run logs.
+
+**Basis (Miro update, 2026-10-30): 3 claims checked, 3 confirmed, 0 killed, 1 source.**
+The current board, archive and redraw rule match ARCH-12 in
+docs/ARCHITECTURE.md (ARCH-12, merged in #81). This is a document comparison, not a new
+live board check.
