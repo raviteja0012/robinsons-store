@@ -27,8 +27,8 @@ current Claude models reject non-default sampling settings [R `src/app/api/extra
 | Ask the store over a vector index | Same answers, at a data size one prompt cannot hold | Not built | | TARGET (deferred until the data outgrows one prompt [R `docs/ARCHITECTURE.md:279`]) |
 | Email invoice intake | Vendors email invoices to invoices@, the reader files them | AgentMail installed, not wired [R `docs/PLATFORM.md`] | Sender allowlist (design in docs/DOMAIN_EMAIL.md section 4) | SCAFFOLDED (blocked on the invoices@ mailbox) |
 
-**Who pays and who can switch it off after handover:** the store's Anthropic organization
-(HANDOVER Step 5). Removing `ANTHROPIC_API_KEY` from Vercel turns all four off; the app still
+**Who pays and who can switch it off:** the store's Anthropic organization; the key is due
+to be reissued under it (docs/HANDOVER.md, A-02). Removing `ANTHROPIC_API_KEY` from Vercel turns all four off; the app still
 builds and the capture screen still offers Enter manually.
 
 ## Building the app (used by whoever develops it)
@@ -50,10 +50,9 @@ builds and the capture screen still offers Enter manually.
 automation changes (tier C), run `auth_setup.sql`, or promote to production; promotion is a
 person running the promotion workflow (docs/LOOP_ENGINEERING.md, docs/ENVIRONMENTS.md).
 
-**What changes at handover:** the Slack autopilot's `ANTHROPIC_API_KEY` and `SLACK_BOT_TOKEN`
-are reissued under the store, and the Claude GitHub app is installed on the store's GitHub
-organization so the autopilot and future Claude Code sessions can reach the moved repository
-(HANDOVER Steps 4 and 5). A new developer uses their own Claude account; nothing in this
+**Still to do:** the Slack autopilot's `ANTHROPIC_API_KEY` and `SLACK_BOT_TOKEN` are
+reissued under the store (docs/HANDOVER.md, A-02). The repository already lives at
+`robinsons-store/robinsons-store`, where the Claude GitHub app reaches it. A new developer uses their own Claude account; nothing in this
 table needs their personal key.
 
 ## Open items
@@ -61,7 +60,7 @@ table needs their personal key.
 | ID | Item | Owner | Blocking? |
 |---|---|---|---|
 | AG-01 | `CLAUDE.md` said AI routes run at "low temperature"; none sets one, deliberately. Corrected in the same change as this file | The developer | No (fixed) |
-| AG-02 | No spend limit is recorded for the Anthropic key | Ravi Kiran (HO-03) | No |
+| AG-02 | No spend limit is recorded for the Anthropic key | Ravi Kiran (HANDOVER A-07) | No |
 | AG-03 | Email intake waits on the invoices@ mailbox | Ravi Kiran | Yes, for that agent only |
 
 ## How this maps to the rest of the docs

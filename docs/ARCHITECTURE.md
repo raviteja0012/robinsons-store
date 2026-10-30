@@ -1,6 +1,6 @@
 # Architecture: what runs where, and how money and changes move through it
 
-Status: PROPOSED, 2026-10-24. Owner: the developer. Approver: Ravi Kiran.
+Status: PROPOSED, 2026-10-24, diagrams corrected against the code 2026-10-30. Owner: the developer. Approver: Ravi Kiran.
 
 **The store's app is one Next.js site on Vercel talking to one Supabase database in Toronto,
 with the Anthropic API reading invoices and GitHub Actions plus Slack building, migrating and
@@ -44,17 +44,21 @@ flowchart LR
   VIA -- "CNAME to" --> VER
   VER -- "serves" --> APP
   APP -- "reads and writes, signs in" --> SB
-  APP -- "invoice images, questions" --> AN
+  APP -- "invoice images, questions with store data, screenshots" --> AN
   APP -. "daily due email when keys set" .-> RS
   SL -- "build requests" --> GH
-  GH -- "migrations, health checks" --> SB
+  GH -- "builds the change (Claude Code)" --> AN
+  GH -- "migrations, weekly RLS audit" --> SB
+  GH -- "GET /api/health" --> APP
   GH -- "status and alarms" --> SL
 ```
 
 Plain flow: staff and the owner open app.robinsonsgeneralstore.ca, which Vianet's DNS points
 at the app on Vercel; the app keeps all records in Supabase in Toronto and sends invoice
-images and questions to Anthropic. Separately, Slack requests and GitHub Actions build the
-app, apply database scripts and watch the live site, reporting back to Slack.
+images, questions with the store's notes and records, and feedback screenshots to Anthropic.
+Separately, a Slack request starts a GitHub Actions build that also calls Anthropic; Actions
+applies database scripts and audits row-level security directly in Supabase, asks the live app
+whether it is healthy, and reports back to Slack.
 
 Facts behind the picture:
 
@@ -72,6 +76,11 @@ Facts behind the picture:
   [R src/app/api/alerts/route.ts:98-105] [R docs/STATUS.md:392-393].
 - Slack carries build requests in and watchdog and migration messages out, through a bot app
   and an incoming webhook. BUILT [R docs/PLATFORM.md:80].
+- The Slack build runs Claude Code in GitHub Actions on the app's Anthropic key
+  [R .github/workflows/slack-autopilot.yml:138-140]. Migrations and the RLS audit connect to the
+  database with `psql` [R .github/workflows/migrate.yml:150] [R .github/workflows/rls-audit.yml:43];
+  the health watchdog calls the app, not the database [R .github/scripts/health-check.mjs:33].
+  BUILT.
 
 ## 2. Containers
 
@@ -87,21 +96,35 @@ flowchart LR
   ST["Storage<br/>documents bucket"]
   AN["Anthropic API"]
   GHA["GitHub Actions"]
+  RS["Resend email<br/>SCAFFOLDED, off"]
   UI -- "sign in" --> AUTH
   UI -- "reads, writes, payment RPCs" --> DB
-  UI -- "upload invoice file" --> ST
+  UI -- "upload files, view by signed URL" --> ST
   UI -- "bearer token + request" --> API
   CRON -- "GET /api/alerts" --> API
-  API -- "queries as the caller, logs each AI call" --> DB
+  API -- "checks the token, manages logins" --> AUTH
+  API -- "as the caller or the service role, logs AI calls" --> DB
+  API -- "screenshots, import archive" --> ST
   API -- "extract, ask, reorder, triage" --> AN
+  API -. "due email when keys set" .-> RS
   GHA -- "run-order.txt scripts" --> DB
   GHA -- "GET /api/health" --> API
 ```
 
-Plain flow: the browser signs in with Supabase Auth and reads and writes the database
-directly, store-scoped by row-level security; anything that needs a secret (the AI key, the
-service role) goes through one of nine API routes on Vercel. GitHub Actions applies database
-scripts directly and checks the live app through `/api/health`.
+Plain flow: the browser signs in with Supabase Auth, reads and writes the database directly,
+store-scoped by row-level security, and uploads and views documents in Storage; anything that
+needs a secret (the AI key, the service role) goes through one of nine API routes on Vercel.
+Most routes query as the signed-in caller; admin users, alerts and health use the service
+role, and import uses it when its key is set. GitHub Actions applies database scripts directly and checks the live app through
+`/api/health`.
+
+- Routes check the caller's token with Supabase Auth [R src/lib/serverMember.ts:54]
+  [R src/app/api/admin/users/route.ts:53]. Feedback triage downloads the screenshot from
+  Storage and import archives every uploaded workbook there
+  [R src/app/api/feedback-triage/route.ts:56] [R src/app/api/import/route.ts:26]. Documents are
+  viewed through signed URLs, with a public-URL fallback in demo mode [R src/lib/docs.ts:15, 21].
+  The alerts route calls Resend directly when its keys are set [R src/app/api/alerts/route.ts:98].
+  BUILT.
 
 The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 
@@ -133,7 +156,7 @@ data sent with it or the answer [R supabase/ai_call.sql:4-8, 11-24]. Each store 
 before it reaches the model and logged as `capped` [R supabase/ai_call.sql:59-62]. If the log
 cannot be reached the call still goes through: the cap protects the monthly bill, not the
 store's data [R src/lib/aiUsage.ts:10-13]. Reading the rows is PARTIAL: the owner-only read
-policy lives in `auth_setup.sql` [R supabase/auth_setup.sql:144-148], which migrate does not
+policy lives in `auth_setup.sql` [R supabase/auth_setup.sql:148-152], which migrate does not
 run [R supabase/run-order.txt:10-16], so it applies only when that file is rerun by hand in
 the SQL editor. Whether it has been rerun on the live database since `ai_call` was added:
 [Q: the developer].
@@ -156,29 +179,42 @@ sequenceDiagram
   participant AI as Claude vision
   participant ST as Storage
   participant DB as Postgres
-  Staff->>UI: drop invoice photo or PDF, or Enter manually
-  UI->>UI: shrink a large photo before sending
-  UI->>EX: image + session token
-  EX->>AI: strict JSON contract
-  AI-->>EX: vendor, date, lines, confidence per line
-  EX-->>UI: draft
+  alt photo or PDF
+    Staff->>UI: drop invoice photo or PDF
+    UI->>UI: shrink a large photo before sending
+    UI->>EX: image + session token
+    EX->>DB: ai_call_begin (refused past the daily cap)
+    EX->>AI: strict JSON contract
+    AI-->>EX: vendor, date, lines, confidence per line
+    EX->>DB: ai_call_finish
+    EX-->>UI: draft
+  else Enter manually (phone order)
+    Staff->>UI: type vendor, date and lines
+  end
   Staff->>UI: fix amber lines or tick "I checked", acknowledge any discrepancy
-  UI->>ST: upload the original file
+  opt only when there is a file
+    UI->>ST: upload the original file
+  end
   UI->>DB: receiving_event (store, author, acks)
   UI->>DB: receiving_line rows (confidence gate trigger)
   UI->>DB: activity_log (who, when)
 ```
 
-Plain flow: the photo is shrunk if large and read by Claude into a draft with a confidence per
-line; a person fixes or confirms every low-confidence line, then the original file is
-uploaded and the receiving event, its lines and an audit row are written.
+Plain flow: a photo is shrunk if large and read by Claude into a draft with a confidence per
+line, unless the store has used its daily AI allowance; a phone order is typed in instead and
+never touches the AI or Storage. A person fixes or confirms every low-confidence line, then
+any original file is uploaded and the receiving event, its lines and an audit row are written.
+
+- Manual entry needs no file and skips the upload [R src/app/capture/page.tsx:193, 199-201].
+  BUILT. The AI usage reserve and finish around the model call are in section 2
+  [R src/lib/anthropic.ts:70, 152, 158].
 
 - The photo is downscaled before sending so a phone picture does not exceed the request body
   limit; the stored file is the original. BUILT [R src/app/capture/page.tsx:114-122].
 - Save is blocked until any discrepancy and any amber line is acknowledged
   [R src/app/capture/page.tsx:190-193]. The database refuses a line under 0.7 confidence
   with a unit cost unless the event carries `low_confidence_ack`. BUILT
-  [R supabase/edit_delete.sql:80-100].
+  [R supabase/edit_delete.sql:41-61].
 - Order of writes: file upload first, then `receiving_event`, then `receiving_line`, then
   `activity_log` [R src/app/capture/page.tsx:199-238]. These are four separate requests from
   the browser, not one transaction (see ARCH-07).
@@ -198,7 +234,9 @@ stateDiagram-v2
   partially_paid --> paid: settled allocations reach the total
   partially_paid --> postdated: future-dated cheques complete the total
   postdated --> paid: cheque date arrives (reconcile_postdated)
-  paid --> partially_paid: void_payment, edit_payment or invoice amount raised
+  paid --> partially_paid: void_payment or invoice amount raised
+  paid --> postdated: edit_payment moves the date into the future
+  postdated --> partially_paid: a cheque voided or the invoice raised, part still covered
   partially_paid --> unpaid: last payment voided
   paid --> unpaid: every payment voided
   postdated --> unpaid: cheque voided
@@ -265,38 +303,52 @@ Question: how do the money tables connect, and which column ties each to a store
 
 ```mermaid
 erDiagram
-  store ||--o{ vendor : "store_id"
-  store ||--o{ invoice : "store_id"
-  vendor ||--o{ purchase_order : "vendor_id"
-  vendor ||--o{ invoice : "vendor_id"
-  vendor ||--o{ payment : "vendor_id"
+  store |o--o{ vendor : "store_id"
+  store |o--o{ invoice : "store_id"
+  store |o--o{ purchase_order : "store_id"
+  vendor |o--o{ purchase_order : "vendor_id"
+  vendor |o--o{ invoice : "vendor_id"
+  vendor |o--o{ payment : "vendor_id"
+  invoice |o--o{ payment : "invoice_id, legacy"
   payment ||--o{ payment_allocation : "payment_id"
   invoice ||--o{ payment_allocation : "invoice_id"
   vendor ||--o{ credit_note : "vendor_id"
   invoice |o--o{ credit_note : "invoice_id, optional"
 ```
 
-Plain flow: a store has vendors and invoices; a vendor has orders, invoices, payments and
-credit notes; one payment splits across one or more invoices through payment_allocation,
-which is how a single cheque settles several invoices.
+Plain flow: a store has vendors, orders and invoices; a vendor has orders, invoices, payments
+and credit notes; one payment splits across zero or more invoices through payment_allocation,
+which is how a single cheque settles several invoices and how a deposit waits with none.
 
+- The store and vendor links are nullable foreign keys, so the database itself does not insist
+  on a parent; the app always stamps them [R supabase/schema.sql:36, 136, 138, 177, 629, 630].
+  An allocation always has its payment and invoice, and a credit note always has its vendor
+  [R supabase/schema.sql:196-197, 210].
+- `payment.invoice_id` is the legacy one-invoice link, still written by the bookings import; a
+  trigger turns it into an allocation [R supabase/schema.sql:178]
+  [R src/lib/importBookingsV2.ts:419-421] [R supabase/payments_v2.sql:290-313].
+- `record_payment` accepts an amount with no allocations, a deposit
+  [R supabase/payments_v2.sql:147, 159-163].
 - Table names are real: `store`, `vendor`, `purchase_order`, `invoice`, `payment`,
-  `payment_allocation`, `credit_note` [R supabase/schema.sql:7, 34, 134, 175, 194, 207, 516].
-- `purchase_order` and `invoice` also carry `store_id` [R supabase/schema.sql:136, 518];
+  `payment_allocation`, `credit_note` [R supabase/schema.sql:7, 34, 134, 175, 194, 207, 627].
+- `purchase_order` and `invoice` also carry `store_id` [R supabase/schema.sql:136, 629];
   `credit_note` does too [R supabase/schema.sql:209]. There is no foreign key between
   `invoice` and `purchase_order`; an invoice carries `po_number` as text
   [R supabase/schema.sql:160].
 - Every amount column is `numeric` dollars: `invoice.amount`, `hst_amount`,
   `freight_charges`, `payment.amount`, `payment_allocation.amount`,
   `credit_note.credit_amount`, `purchase_order.order_amount`. BUILT
-  [R supabase/schema.sql:141-143, 179, 198, 213, 522]. The header comment says the same, and integer cents is
+  [R supabase/schema.sql:141-143, 179, 198, 213, 633]. The header comment says the same, and integer cents is
   not planned [R supabase/schema.sql:3]; ARCH-09 is closed.
 - Nothing in `schema.sql` uses vectors; the only extension created is `pgcrypto`
   [R supabase/schema.sql:5]. pgvector for Ask the store is TARGET, deferred until the data
   outgrows one prompt [R docs/PLATFORM.md:176].
 
 The store-scoping rule. BUILT: every read filters by the active `store_id` and every insert
-stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:122].
+stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:121].
+PARTIAL in the code: a few reads leave scoping to row-level security alone, for example the
+capture screen's list of people (`app_user`) and the shared tax rules
+[R src/app/capture/page.tsx:61, 77].
 At the database, 14 tables carry their own `store_id` policy: nine in section 3a
 [R supabase/auth_setup.sql:102-133] and the five that carry a dollar figure in section 3e,
 which adds the role fence [R supabase/auth_setup.sql:315-331]. `inventory_count_line`,
@@ -310,7 +362,7 @@ screenshot, is store-scoped in section 3g and opens by the screenshot's rule (AD
 [R supabase/auth_setup.sql:658-716]. `ai_call.sql` runs just before `money_by_role.sql`
 [R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
 `auth_setup.sql` (3a, or 3e if it holds a dollar figure), and in a migration for live
-databases [R CLAUDE.md:31-32].
+databases [R CLAUDE.md:33-35].
 
 Soft voids only: `voided_at` and `voided_by` sit on 13 tables from one loop plus `credit_note`
 and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 240-241, 776-792].
@@ -336,25 +388,28 @@ flowchart LR
   CI -- "green" --> HUM
   HUM -- "merges the pull request" --> VD
   HUM -- "if supabase/ changed" --> MIG
-  VD -- "CI completes on main" --> WD
+  CI -- "completes on main; also every 2 hours" --> WD
+  MIG -- "result, after a health check" --> SLK
   WD -- "on change of health" --> SLK
   PR -- "slack-lifecycle updates card" --> SLK
 ```
 
 Plain flow: a request in Slack becomes a draft pull request; CI runs the three gates; a person
-merges; Vercel deploys main, migrate applies any merged database scripts, and the watchdog
-asks the live site whether it is healthy and tells Slack when that changes.
+merges; Vercel deploys main and, separately, migrate applies any merged database scripts, asks
+the site whether it is healthy and tells Slack. The watchdog runs when CI finishes on main
+(and every two hours, or by hand), waits 90 seconds after a CI run, asks the live site whether it is healthy
+and tells Slack when that changes. It does not confirm which deploy it is looking at.
 
 | Step | What happens | State | Evidence |
 |---|---|---|---|
 | Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request, never merges | BUILT | [R .github/workflows/slack-autopilot.yml:21-27, 50-51, 152, 164-177] |
-| Status card | Updates the Slack thread through review, checks, merge and live, for `claude/slack-*` branches only | BUILT | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] |
+| Status card | Updates the Slack thread through review, checks and merge, for `claude/slack-*` branches only. "Live" is posted only when someone runs the workflow by hand with that stage; nothing posts it automatically | PARTIAL | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] [R .github/scripts/slack-lifecycle-stage.mjs:22-26, 32, 57] |
 | Tier classifier | Script that sorts a diff into A (words, may self-merge), B (app, person merges), C (money, access, database, automation; never merges). Only the parked Jira autopilot calls it; the live Slack loop does not, so nothing self-merges today | PARTIAL | [R .github/scripts/classify-change.mjs:8-12] [R .github/workflows/jira-autopilot.yml:184-199] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
 | Merge | A person merges. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
-| Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose | BUILT | [R .github/workflows/migrate.yml:33-39, 131] [R supabase/run-order.txt:10-16] |
-| Watchdog | After CI completes on main and every two hours, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 54] |
+| Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose; then asks `/api/health` and tells Slack the result | BUILT | [R .github/workflows/migrate.yml:33-39, 131, 150, 154-159, 166-185] [R supabase/run-order.txt:10-16] |
+| Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
 | Dev site and promotion | `promote.yml` merges `develop` into `main` when a person runs it; inert because no `develop` branch exists | SCAFFOLDED, switch is creating `develop` and the dev Supabase project | [R .github/workflows/promote.yml:16-24, 47-53] [V-run, git ls-remote --heads origin, 2026-10-24: main and two claude/ branches, no develop] |
 | Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
@@ -362,7 +417,7 @@ asks the live site whether it is healthy and tells Slack when that changes.
 Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
 [R .claude/settings.json:14-19]; update docs/STATUS.md and docs/VERIFICATION.md in the same
-pull request as the work [R CLAUDE.md:21-22]. Human review of every dollar field stays
+pull request as the work [R CLAUDE.md:23-24]. Human review of every dollar field stays
 non-negotiable.
 
 ## 7. Security and privacy
@@ -372,7 +427,7 @@ and the same fence at the database is built and applies on merge (ARCH-03;
 docs/adr/ADR-003-money-by-role-at-the-database.md). Stored files are fenced by store and by
 kind at the database, built and applying on merge (ARCH-04;
 docs/adr/ADR-004-stored-files-by-store-and-role.md). The AI's description of a suggestion
-screenshot follows the screenshot's rule, built and applying on merge (ARCH-12;
+screenshot follows the screenshot's rule, built and applying on merge (ARCH-13;
 docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
 
 - Row-level security, repository default: a fresh install from `schema.sql` gets the open
@@ -386,13 +441,19 @@ docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
   carry `money_store_rw` instead of `member_store_rw`, and `receiving_line` also
   `member_store_insert` (ADR-003 condition 3 reads it).
 - Login enforcement in the app is the build-time flag `NEXT_PUBLIC_REQUIRE_AUTH`; with it on,
-  every API route requires a valid session and queries run as the caller
-  [R src/lib/serverMember.ts:3-10, 35-50]. Its production value was not read this session
+  the member-facing API routes require a valid session and query as the caller
+  [R src/lib/serverMember.ts:3-10, 35-50]. Two routes are exceptions by design: `/api/health`
+  answers anyone and gives detail only with `CRON_SECRET`, and `/api/alerts` takes the cron
+  secret instead of a session [R src/app/api/health/route.ts:118-121]
+  [R src/app/api/alerts/route.ts:22-24]. Its production value was not read this session
   [Q: the developer, confirm it is `true` in Vercel production].
 - Roles and money: `canSeeMoney` lets `lead`, `manager`, `owner` see costs and amounts, and
   treats an unknown role as staff, so money fails closed in the UI
-  [R src/lib/auth.ts:34-40]; the API routes apply the same rule
-  [R src/lib/serverMember.ts:18-21]; and the database applies it as
+  [R src/lib/auth.ts:34-40]. Ask withholds invoices from non-money roles and reorder refuses
+  them, using the same rule on the server [R src/lib/serverMember.ts:18-21]
+  [R src/app/api/ask/route.ts:39] [R src/app/api/reorder/route.ts:33-35]. Extract does not: any signed-in member gets the line
+  costs it reads, because capture is staff work [R src/app/api/extract/route.ts:71-73, 147].
+  The database applies the same rule as
   `app_auth.can_see_money()` [R supabase/auth_setup.sql:300-309]. BUILT in the repository: the
   nine tables that carry a dollar figure return no rows to staff and refuse their writes, the
   payment functions (security invoker) refuse them, and a payment cannot be allocated to
@@ -443,7 +504,7 @@ docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
   no update or delete policy [R supabase/auth_setup.sql:263-279]. BUILT.
 - Service role key: server-side only, used by `/api/admin/users`, `/api/import`,
   `/api/alerts`, `/api/health` [R src/app/api/admin/users/route.ts:32]
-  [R src/app/api/import/route.ts:417] [R src/app/api/alerts/route.ts:35]
+  [R src/app/api/import/route.ts:381] [R src/app/api/alerts/route.ts:35]
   [R src/app/api/health/route.ts:112].
 - PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
   reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-58]
@@ -488,14 +549,15 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-02 | `NEXT_PUBLIC_REQUIRE_AUTH` production value not read this session | The developer | No |
 | ARCH-03 | BUILT 2026-10-25: money is fenced by role at the database as well as in the UI and API (ADR-003; `supabase/money_by_role.sql`), 130 of 130 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-003 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
 | ARCH-04 | BUILT 2026-10-25: stored files are fenced by store and by kind at the database (ADR-004; `supabase/documents_by_role.sql`): invoice photos open to lead, manager and owner, suggestion files also to whoever saved them, the workbook archive to owner and manager; 163 of 163 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-004 condition 3 reads clean. Whether leads open the workbook archive [Q: Ravi Kiran] | The developer | Yes, until it closes: before staff logins are made |
-| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER Step 2) | Ravi Kiran | Yes |
-| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
+| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER A-01) | Ravi Kiran | Yes |
+| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER A-01) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
-| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
-| ARCH-12 | BUILT 2026-10-25: the AI's description of a suggestion screenshot opens to the people who may open the screenshot (ADR-005; `supabase/feedback_summary.sql`); 85 of 85 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-005 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
+| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
+| ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
+| ARCH-13 | BUILT 2026-10-25: the AI's description of a suggestion screenshot opens to the people who may open the screenshot (ADR-005; `supabase/feedback_summary.sql`); 85 of 85 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-005 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
 
 ## 10. How this maps to the rest of the docs
 
@@ -530,3 +592,19 @@ confirmed, 0 killed, 3 sources (this repository, the local test databases with P
 storage service cited in section 7, and
 docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md); four references into the
 screenshot reader route and the Suggestions page that had drifted were re-read and moved.
+
+**Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
+killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
+back; each correction here was re-read in the code before it was written. Killed: the health
+watchdog drawn as calling the database, every route querying as the caller, one mandatory
+capture path, `edit_payment` leading to partially paid, five mandatory parent links that are
+nullable foreign keys, "one or more invoices" per payment, the deploy triggering the watchdog,
+the status card reaching "live" on its own, every API route needing a session, every route
+applying the money rule, and every read filtering by store. Five stale line references were
+also corrected (the confidence trigger, three `purchase_order` lines, the import service role).
+Opened: `.github/workflows/` migrate, rls-audit, slack-autopilot, post-deploy-watch,
+slack-lifecycle; `.github/scripts/` health-check and slack-lifecycle-stage; the extract, ask,
+reorder, feedback-triage, import, alerts, health and admin users routes; `src/lib/` serverMember,
+docs, auth and anthropic; the capture and vendor pages; `supabase/` schema, payments_v2, edit_delete and run-order.txt; and
+`src/lib/importBookingsV2.ts`. All six diagrams rendered without error in Mermaid 10.9.1
+[V-run, mermaid.render on each block in a browser, 2026-10-30].
