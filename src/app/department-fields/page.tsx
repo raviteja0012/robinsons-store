@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useActiveStore } from "@/lib/store";
 import { currentActorId, useCurrentRole, useMember } from "@/lib/auth";
-import { canEdit } from "@/lib/edit";
 import { fieldDepartment, sortDepartments } from "@/lib/departments";
 import { VENDOR_FIELDS, asksByDefault } from "@/lib/vendorFields";
 import { INVOICE_FIELDS, asksInvoice } from "@/lib/invoiceFields";
@@ -62,7 +61,7 @@ export default function DepartmentFields() {
   const { storeId, ready } = useActiveStore();
   const { role } = useCurrentRole();
   const { member } = useMember();
-  const canChange = canEdit(role);
+  const canChange = role === "owner";
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [saved, setSaved] = useState<FieldChoice[]>([]);
@@ -234,7 +233,7 @@ export default function DepartmentFields() {
         </div>
       )}
       {!loading && !canChange && (
-        <p className="help" style={{ marginBottom: 12 }}>Only owners and managers can change these. This is what each department is asked today.</p>
+        <p className="help" style={{ marginBottom: 12 }}>Only the owner can change these. This is what each department is asked today.</p>
       )}
 
       {!loading && (

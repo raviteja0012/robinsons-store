@@ -435,7 +435,7 @@ and `pay_rate` and `receiving_line` through theirs, all in 3e
 block: the owner reads it, and nobody writes it except through its two functions
 [R supabase/auth_setup.sql:135-157]. It runs before `money_by_role.sql` [R supabase/run-order.txt:26-27].
 `department_field`, the Department fields screen's ticks, is store-scoped in its own
-block too: every member reads it, only owners and managers insert or update it, for a
+block too: every member reads it, only the owner inserts or updates it, for a
 department of their own store, and nothing deletes it [R supabase/auth_setup.sql:159-194].
 Its migration applies the same policies itself when login is on
 [R supabase/department_field.sql:36-67] and is the last script in the run order
