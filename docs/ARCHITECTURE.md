@@ -692,7 +692,7 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | ~~Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop~~ Closed 2026-10-24 by ADR-002: wired, off until `AUTOMERGE_TIER_A` is set | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
-| ARCH-12 | PARTIAL 2026-10-30: the store's Miro board now has all nine diagrams in this file, built in Miro from the Mermaid here with the same colour key and named by section and date, beside the six older ones. Remove the older six once the new set is checked; redraw any diagram whose Mermaid changes here | The developer | No |
+| ARCH-12 | CLOSED 2026-10-30: the store's Miro board shows the nine diagrams in this file, built in Miro from the Mermaid here with the same colour key and named by section and date. The six older diagrams and their labels moved to a separate board, "Robinsons store architecture, archive". Redraw any diagram on the board whose Mermaid changes here | The developer | No |
 | ARCH-13 | The store name and town are written into the Ask, reorder and alert prompts (section 8); read them from the store's settings so a second store needs no code change | The developer | Yes, before a second store |
 | ARCH-14 | The AI golden-case evals have never run against the model; run them before any change to `ANTHROPIC_MODEL` or a prompt | The developer | No |
 
