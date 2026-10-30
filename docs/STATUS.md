@@ -23,7 +23,7 @@ AI view and standards map in the architecture doc, 2026-10-30:
 - Found: the Slack autopilot is built but off; `SLACK_REQUEST_CHANNEL` is not set (read live
   2026-10-30). Slack questions and automatic filing of asks are the developer's stated
   direction with no design yet.
-- The store's Miro board now has all seven diagrams, built in Miro from the doc's Mermaid and
+- The store's Miro board now has all nine diagrams, with the colour key, built in Miro from the doc's Mermaid and
   named "N. Section, 2026-10-30". The six older ones are still there; ARCH-12 stays open
   until they are removed.
 - Docs only; no code, schema, policy or workflow change.
