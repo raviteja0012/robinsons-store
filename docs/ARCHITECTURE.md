@@ -114,8 +114,8 @@ flowchart LR
 Plain flow: the browser signs in with Supabase Auth, reads and writes the database directly,
 store-scoped by row-level security, and uploads and views documents in Storage; anything that
 needs a secret (the AI key, the service role) goes through one of nine API routes on Vercel.
-Most routes query as the signed-in caller; admin users, alerts, health and import use the
-service role. GitHub Actions applies database scripts directly and checks the live app through
+Most routes query as the signed-in caller; admin users, alerts and health use the service
+role, and import uses it when its key is set. GitHub Actions applies database scripts directly and checks the live app through
 `/api/health`.
 
 - Routes check the caller's token with Supabase Auth [R src/lib/serverMember.ts:54]
@@ -526,8 +526,8 @@ after the database writes, and tier A self-merge in the live Slack loop. Added t
 by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
 curl of the health route.
 
-**Basis, 2026-10-30 correction: 32 claims checked against main 4dfc97c, 32 confirmed, 11
-killed, 23 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
+**Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
+killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
 back; each correction here was re-read in the code before it was written. Killed: the health
 watchdog drawn as calling the database, every route querying as the caller, one mandatory
 capture path, `edit_payment` leading to partially paid, five mandatory parent links that are
@@ -537,7 +537,7 @@ applying the money rule, and every read filtering by store. Five stale line refe
 also corrected (the confidence trigger, three `purchase_order` lines, the import service role).
 Opened: `.github/workflows/` migrate, rls-audit, slack-autopilot, post-deploy-watch,
 slack-lifecycle; `.github/scripts/` health-check and slack-lifecycle-stage; the extract, ask,
-reorder, feedback-triage, import, alerts, health and admin users routes; `src/lib/` serverMember
-and docs; the capture and vendor pages; `supabase/` schema, payments_v2 and edit_delete; and
+reorder, feedback-triage, import, alerts, health and admin users routes; `src/lib/` serverMember,
+docs, auth and anthropic; the capture and vendor pages; `supabase/` schema, payments_v2, edit_delete and run-order.txt; and
 `src/lib/importBookingsV2.ts`. All six diagrams rendered without error in Mermaid 10.9.1
 [V-run, mermaid.render on each block in a browser, 2026-10-30].
