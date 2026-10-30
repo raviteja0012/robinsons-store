@@ -173,7 +173,7 @@ sidebar.
 | **Vercel Flags** | The dev site plus the promotion workflow already answers "try it before it ships" |
 | **Vercel Image Optimization** | Thumbnails come from Supabase signed URLs, which expire; optimizing them is fiddly for little gain on department laptops |
 | **Vercel Toolbar comments (browser extension)** | Comments are visible only to signed-in members of the Vercel team, and this plan seats one. The owner would need a paid seat, a Vercel account, and a developer tool to say what the in-app Suggestions page already lets him say in plain words on his phone. The developer can install the extension for personal use any time; that needs no project change |
-| **Vercel Connect: Miro, Notion** | Those are the builder's tooling, not the store's app. A general store has no Miro requirement |
+| **Vercel Connect: Miro, Notion** | Those are the builder's tooling, not the store's app, and nothing in the app connects to either. The one Miro use is the architecture board on the store's own account (docs/HANDOVER.md): a drawing of the diagrams in docs/ARCHITECTURE.md, which stays the source, redrawn from it when it changes |
 | **Supabase Edge Functions** | The API routes on Vercel cover it; splitting server code across two runtimes doubles where to look when something breaks |
 | **Supabase Realtime** | The notification bell polls on navigation, focus, open and timer. Polling is enough for one store and has fewer states to get wrong |
 | **pgvector** | Deferred by design until the store's data outgrows one prompt. Ask-the-store passes context directly today and that works at tens of vendors |

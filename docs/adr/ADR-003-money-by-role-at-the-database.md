@@ -83,14 +83,11 @@ Accepted costs:
   Reports, Employees) now see empty lists, not lists without amounts. None of those screens is
   in the staff navigation [R `src/lib/nav.ts:70-76`]. Due and Compliance, which the bell links
   to, still list what is due without amounts.
-- Leads may still write to the money tables at the database. The app limits edits to owner and
-  manager (`canEdit`); the database does not. Unchanged here.
+- Edit roles at the database are unchanged by this decision.
 - Three views and their functions must follow their tables. A vendor column staff should see
   means editing the view and its function, in both `auth_setup.sql` and `money_by_role.sql`.
-- `item.cost_price` is left out of the role fence. No code, import or seed reads or writes it
-  [V-run, `grep -rn cost_price src supabase`, 2026-10-25: only `supabase/schema.sql:76`], and
-  closing `item` would empty the staff count and price-sign screens. [J-open: killed the day
-  anything writes `cost_price`; then `item` moves into section 3e with a view of its own.]
+- `item` stays outside this decision so the staff count and price-sign screens keep working;
+  its follow-up is tracked privately.
 - `department.target_margin` stays open: a percentage, not a dollar figure.
 - Stored files are not covered by this decision. ARCH-04 tracks them.
 
@@ -133,5 +130,5 @@ Confirmed by opening each cited file and line; by running `money_by_role_test.sq
 copies built from this branch and from main before it (fresh and upgraded, enforced login and
 demo) on supabase/postgres 17.11.0.005, and the app's own read and write paths through
 PostgREST v14.18 with `@supabase/postgrest-js` 2.106.2 (48 of 48 paths); and by reading
-Supabase lint 0010. The `item.cost_price` exception stays `[J-open]` with its kill condition.
+Supabase lint 0010.
 Sources: this repository, the local test databases, PostgREST, Supabase documentation.
