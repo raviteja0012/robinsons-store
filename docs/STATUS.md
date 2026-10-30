@@ -2,7 +2,61 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/arch-04-stored-files (latest: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/gracious-mccarthy-lexvp5 (latest: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+PR #88 promotion follow-up, 2026-10-30:
+- Promotion records main before CI, fetches it again immediately before the merge, and
+  continues only if main is unchanged. The head remains pinned with --match-head-commit.
+- README.md describes CI on both branches; ENVIRONMENTS.md requires a successful dev script
+  run before SQL promotion; LOOP_ENGINEERING.md and CAPABILITIES.md describe promotion.
+- Verification: automation tests run locally; app gates skipped because dependencies are absent.
+
+CI on `develop`; promotion merges only on green CI, 2026-10-30:
+- CI now starts by itself on every pull request into `develop` and every push to it, as on
+  `main`. Before, the documented path for app changes ran no checks unless someone started CI
+  by hand; #71, #83 and #85 target `develop`. They get a run on their next push or update from
+  `develop` once this reaches `develop`. The leftover `claude/great-johnson-CFSbi` trigger is
+  gone; that branch no longer exists on origin.
+- `promote.yml` no longer merges with `--auto`, which with no required checks on `main` could
+  merge at once. It now does what the Slack loop's tier A step does: requires `develop` to
+  hold everything on `main`, starts CI on the pull request's head commit, waits, reads the
+  pull request again, and merges with `--match-head-commit`. Anything unexpected leaves the
+  pull request open and fails the run. After the merge it starts CI on `main` and, when
+  `supabase/` changed, Apply database scripts, since a merge made with the workflow's token
+  may start neither.
+- Docs: ENVIRONMENTS.md, LOOP_ENGINEERING.md section 3, CONTRIBUTING.md, the ARCHITECTURE.md
+  promotion row (was SCAFFOLDED with no `develop`; now PARTIAL), CAPABILITIES.md item 40
+  (auto-merge no longer used), two ONBOARDING.md line references.
+- Open: the promotion has not run end to end on GitHub. First run after this merges: expect a
+  hold until `develop` is brought level with `main` (it lacks #56 today). Whether GitHub
+  starts no push workflow for a merge made with `GITHUB_TOKEN` stays `[J-open]` (ADR-002
+  context item 3); the dispatches are safe either way.
+- Tier C (`.github/`): a person merges. Then bring `develop` level with `main`, which is the
+  step that makes pull requests into `develop` show CI.
+
+PR #87 documentation follow-up, 2026-10-30:
+- Added the status line, related-docs paragraph and basis footer to docs/README.md, and
+  expanded the architecture catalogue entry for PR #81.
+- CONTRIBUTING.md points to the release checklist before real staff use.
+- Verification: local link and format checks; app gates skipped because dependencies are absent.
+
+Docs organized into one entry path, 2026-10-30:
+- docs/README.md now routes by reader (new member, builder or AI session, owner, checker),
+  lists the rules every session loads, adds a 13-step learning path (one component per
+  sitting: read the doc, open the code, answer one question) and states the six rules that
+  keep AI-written docs trustworthy. It also lists the Slack app manifest, which was missing.
+- The root README.md and CONTRIBUTING.md are rewritten. Both still described login, signed
+  URLs and the confidence gate as to-do; CONTRIBUTING also called integer cents planned, CI
+  lint and build only, and the repository untested. They now route to the current docs and
+  list every CI step.
+- docs/LOOP_ENGINEERING.md: the watchdog runs after CI, not after the deploy; the Refine
+  section no longer calls the parked Jira board the queue; Costs describes the Slack sweep;
+  two improvement items no longer mention a ticket or a dev database still to build.
+- Pointers fixed: the standards path in ARCHITECTURE.md, docs/SOURCES.md in the skill and the
+  build spec, the doc count in CLAUDE.md, the invariant count in VERIFICATION.md; a personal
+  account name removed from two evidence lines. The build spec carries a history banner.
+- Docs only; no code, schema, policy or workflow change. Tier C, because it edits CLAUDE.md,
+  the skill, LOOP_ENGINEERING.md and an ADR: a person merges.
 
 Stored files fenced by store and role, 2026-10-25 (branch claude/arch-04-stored-files; ARCH-04,
 docs/adr/ADR-004-stored-files-by-store-and-role.md, see VERIFICATION.md):

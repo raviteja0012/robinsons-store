@@ -8,7 +8,7 @@ watching it.** The one thing to know before changing anything: an invoice's paid
 never typed, it is derived in the database from payment allocations by the payment engine,
 so every money change goes through those functions or it is wrong.
 
-Evidence tags follow `.claude/skills/store-standards/SKILL.md`: `[R path:line]` read from
+Evidence tags follow `.claude/skills/robinsons-store/references/standards.md`: `[R path:line]` read from
 this repository this session, `[V-run]` checked live this session, `[J-open]` believed and
 not checked (with what would prove it wrong), `[Q: owner]` an open question. States: BUILT,
 PARTIAL (gaps named), SCAFFOLDED (built, switched off; the switch named), TARGET (not built).
@@ -491,10 +491,10 @@ the health watchdog remain separate workflows, detailed below.
 | Migrate | On pushes to `main` or `develop` touching `supabase/**`, applies `supabase/run-order.txt` to the corresponding environment; rebuild and seed scripts are excluded. Automatic dev migrations wait for `SUPABASE_DB_URL_DEV` | BUILT for production; SCAFFOLDED for automatic dev migrations | [R .github/workflows/migrate.yml:33-39,66-96] [R docs/ENVIRONMENTS.md:75] |
 | Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
-| Dev site and promotion | `develop` exists and deploys a dev preview; a person runs `promote.yml` to open and merge a `develop` to `main` pull request after checks pass | BUILT | [R docs/ENVIRONMENTS.md:19-39,54-56] [R .github/workflows/promote.yml:24-25,84-113] |
+| Dev site and promotion | `promote.yml` opens a `develop` to `main` pull request when a person runs it, starts CI on its head commit, and merges with that commit pinned only if CI passed and `develop` holds everything on `main`; otherwise the pull request stays open and the run fails. CI starts by itself on pull requests into and pushes to `develop` | PARTIAL: the merge step has not yet run end to end on GitHub | [R .github/workflows/promote.yml:16-19, 48-56, 107-194] [R .github/workflows/ci.yml:3-7] [V-run, git ls-remote --heads origin, 2026-10-30: develop at cae5104] |
 | Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
 
-Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
+Working in Claude Code: the `robinsons-store` skill, with its standards reference, loads from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
 [R .claude/settings.json:14-19]; update docs/STATUS.md and docs/VERIFICATION.md in the same
 pull request as the work [R CLAUDE.md:23-24]. Human review of every dollar field stays
