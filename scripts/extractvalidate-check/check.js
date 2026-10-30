@@ -125,6 +125,7 @@ t("matched across suffix and case", matchVendor(vendors, "hw", "NORTHBAY HARDWAR
 t("matched only within the department", matchVendor(vendors, "garden", "Northbay Hardware Supply Ltd")?.id === 2 && matchVendor(vendors, "grocery", "Northbay Hardware Supply") === undefined);
 t("an exact name wins over a key match", matchVendor(vendors, "hw", " acme inc ")?.id === 3);
 t("two vendors on one key match neither", matchVendor(vendors, "hw", "ACME") === undefined);
+t("two vendors with the same exact name match neither", matchVendor([...vendors, { id: 5, name: "acme inc", department_id: "hw" }], "hw", "Acme Inc") === undefined);
 t("a blank vendor matches nothing", matchVendor(vendors, "hw", "  ") === undefined);
 t("a shorter name is not a match", matchVendor(vendors, "hw", "Northbay Hardware") === undefined);
 

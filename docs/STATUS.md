@@ -22,7 +22,7 @@ VERIFICATION.md):
   Ltd, Limited or Co, within the department. If two vendors match that way, neither is picked.
 - The invoice number goes at the start of the notes; the form has no box for it. One that
   carries an amount is left blank, since staff read the notes.
-- Proven: scripts/extractvalidate-check 91 of 91, failing under each deliberate break of the
+- Proven: scripts/extractvalidate-check 92 of 92, failing under each deliberate break of the
   check; an independent read-only review found eight issues, all fixed with a test each; the AI eval scorers 124 of 124, with a new case for a photo of page 2 only; the offline
   eval through the real route 24 of 24, the known gap still failing. Of the 12 wrong answers in
   the existing eval samples that change what the lines add up to, the totals check flags all 12. It

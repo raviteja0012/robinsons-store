@@ -33,7 +33,7 @@ Return ONLY a JSON object, no prose and no code fences, in exactly this shape:
     }
   ]
 }
-Rules: amounts are in CAD as plain numbers with no currency symbol. retail_price_note is the retail price written by hand next to a line, or null if none. confidence is between 0 and 1; set it low on any field you are unsure about. If a value is missing use 0 for numbers and an empty string for text.
+Rules: amounts are in CAD as plain numbers with no currency symbol. retail_price_note is the retail price written by hand next to a line, or null if none. confidence is between 0 and 1; set it low on any field you are unsure about. If a line value is missing use 0 for numbers and an empty string for text; the printed_ fields below follow their own rule.
 invoice_number is the invoice or receipt number exactly as printed, or an empty string if there is none. printed_subtotal, printed_hst and printed_total are the subtotal before tax, the HST or other sales tax, and the final total or amount due, copied exactly as printed on the document. Never work them out from the lines: use null for any of the three that is not printed. Subtotal, tax and total rows go in these three fields and never in line_items.`;
 
 // The same contract as the prompt, enforced by the API instead of asked for politely.
