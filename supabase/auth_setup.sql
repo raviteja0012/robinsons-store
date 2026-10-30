@@ -158,7 +158,7 @@ end $$;
 
 -- department_field (3a, its own block): store-scoped like the tables above but kept out of
 -- that array, which lets every member write. Every member reads the choices because every
--- vendor and invoice form needs them; only managers and owners change them, and only for a
+-- vendor and invoice form needs them; only the owner changes them, and only for a
 -- department of their own store. No delete policy: a choice is changed, never removed.
 -- supabase/department_field.sql applies the same policies to a live database with login on.
 do $$
@@ -173,22 +173,24 @@ begin
     to authenticated
     using (store_id = app_auth.my_store_id());
   drop policy if exists manager_insert on public.department_field;
-  create policy manager_insert on public.department_field
+  drop policy if exists owner_insert on public.department_field;
+  create policy owner_insert on public.department_field
     for insert
     to authenticated
     with check (
       store_id = app_auth.my_store_id()
-      and app_auth.my_role() in ('manager','owner')
+      and app_auth.my_role() = 'owner'
       and exists (select 1 from public.department d
                   where d.id = department_field.department_id and d.store_id = department_field.store_id));
   drop policy if exists manager_update on public.department_field;
-  create policy manager_update on public.department_field
+  drop policy if exists owner_update on public.department_field;
+  create policy owner_update on public.department_field
     for update
     to authenticated
-    using (store_id = app_auth.my_store_id() and app_auth.my_role() in ('manager','owner'))
+    using (store_id = app_auth.my_store_id() and app_auth.my_role() = 'owner')
     with check (
       store_id = app_auth.my_store_id()
-      and app_auth.my_role() in ('manager','owner')
+      and app_auth.my_role() = 'owner'
       and exists (select 1 from public.department d
                   where d.id = department_field.department_id and d.store_id = department_field.store_id));
 end $$;

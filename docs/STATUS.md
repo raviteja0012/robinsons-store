@@ -27,7 +27,7 @@ Department field export error handling, 2026-10-30:
 - Verified offline: scripts/importexport-check, 36 passed; export handler with a fake database, four cases passed (two missing-table codes, a timeout code and no code). App gates deferred because node_modules is absent [V-run, local checks, 2026-10-30].
 
 The Department fields screen, 2026-10-25:
-- PARTIAL. Owners and managers pick, per department, which questions the vendor and invoice
+- PARTIAL. The owner picks, per department, which questions the vendor and invoice
   forms ask, on Admin, Department fields [R src/app/department-fields/page.tsx:172]. It
   answers the ask relayed on 2026-10-25 for the vendor and invoice profiles. The payment
   profile is not on it: which payment questions should vary is open [Q: the requester].
@@ -45,7 +45,7 @@ The Department fields screen, 2026-10-25:
   [R src/app/vendors/[id]/page.tsx:144], so a Gifts vendor was asked DryGoods' questions when
   it was created and every question when it was edited. One visible change follows: Garden
   Center invoices now ask for a PO number, as Hardware's do.
-- Only owners and managers can write the table. The migration applies those policies itself
+- Only the owner can write the table (owner-only since 2026-10-30). The migration applies those policies itself
   on a database with login on [R supabase/department_field.sql:43], so it works from the
   merge without a rerun of auth_setup.sql; auth_setup.sql carries the same block for a fresh
   cutover. /api/health names the script when the table is missing
