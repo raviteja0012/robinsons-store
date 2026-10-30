@@ -19,7 +19,7 @@ written for, and how current it is. Start here.
 | File | What it answers |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Every AI agent: the four inside the app for staff, and the ones that build and watch it. What each does, its guardrails, and whose key it runs on |
-| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account; ADR-003: the database keeps dollar figures from staff; ADR-004: stored files open by store and role; ADR-005: a screenshot's AI description opens to the people who may open the screenshot |
+| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account; ADR-002: words-only changes from the Slack loop merge themselves; ADR-003: the database keeps dollar figures from staff; ADR-004: stored files open by store and role; ADR-005: a screenshot's AI description opens to the people who may open the screenshot |
 | [../ONBOARDING.md](../ONBOARDING.md) | For a new team member: what we need from them, what access they get and why, and their first week |
 | [HANDOVER.md](HANDOVER.md) | **What the store owns on each service, every secret and variable the app reads, and what is still open** |
 | [ENVIRONMENTS.md](ENVIRONMENTS.md) | Production and the dev site: what each one is, how a change crosses, and the six steps that turn dev on |
