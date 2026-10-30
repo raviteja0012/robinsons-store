@@ -3,10 +3,13 @@
 Type what you want in the store's requests channel. Within half an hour it comes back as a
 draft pull request, with a reply in the thread under your own message saying what happened.
 
-**State, 2026-10-30: built, not running.** The bot token and the Anthropic key are in GitHub,
-but the variable `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step with
-"Slack autopilot is not configured yet" [V-run, `gh variable list`, `gh secret list` and that
-day's run logs]. No request has been built yet. To switch it on, see Setting it up below.
+**State, 2026-10-30: switched on; the first request stopped at the model.** `SLACK_REQUEST_CHANNEL`
+was set that day to the workspace's general channel, where the bot is a member [V-run, `gh
+variable list`, 2026-10-30]. The first request, built from this branch's four-job workflow,
+was found, claimed and given its card in the thread, but the Anthropic API refused the build
+with "Credit balance is too low", so the card says stopped [V-run, Actions run 41127237310]. Nothing
+was pushed. Next: credit on the Anthropic account behind `ANTHROPIC_API_KEY`, then a new
+request (the stopped one carries ⚠️ and is skipped).
 
 This is the intake loop the Jira board used to be, moved to where the work is actually asked
 for. Nobody was writing to the board; people do write in Slack.
@@ -34,7 +37,7 @@ Two things track it, and neither needs anything stored anywhere.
 | 🔴 Checks failed | they did not |
 | 🚀 Merged, going out to the store | somebody merged it, or it was words only and merged itself |
 | 🟢 Live on the store's site | the deploy is confirmed serving it |
-| ✋ Stopped, this one needs a person | it refused to guess, or the build failed |
+| ✋ Stopped, this one needs a person | it refused to guess, the build failed, the change touched the automation's own files, or the pull request could not be opened |
 
 One card that updates, rather than six messages. The alternative buries the answer under its
 own notifications.
@@ -99,6 +102,9 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What it will not do
 
+- **Push a change to the automation.** A change that touches `.github/` or `.claude/` never
+  reaches the repository, and neither does one that moves a file out of them or was not built
+  on the base commit the run started from. The card says a person has to look.
 - **Merge anything but words.** It opens a draft pull request, and a script labels it with how
   far it may go: `tier-a` words only, `tier-b` the app, `tier-c` money, logins, the database or
   the automation. Only tier A merges itself, after the checks pass, and only while the
@@ -113,9 +119,24 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What reads the work before you see it
 
-The run is three jobs. **autopilot** builds and opens the draft pull request. **review** has
-two read-only reviewers read it. **ship** labels it with its tier, merges tier A if allowed,
-and updates the card. The card does not say "ready" until the review job has finished.
+The run is four jobs, and the pull request opens only after the review:
+
+| Job | Runner | Holds | Does |
+|---|---|---|---|
+| **find** | its own | the Slack token | asks the channel for work, reads the base commit the build starts from, and posts the first card; no model |
+| **build** | its own | the Anthropic key, a read-only token | the model builds and commits; the commit leaves as a git bundle |
+| **review** | fresh | the Anthropic key, a read-only token | two read-only reviewers read the bundle |
+| **ship** | fresh | the Slack token, a write token | reads the bundle again, stops a change to the automation, labels the tier, pushes the branch, opens the draft pull request, merges tier A if allowed, updates the card |
+
+**Why the build job holds so little.** The builder has a shell on its runner, and on GitHub's
+runners that shell has `sudo`. Whatever it leaves there (a background process, a line in
+`$GITHUB_ENV`, a program earlier on the `PATH`, a git hook) runs with every later step on
+that runner and can read what those steps hold. So nothing runs there after the build except
+packing the commit, and nothing is there worth taking: no Slack token, no reviewer, and a
+token that cannot write. review and ship each start on a fresh runner, check out the
+workflow's own commit, fetch the bundle as data with `.github/scripts/autopilot-change.mjs`
+and run only scripts from their own checkout. The commit ship pushes is the one review read;
+tier A merges itself only if they match.
 
 | Reviewer | Follows | Looks for |
 |---|---|---|
@@ -126,12 +147,12 @@ How the reviewers are kept honest:
 
 - **A fresh runner.** The builder had a shell on its own runner, and anything it left there
   would run with later steps on that runner. The review job starts clean, like ship.
-- **Their instructions come from the workflow's own commit**, not the change. The pull
-  request's files are laid out under `.autopilot-review/head/` as data, with every
+- **Their instructions come from the workflow's own commit**, not the change. The change's
+  files are laid out under `.autopilot-review/head/` as data, with every
   `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, `.claude/` and `.agents/` removed, so a change cannot
   brief its own reviewer. Changes to those files are still in the diff they read.
 - **They can only read.** Read, Grep and Glob; Bash, Write and Edit are refused by name; the
-  job's token is read-only; nothing from the pull request is executed.
+  job's token is read-only; nothing from the change is executed.
 - **They never see the Slack request.** They judge the code against the store's rules, which
   removes the one route by which somebody typing in Slack could talk a reviewer into passing
   something.
@@ -157,18 +178,23 @@ tier. What the reviewers add is a short list of lines to read first. The decisio
 `.github/scripts/autopilot-review.mjs`, tested by `autopilot-review.test.mjs`.
 
 **CI on these pull requests.** GitHub starts no workflow from a pull request opened with the
-workflow's own token, so ship starts CI on tier A and B pull requests itself. Tier C does not
-get one started, because a dispatched run uses the workflow files on the branch and tier C is
-the only tier that can change them; CI runs on tier C when a person pushes to it.
+workflow's own token, so ship starts CI on tier A and B pull requests itself. The builder runs
+`tsc`, lint and the blank-env build as a self-check in the build job, which holds
+`ANTHROPIC_API_KEY` [R .github/workflows/slack-autopilot.yml:193-238]. Independent CI runs
+the gates again on a separate runner without the autopilot secrets
+[R .github/workflows/ci.yml:28-44]. The review and ship jobs never execute candidate code;
+they read the bundle as data and run scripts from the workflow's own commit
+[R .github/workflows/slack-autopilot.yml:308-427,435-480]. Tier C does not get CI started by
+ship; CI runs on tier C when a person pushes to it.
 
-What it costs: the reviewers run only when a request produced a pull request, never on an idle
+What it costs: the reviewers run only when a request produced a commit, never on an idle
 sweep. Each is one `claude-sonnet-5` run of at most 30 turns.
 
 ## What it costs
 
 The expensive things are the model and `npm ci`, in that order. **Neither runs on a sweep
-that finds nothing.** The workflow's step order is checkout, ask Slack, and only then install
-and build, so an idle sweep is a few seconds of Actions time and no model tokens.
+that finds nothing.** The first job is checkout and ask Slack; every other job waits for it to
+find work, so an idle sweep is a few seconds of Actions time and no model tokens.
 
 This is the specific mistake that killed the Jira version, and it is worth recording
 precisely because it was originally diagnosed wrong. That loop had the model correctly gated
@@ -194,7 +220,7 @@ In **Settings, Secrets and variables, Actions**:
 |---|---|---|
 | `ANTHROPIC_API_KEY` | secret | Already set; the same key the app's AI features use |
 | `SLACK_BOT_TOKEN` | secret | A bot token, starting `xoxb-`. Set 2026-08-13 |
-| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch. **Not set as of 2026-10-30**; this is the one thing stopping it |
+| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch. Set 2026-10-30 to the workspace's general channel, where the bot is a member |
 | `SLACK_REQUIRE_MENTION` | **variable**, optional | Defaults to requiring the bot to be named. `false` only for a requests-only channel |
 
 **The bot token is not the incoming webhook, and it is not a refresh token.** Two different
