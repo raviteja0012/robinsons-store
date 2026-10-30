@@ -100,7 +100,8 @@ If you make a channel that exists solely for requests, set the variable
 ## What it will not do
 
 - **Push a change to the automation.** A change that touches `.github/` or `.claude/` never
-  reaches the repository. The card says a person has to make it.
+  reaches the repository, and neither does one that moves a file out of them or was not built
+  on the base commit the run started from. The card says a person has to look.
 - **Merge anything but words.** It opens a draft pull request, and a script labels it with how
   far it may go: `tier-a` words only, `tier-b` the app, `tier-c` money, logins, the database or
   the automation. Only tier A merges itself, after the checks pass, and only while the
@@ -119,7 +120,7 @@ The run is four jobs, and the pull request opens only after the review:
 
 | Job | Runner | Holds | Does |
 |---|---|---|---|
-| **find** | its own | the Slack token | asks the channel for work and posts the first card; no model |
+| **find** | its own | the Slack token | asks the channel for work, reads the base commit the build starts from, and posts the first card; no model |
 | **build** | its own | the Anthropic key, a read-only token | the model builds and commits; the commit leaves as a git bundle |
 | **review** | fresh | the Anthropic key, a read-only token | two read-only reviewers read the bundle |
 | **ship** | fresh | the Slack token, a write token | reads the bundle again, stops a change to the automation, labels the tier, pushes the branch, opens the draft pull request, merges tier A if allowed, updates the card |

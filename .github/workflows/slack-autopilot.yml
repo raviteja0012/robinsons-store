@@ -100,6 +100,7 @@ jobs:
       ts: ${{ steps.find.outputs.ts }}
       request: ${{ steps.find.outputs.request }}
       base: ${{ steps.base.outputs.branch }}
+      base_sha: ${{ steps.base.outputs.sha }}
     steps:
       - name: Check the setup is there
         id: gate
@@ -130,15 +131,23 @@ jobs:
           ONE_MESSAGE_TS: ${{ inputs.message_ts }}
         run: node .github/scripts/slack-find-work.mjs
 
+      # The branch and the exact commit the build starts from, read here, before the model
+      # runs. review and ship refuse a change that does not sit on top of this commit.
       - name: Decide where this should land
         id: base
         if: steps.find.outputs.found == 'true'
         run: |
+          branch=main
           if git ls-remote --exit-code --heads origin develop >/dev/null 2>&1; then
-            echo "branch=develop" >> "$GITHUB_OUTPUT"
-          else
-            echo "branch=main" >> "$GITHUB_OUTPUT"
+            branch=develop
           fi
+          sha=$(git ls-remote --exit-code origin "refs/heads/$branch" | cut -f1)
+          if [ -z "$sha" ]; then
+            echo "::error::Could not read the tip of $branch."
+            exit 1
+          fi
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       # The first draw of the status card. Everything after this point, including workflows
       # that run hours later, edits this same card rather than adding messages.
@@ -170,10 +179,10 @@ jobs:
       packed: ${{ steps.pack.outputs.packed }}
       says: ${{ steps.says.outputs.text }}
     steps:
-      # The base the change will be judged against, so the diff is only the builder's work.
+      # The base commit find read, so the diff is only the builder's work.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.find.outputs.base }}
+          ref: ${{ needs.find.outputs.base_sha }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -305,6 +314,7 @@ jobs:
       contents: read
     env:
       BASE: ${{ needs.find.outputs.base }}
+      BASE_SHA: ${{ needs.find.outputs.base_sha }}
     outputs:
       reviewed: ${{ steps.layout.outputs.ready }}
       sha: ${{ steps.layout.outputs.sha }}
@@ -327,7 +337,7 @@ jobs:
       # A change the guard stops is never pushed, so it is not reviewed either.
       - name: What changed
         id: change
-        run: node .github/scripts/autopilot-change.mjs "$RUNNER_TEMP/change/change.bundle" "$BASE"
+        run: node .github/scripts/autopilot-change.mjs "$RUNNER_TEMP/change/change.bundle" "$BASE" "$BASE_SHA"
 
       - name: Lay out the change for the reviewers
         id: layout
@@ -434,6 +444,7 @@ jobs:
     env:
       BRANCH: claude/slack-${{ needs.find.outputs.ts }}
       BASE: ${{ needs.find.outputs.base }}
+      BASE_SHA: ${{ needs.find.outputs.base_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -451,7 +462,7 @@ jobs:
       - name: What changed
         id: change
         if: needs.build.outputs.packed == 'true'
-        run: node .github/scripts/autopilot-change.mjs "$RUNNER_TEMP/change/change.bundle" "$BASE"
+        run: node .github/scripts/autopilot-change.mjs "$RUNNER_TEMP/change/change.bundle" "$BASE" "$BASE_SHA"
 
       # The tier is decided on the exact commit that will be pushed, CI checks and the merge
       # is pinned to, against the base the pull request will have.

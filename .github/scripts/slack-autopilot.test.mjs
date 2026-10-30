@@ -92,8 +92,9 @@ t("build: holds only the Anthropic key and its own token",
   buildSecrets.every((s) => ["ANTHROPIC_API_KEY", "GITHUB_TOKEN"].includes(s)), buildSecrets.join(", "));
 t("build: nothing Slack is on this runner at all", !/SLACK/.test(build.text));
 t("build: no step pushes or calls GitHub", !build.steps.some((s) => /\bgit push\b|\bgh\s/.test(s.text)));
-t("build: starts from the base it will be judged against",
-  /^ {10}ref: \$\{\{ needs\.find\.outputs\.base \}\}$/m.test(build.steps.find((s) => /actions\/checkout@/.test(s.text))?.text || ""));
+t("build: starts from the base commit find read",
+  /^ {10}ref: \$\{\{ needs\.find\.outputs\.base_sha \}\}$/m.test(build.steps.find((s) => /actions\/checkout@/.test(s.text))?.text || ""));
+t("find: reads the base commit before the build", /^ {6}base_sha: \$\{\{ steps\.base\.outputs\.sha \}\}$/m.test(find.headerText));
 const at = build.steps.findIndex((s) => s.name === "Build it");
 t("build: the build step is found", at >= 0);
 t("build: the builder is told not to push", /Do NOT push and do NOT open a pull request/.test(build.steps[at]?.text || ""));
@@ -127,6 +128,9 @@ for (const name of ["review", "ship"]) {
   t(`${name}: downloads the bundle`, download > 0);
   t(`${name}: reads it with autopilot-change.mjs, after the download`,
     change > download && nodeRuns(j.steps[change] || { text: "" }).includes(".github/scripts/autopilot-change.mjs"));
+  t(`${name}: requires the change to sit on the base commit find read`,
+    /autopilot-change\.mjs "[^"]+" "\$BASE" "\$BASE_SHA"/.test(j.steps[change]?.text || "") &&
+    /^ {6}BASE_SHA: \$\{\{ needs\.find\.outputs\.base_sha \}\}$/m.test(j.headerText));
 }
 
 // review: reads only, reads the bundle (not a pull request), and strips the change's agent files.

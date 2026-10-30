@@ -89,7 +89,8 @@ change to it rewrites the next run's rules (ADR-002).
 on 2026-10-30). The model builds in a job that holds the Anthropic key and a read-only token
 and nothing else. It cannot push; its commit leaves the runner as a git bundle. A later job
 on a fresh runner checks out the workflow's own commit, fetches the bundle as data, refuses
-any change to `.github/` or `.claude/`, runs the classifier on that commit against the base
+any change to `.github/` or `.claude/` (a file moved out of them included) and any commit not
+built on the base commit read before the build, runs the classifier on that commit against the base
 the run chose, pushes the branch, opens the draft pull request, labels it `tier-a`, `tier-b`
 or `tier-c`, and comments the reason. Nothing the model left on its runner reaches that job.
 For tier A, and only while the repository variable `AUTOMERGE_TIER_A` is `true`, it starts CI

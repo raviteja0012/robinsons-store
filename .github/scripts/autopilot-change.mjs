@@ -10,7 +10,15 @@
 // cannot edit the automation (docs/LOOP_ENGINEERING.md), and keeping workflow files off
 // these branches is also what makes it safe for ship to start CI on them.
 //
-// Usage: node autopilot-change.mjs <bundle> <base-branch>
+// Two ways a diff can hide a path, both closed here:
+//   - A rename lists only its new name, so a file moved out of .github/ would read as a docs
+//     change. --no-renames lists both sides, as the classifier does.
+//   - A three-dot diff starts at the merge base. A commit built on an OLDER base would carry
+//     that older .github/ in its tree while its diff looks clean. So the commit must sit on
+//     top of the base commit the find job read before the build started, and that commit
+//     must still be in the base branch's history.
+//
+// Usage: node autopilot-change.mjs <bundle> <base-branch> <base-commit>
 //   Run inside the checkout. Fetches origin/<base-branch>, stores the bundle's HEAD at
 //   refs/autopilot/change and writes sha, files, changed and guard to GITHUB_OUTPUT. guard
 //   is written last and only after everything else worked, so a failure anywhere leaves it
@@ -30,13 +38,22 @@ export function guardFor(files) {
 
 const git = (args, cwd) => execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
 
-/** Fetch the base and the bundle, and say what changed. Throws if either cannot be read. */
-export function readChange(bundle, base, cwd = process.cwd()) {
+/**
+ * Fetch the base and the bundle, and say what changed. Throws if either cannot be read, or
+ * if the change does not sit on top of `from`, the base commit the run started from.
+ */
+export function readChange(bundle, base, from, cwd = process.cwd()) {
   if (!/^[\w./-]+$/.test(base) || base.startsWith("-")) throw new Error(`Not a branch name: ${base}`);
+  if (!/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(from || "")) throw new Error(`Not a commit: ${from}`);
   git(["fetch", "--no-tags", "--quiet", "origin", `+refs/heads/${base}:refs/remotes/origin/${base}`], cwd);
   git(["-c", "fetch.fsckObjects=true", "fetch", "--no-tags", "--quiet", bundle, `+HEAD:${REF}`], cwd);
   const sha = git(["rev-parse", "--verify", `${REF}^{commit}`], cwd).trim();
-  const files = git(["diff", "--name-only", "-z", `origin/${base}...${sha}`], cwd).split("\0").filter(Boolean);
+  // Each exits non-zero, and so throws, when the first commit is not an ancestor of the second.
+  git(["merge-base", "--is-ancestor", from, `origin/${base}`], cwd);
+  git(["merge-base", "--is-ancestor", from, sha], cwd);
+  const files = git(["diff", "--no-renames", "--no-ext-diff", "--name-only", "-z", `origin/${base}...${sha}`], cwd)
+    .split("\0")
+    .filter(Boolean);
   return { sha, files, changed: files.length > 0, guard: guardFor(files) };
 }
 
@@ -47,12 +64,12 @@ function out(key, value) {
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  const [bundle, base] = process.argv.slice(2);
-  if (!bundle || !base) {
-    console.log("Usage: node autopilot-change.mjs <bundle> <base-branch>");
+  const [bundle, base, from] = process.argv.slice(2);
+  if (!bundle || !base || !from) {
+    console.log("Usage: node autopilot-change.mjs <bundle> <base-branch> <base-commit>");
     process.exit(1);
   }
-  const change = readChange(bundle, base);
+  const change = readChange(bundle, base, from);
   out("sha", change.sha);
   out("files", change.files.length);
   out("changed", change.changed);
