@@ -53,8 +53,8 @@ Every name the code and workflows read. Values are never written here.
 
 | Name | Issued by | Set today, for | Notes |
 |---|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Production, Preview | Public by design. Preview points at the **live** database today; docs/ENVIRONMENTS.md moves Preview to the dev database |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Production, Preview | Public by design; the database policies protect the data |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Production | Public by design. Removed from Preview 2026-10-30 so previews cannot reach the live database; Preview gets the dev value in docs/ENVIRONMENTS.md step 3 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Production (Preview removed 2026-10-30) | Public by design; the database policies protect the data |
 | `NEXT_PUBLIC_REQUIRE_AUTH` | Set by hand | Production | `true` once login is enforced |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Production | Server only, bypasses the policies. Rotate if the developer leaves |
 | `ANTHROPIC_API_KEY` | Anthropic | Production, Preview | Also a GitHub secret. A-02 |
@@ -104,7 +104,7 @@ mailboxes: docs/DOMAIN_EMAIL.md.
 **Basis: 9 claims checked this session (2026-10-30), 9 confirmed, 0 killed, 2 sources.**
 Confirmed: the Vercel team name, slug and id; the project on that team; both domains and
 the custom one verified; every Vercel variable name and its targets, including Preview on the
-live database URL and no `CRON_SECRET`; the Anthropic key unchanged since 2026-05-29; no
+live database URL until it was removed from Preview the same day, and no `CRON_SECRET`; the Anthropic key unchanged since 2026-05-29; no
 October charges on the Vercel team; the repository at `robinsons-store/robinsons-store` with
 `main` protected; no `develop` branch. The Supabase plan and admin@'s role are carried from
 the 2026-10-25 and 2026-10-30 reads by the developer and stay `[D]`, because the Supabase

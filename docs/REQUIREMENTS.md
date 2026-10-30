@@ -163,7 +163,7 @@ OPEN (waiting on the owner):
   docs/HANDOVER.md: Supabase and Vercel on Pro (A-01, closes PLATFORM.md risks 1 and 2), the
   original keys reissued (A-02), and a second owner on GitHub (A-05).
 - Dev environment (asked 2026-07-31). Workflows built, environment not on: no dev database
-  and no develop branch, and pull request previews read the live database until it is. Six
+  and no develop branch; pull request previews run with no database until it is. Six
   steps in docs/ENVIRONMENTS.md; the first needs admin@ to create the dev Supabase project.
 - Confirm the domain renewed. robinsonsgeneralstore.ca was due on 2026-10-16 with auto-renew
   confirmed on, but the renewal itself has not been seen. Check the Vianet panel and record

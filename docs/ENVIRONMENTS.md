@@ -3,9 +3,10 @@
 Status: ACCEPTED, 2026-10-30. Owner: the developer. Approver: Ravi Kiran.
 
 **Production is BUILT. The dev environment is not: there is no `develop` branch and no dev
-database yet [V-run, GitHub list_branches, 2026-10-30], and every pull request preview reads
-and writes the live database today [V-run, Vercel filter_project_envs: the Supabase URL and
-key target Production and Preview, 2026-10-30].** The workflows that run dev are built and
+database yet [V-run, GitHub list_branches, 2026-10-30]. Until 2026-10-30 every pull request
+preview read and wrote the live database; the Supabase URL and key are now Production only
+[V-run, Vercel edit_project_env, 2026-10-30], so a preview opens with no database until dev
+exists.** The workflows that run dev are built and
 waiting. Three settings, done in the order below, turn it on. Asked for on 2026-07-31: build
 to a dev site first, test there with dummy data, and promote to production only when Ravi
 says yes.
@@ -45,9 +46,9 @@ follow a project's production branch. This replaces the 2026-07-31 plan of a sec
 tables as the real ledger, and a bad migration hitting both at once, is exactly what dev
 exists to prevent. A free second project costs nothing and keeps the two apart.
 
-**Every preview uses the dev database, not only `develop`.** Today a pull request preview
-can write to the store's real vendors and invoices. Once dev exists, Preview points at dev
-for every branch, so the live database is reachable only from the live site.
+**Every preview uses the dev database, not only `develop`.** A pull request preview could
+write to the store's real vendors and invoices until 2026-10-30. Once dev exists, Preview
+points at dev for every branch, so the live database is reachable only from the live site.
 
 Approval is a person running **Actions, Promote develop to production**: it opens and merges
 a `develop` to `main` pull request once the checks pass [R `.github/workflows/promote.yml:1-21`].
@@ -73,7 +74,7 @@ Do these in order. Until step 3, nothing changes for production or for the autop
 |---|---|---|---|
 | 1 | Create a Free organization and in it a project `robinsons-store-dev`, region Canada Central. Run `schema.sql`, then `seed.sql`, then `seed_dev.sql` in its SQL editor | admin@ | supabase.com |
 | 2 | Add repository secret `SUPABASE_DB_URL_DEV`: the dev project's **session pooler** URI on port 5432 (docs/SUPABASE_SETUP.md) | admin@ or the developer | GitHub, Settings, Secrets and variables, Actions |
-| 3 | In Vercel, project `robinsons-store`, Environment Variables: change `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to **Production only**, then add both again for **Preview** with the dev project's values, plus a dev `SUPABASE_SERVICE_ROLE_KEY` for Preview. Redeploy one preview and check its URL ends in the dev project ref | The developer | vercel.com |
+| 3 | In Vercel, project `robinsons-store`, Environment Variables: add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` for **Preview** with the dev project's values, plus a dev `SUPABASE_SERVICE_ROLE_KEY` for Preview. The production values were made Production only on 2026-10-30. Redeploy one preview and check its URL ends in the dev project ref | The developer | vercel.com |
 | 4 | Create branch `develop` from `main`. From here the Slack autopilot targets `develop`, and pushes there run the dev scripts | The developer | GitHub |
 | 5 | Add repository variable `DEV_URL` = `https://robinsons-store-git-develop-robinsons-store1.vercel.app` | The developer | GitHub, Settings, Variables |
 | 6 | Let Ravi open the dev site. Either add him to the Vercel team (preview addresses require a Vercel login), or add domain `dev.robinsonsgeneralstore.ca` to the project for branch `develop` and ask Vianet for its CNAME by phone; custom domains skip the login | Ravi Kiran | vercel.com, Vianet |
@@ -98,7 +99,8 @@ docs/SUPABASE_SETUP.md. The automation that targets `develop`: docs/LOOP_ENGINEE
 docs/SLACK_AUTOPILOT.md. Services and plans: docs/PLATFORM.md.
 
 **Basis: 5 claims checked this session (2026-10-30), 5 confirmed, 0 killed, 3 sources.**
-Confirmed: no `develop` branch; the Supabase URL and key target Production and Preview; the
+Confirmed: no `develop` branch; the Supabase URL and key targeted Production and Preview,
+and were made Production only; the
 team slug `robinsons-store1` that the dev address is built from; the promotion workflow is
 started by hand only; migrate picks `SUPABASE_DB_URL_DEV` on `develop` and runs the guard
 first [R `.github/workflows/migrate.yml:66-106`]. Not checked: Vercel's cron-on-production

@@ -74,7 +74,7 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 
 | Service | Does what | Plan | Notes |
 |---|---|---|---|
-| **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby unless confirmed otherwise, see risk 1** | Team `robinsons-store1`, project `robinsons-store`. Preview deploys per PR; they read the live database until dev exists (ENVIRONMENTS.md) |
+| **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby unless confirmed otherwise, see risk 1** | Team `robinsons-store1`, project `robinsons-store`. Preview deploys per PR, with no database until dev exists (ENVIRONMENTS.md) |
 | **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free as of 2026-10-30, see risk 2** | ca-central Toronto. RLS per store per role. A second, Free project for dev is step 1 of ENVIRONMENTS.md |
 | **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | Stores in the US; what each route sends is in "What leaves Canada" below. Default model claude-sonnet-5. $5 to $40 a month by volume |
 | **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set. No Canadian region, see "What leaves Canada" |

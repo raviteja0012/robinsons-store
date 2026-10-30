@@ -138,8 +138,7 @@ Copied from docs/REQUIREMENTS.md [R docs/REQUIREMENTS.md:41]:
 - **Dev then production (SCAFFOLDED):** the design is `develop` to a dev site and dummy
   database, `main` to production [R docs/ENVIRONMENTS.md:13-35]. The workflows exist but stay
   inert until a `develop` branch and `SUPABASE_DB_URL_DEV` exist [R docs/ENVIRONMENTS.md:68-81],
-  so today changes go to `main`, and pull request previews read the live database. Treat a
-  preview as production.
+  so today changes go to `main`, and pull request previews open with no database.
 - **Watched (BUILT):** "Post-deploy watch" runs after CI on `main` and every two hours, and
   asks the live site `/api/health` [R .github/workflows/post-deploy-watch.yml:17]
   [R .github/workflows/post-deploy-watch.yml:22]. It checks `PRODUCTION_URL`, the custom

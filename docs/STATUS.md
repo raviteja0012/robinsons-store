@@ -19,8 +19,9 @@ Accounts moved, docs brought up to date, dev environment planned, 2026-10-30:
   answered "not found" since the move. They now ask the store's team, or `VERCEL_TEAM_ID`
   when that variable is set.
 - Dev environment: still not on (no `develop` branch, no dev database). Found today: every
-  pull request preview reads and writes the live database, because the Supabase URL and key
-  target Preview as well as Production. docs/ENVIRONMENTS.md is rewritten around one Vercel
+  pull request preview read and wrote the live database, because the Supabase URL and key
+  targeted Preview as well as Production. Both are now Production only, so a preview opens
+  with no database until dev exists. docs/ENVIRONMENTS.md is rewritten around one Vercel
   project (Preview becomes dev) instead of two, with six steps to turn it on; step 1, the dev
   Supabase project, needs admin@.
 
