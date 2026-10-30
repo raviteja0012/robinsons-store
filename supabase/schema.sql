@@ -277,6 +277,24 @@ create table ai_call (
 );
 create index ai_call_store_day_idx on ai_call(store_id, created_at);
 
+-- Which questions each department's vendor and invoice forms ask, as chosen on the
+-- Department fields screen. No rows means the code lists in src/lib/vendorFields.ts and
+-- src/lib/invoiceFields.ts apply unchanged. Fresh installs get this here; existing databases
+-- get the identical table and its login-on policies from supabase/department_field.sql.
+create table department_field (
+  id uuid primary key default gen_random_uuid(),
+  store_id uuid not null references store(id),   -- multi-store
+  department_id uuid not null references department(id),
+  form text not null check (form in ('vendor','invoice')),
+  field_key text not null,
+  asked boolean not null,
+  updated_by uuid references app_user(id),
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now(),
+  unique (department_id, form, field_key)
+);
+create index department_field_store_idx on department_field(store_id);
+
 -- Reserve one call under the store's daily cap, or refuse it, counting and inserting under a
 -- per-store lock so parallel requests cannot all fit. Definer: members write only through
 -- this and ai_call_finish, and only the owner reads the rows. A signed-in caller always uses

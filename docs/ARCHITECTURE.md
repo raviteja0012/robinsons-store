@@ -47,7 +47,7 @@ also see money [R src/lib/auth.ts:38-40]. The four roles are `staff`, `lead`, `m
 
 What it touches: the store's vendor ledger, orders, invoices, payments, receiving records,
 inventory counts, maintenance, compliance and HR records, all in one Postgres database
-[R supabase/schema.sql:7-660].
+[R supabase/schema.sql:7-678].
 
 Question: which outside services does the store's app depend on, and for what?
 
@@ -211,9 +211,9 @@ The nine API routes. All BUILT; each exports `preferredRegion = "yul1"`:
 | `/api/reorder` | Plain-language summary of the formula reorder list | Money roles once login is enforced | [R src/app/api/reorder/route.ts:12, 33] |
 | `/api/feedback-triage` | Describes a screenshot attached to a suggestion into `feedback_summary`, which opens to the people who may open the screenshot (ADR-005) | Signed-in member who may open the screenshot | [R src/app/api/feedback-triage/route.ts:30, 56, 85-89] |
 | `/api/alerts` | Daily due-date email of unpaid and partially paid invoices; guarded by `CRON_SECRET` | The Vercel cron | [R src/app/api/alerts/route.ts:12, 23-44, 53-54] [R vercel.json:3-5] |
-| `/api/health` | Pass or fail on database reachability, the owed-total rule, the payment engine, status drift and required columns; never returns a dollar figure | Anyone; detail only with `CRON_SECRET` | [R src/app/api/health/route.ts:11, 22-24, 148-258] |
+| `/api/health` | Pass or fail on database reachability, the owed-total rule, the payment engine, status drift and required columns and tables; never returns a dollar figure | Anyone; detail only with `CRON_SECRET` | [R src/app/api/health/route.ts:11, 22-24, 75-77, 157-293] |
 | `/api/import` | Loads the bookings, schedule or inventory workbook | Owner or manager | [R src/app/api/import/route.ts:14, 450-451] |
-| `/api/export` | One Excel workbook, a tab per table | Owner or manager | [R src/app/api/export/route.ts:10, 83] |
+| `/api/export` | One Excel workbook, a tab per table, including department field choices | Owner or manager | [R src/app/api/export/route.ts:60, 75-76, 90-104] |
 | `/api/admin/users` | Creates and removes staff logins with the service role, forced to the caller's store | Owner or manager | [R src/app/api/admin/users/route.ts:8, 32, 69, 139] |
 
 AI routes: default model `claude-sonnet-5`, `ANTHROPIC_MODEL` overrides; no temperature is
@@ -368,7 +368,7 @@ Beside the status:
   than overdue [R src/app/overdue/page.tsx:46-47, 149-153]. The daily email covers `unpaid`
   and `partially_paid` only [R src/app/api/alerts/route.ts:53-54].
 - Voided invoice: `voided_at` set by `voidRow`; the row drops out of every list
-  [R src/lib/edit.ts:17-22] [R supabase/schema.sql:666-681].
+  [R src/lib/edit.ts:17-22] [R supabase/schema.sql:781-797].
 - Credit notes (`pending`, `applied`, `disputed`) do not change the status or the owed
   total; the engine never reads `credit_note` [R supabase/schema.sql:207-217]
   [R supabase/payments_v2.sql:105-117]. See ARCH-08.
@@ -436,7 +436,12 @@ block: the owner reads it, and nobody writes it except through its two functions
 [R supabase/auth_setup.sql:135-157]. `feedback_summary`, the AI's description of a suggestion
 screenshot, is store-scoped in section 3g and opens by the screenshot's rule (ADR-005)
 [R supabase/auth_setup.sql:658-716]. `ai_call.sql` runs just before `money_by_role.sql`
-[R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
+[R supabase/run-order.txt:26-27]. `department_field`, the Department fields screen's ticks, is store-scoped
+[R supabase/schema.sql:284-296]. Every member reads it; only the owner inserts or updates it for a
+department of their own store, and nothing deletes it [R supabase/auth_setup.sql:159-196].
+Its migration applies the same policies itself when login is on
+[R supabase/department_field.sql:36-67] and is the last script in the run order
+[R supabase/run-order.txt:30]. A new table needs a policy in `schema.sql`, in
 `auth_setup.sql` (3a, or 3e if it holds a dollar figure), and in a migration for live
 databases [R CLAUDE.md:33-35].
 
@@ -514,7 +519,7 @@ docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
 
 - Row-level security, repository default: a fresh install from `schema.sql` gets the open
   demo policy set (`dev_all`, anon read and write on every table) and a public `documents`
-  bucket [R supabase/schema.sql:683-712]. BUILT, for demos only.
+  bucket [R supabase/schema.sql:823-852]. BUILT, for demos only.
 - Row-level security, production: the cutover in `auth_setup.sql` is applied: 21
   `member_store_rw` policies, no open dev policies, the `documents` bucket private, one login
   account [R docs/STATUS.md:495-498]. That was read live on 2026-10-18 and not re-read
@@ -526,7 +531,7 @@ docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
   the member-facing API routes require a valid session and query as the caller
   [R src/lib/serverMember.ts:3-10, 35-50]. Two routes are exceptions by design: `/api/health`
   answers anyone and gives detail only with `CRON_SECRET`, and `/api/alerts` takes the cron
-  secret instead of a session [R src/app/api/health/route.ts:118-121]
+  secret instead of a session [R src/app/api/health/route.ts:127-130]
   [R src/app/api/alerts/route.ts:22-24]. Its production value was not read this session
   [Q: the developer, confirm it is `true` in Vercel production].
 - Roles and money: `canSeeMoney` lets `lead`, `manager`, `owner` see costs and amounts, and
@@ -586,7 +591,7 @@ docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
 - Service role key: server-side only, used by `/api/admin/users`, `/api/import`,
   `/api/alerts`, `/api/health` [R src/app/api/admin/users/route.ts:32]
   [R src/app/api/import/route.ts:381] [R src/app/api/alerts/route.ts:35]
-  [R src/app/api/health/route.ts:112].
+  [R src/app/api/health/route.ts:121].
 - PIPEDA and staff data: no AI route queries the employee, pay rate or shift tables; Ask and
   reorder read notes, vendors, invoices and orders [R src/app/api/ask/route.ts:45-58]
   [R src/app/api/reorder/route.ts:44-46]. BUILT. Staff data can still reach Anthropic as
