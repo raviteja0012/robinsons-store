@@ -15,7 +15,7 @@
 --      automatically, by email. Re-run it any time you add more accounts (it is idempotent).
 --   4. Set NEXT_PUBLIC_REQUIRE_AUTH=true in Vercel and redeploy.
 --
--- supabase/money_by_role_test.sql checks the role and store fences on a disposable database.
+-- supabase/money_by_role_test.sql, documents_by_role_test.sql, feedback_summary_test.sql test it.
 -- TEST BEFORE TRUSTING: sign in as one owner and one staff and confirm staff cannot read
 -- another store's rows and cannot see costs. RLS is only as good as its test.
 --
@@ -654,6 +654,105 @@ create policy "documents_save" on storage.objects
   for insert
   to authenticated
   with check (bucket_id = 'documents' and app_auth.can_save_document(name));
+
+-- 3g. Screenshot descriptions follow the screenshot (docs/adr/ADR-005-screenshot-descriptions-follow-the-screenshot.md).
+-- When a suggestion has a screenshot, /api/feedback-triage has the AI describe it and saves the
+-- text in public.feedback_summary, not on the suggestion, which every member of the store reads
+-- (3a). A description opens to lead, manager and owner of its store, and to the member who
+-- attached the screenshot: the people who may open a suggestion screenshot (3f). The table and
+-- the move of older descriptions off feedback.ai_summary are the same as in
+-- supabase/feedback_summary.sql, which applies this section to a live database: change both
+-- together. supabase/feedback_summary_test.sql checks it.
+
+-- screenshot_path is the stored file the description was read from, kept on this row so that
+-- who may read the description follows that file, whatever later happens to the suggestion.
+create table if not exists public.feedback_summary (
+  id uuid primary key default gen_random_uuid(),
+  feedback_id uuid not null unique references public.feedback(id),
+  store_id uuid references public.store(id),
+  screenshot_path text,
+  summary text not null,
+  created_at timestamptz default now()
+);
+create index if not exists feedback_summary_store_idx on public.feedback_summary(store_id);
+alter table public.feedback_summary enable row level security;
+
+-- Copies any description saved on feedback.ai_summary before this table existed into it, once,
+-- dated now, then drops that column.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'feedback' and column_name = 'ai_summary'
+  ) then
+    insert into public.feedback_summary (feedback_id, store_id, screenshot_path, summary)
+      select f.id, f.store_id, f.screenshot_path, f.ai_summary
+      from public.feedback f
+      where nullif(btrim(f.ai_summary), '') is not null
+      on conflict (feedback_id) do nothing;
+    alter table public.feedback drop column ai_summary;
+  end if;
+end $$;
+
+-- Whether the signed-in member may read the description of this screenshot: a member of the
+-- description's store who sees money, or who may open the screenshot itself, which for a
+-- suggestion file means the member who attached it (3f). Only the file saved under that name by
+-- the time the description was saved counts, so a file saved later under the same name does not
+-- carry it. A description with no screenshot named opens to the money roles only.
+create or replace function app_auth.can_read_screenshot_summary(
+  summary_store uuid, path text, written_at timestamptz)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    summary_store = app_auth.my_store_id()
+    and (app_auth.can_see_money()
+      or app_auth.can_open_document(path,
+        (select o.owner_id from storage.objects o
+         where o.bucket_id = 'documents' and o.name = path and o.created_at <= written_at))),
+    false);
+$$;
+revoke execute on function app_auth.can_read_screenshot_summary(uuid, text, timestamptz)
+  from public, anon;
+grant execute on function app_auth.can_read_screenshot_summary(uuid, text, timestamptz)
+  to authenticated;
+
+-- Whoever may read a description may write it, for the suggestion it belongs to and the file that
+-- suggestion names, dated no later than now, so the reader runs as the member who asked for it.
+-- No policy lets a member remove one.
+drop policy if exists dev_all on public.feedback_summary;
+drop policy if exists member_store_rw on public.feedback_summary;
+drop policy if exists feedback_summary_read on public.feedback_summary;
+drop policy if exists feedback_summary_save on public.feedback_summary;
+drop policy if exists feedback_summary_resave on public.feedback_summary;
+create policy feedback_summary_read on public.feedback_summary
+  for select
+  to authenticated
+  using (app_auth.can_read_screenshot_summary(store_id, screenshot_path, created_at));
+create policy feedback_summary_save on public.feedback_summary
+  for insert
+  to authenticated
+  with check (app_auth.can_read_screenshot_summary(store_id, screenshot_path, created_at)
+    and created_at <= now()
+    and exists (
+      select 1 from public.feedback f
+      where f.id = feedback_summary.feedback_id
+        and f.store_id = feedback_summary.store_id
+        and f.screenshot_path = feedback_summary.screenshot_path));
+create policy feedback_summary_resave on public.feedback_summary
+  for update
+  to authenticated
+  using (app_auth.can_read_screenshot_summary(store_id, screenshot_path, created_at))
+  with check (app_auth.can_read_screenshot_summary(store_id, screenshot_path, created_at)
+    and created_at <= now()
+    and exists (
+      select 1 from public.feedback f
+      where f.id = feedback_summary.feedback_id
+        and f.store_id = feedback_summary.store_id
+        and f.screenshot_path = feedback_summary.screenshot_path));
 
 -- 4. Link Supabase Auth accounts to app_user rows BY EMAIL. Run this AFTER you create each
 -- account in Authentication, Users with the same email as the app_user row (the demo emails are

@@ -225,7 +225,7 @@ create index credit_note_invoice_idx on credit_note(invoice_id);
 
 -- Owner suggestion box: ideas, problems, and screenshots land here instead of WhatsApp.
 -- Fresh installs get this here; existing databases get the identical table from
--- supabase/feedback.sql. ai_summary holds what the AI read off an attached screenshot.
+-- supabase/feedback.sql.
 create table feedback (
   id uuid primary key default gen_random_uuid(),
   store_id uuid references store(id),   -- multi-store
@@ -235,7 +235,6 @@ create table feedback (
   body text,
   screenshot_path text,     -- storage path under <store_id>/feedback/ in the documents bucket
   audio_path text,          -- voice recording path under <store_id>/feedback/
-  ai_summary text,
   status text not null default 'new' check (status in ('new','planned','done','declined')),
   created_at timestamptz default now(),
   voided_at timestamptz,
@@ -243,6 +242,20 @@ create table feedback (
 );
 create index feedback_store_idx on feedback(store_id);
 create index feedback_status_idx on feedback(status);
+
+-- What the AI read off a suggestion's screenshot, one row per suggestion. Kept apart from the
+-- suggestion because, once login is enforced, it opens only to the people who may open the
+-- screenshot (auth_setup.sql 3g). screenshot_path is the file it was read from. Existing
+-- databases get the identical table from supabase/feedback_summary.sql.
+create table feedback_summary (
+  id uuid primary key default gen_random_uuid(),
+  feedback_id uuid not null unique references feedback(id),
+  store_id uuid references store(id),   -- multi-store
+  screenshot_path text,
+  summary text not null,
+  created_at timestamptz default now()
+);
+create index feedback_summary_store_idx on feedback_summary(store_id);
 
 -- One row per AI model call, for the daily per-store cap (src/lib/aiUsage.ts). Metadata
 -- only: never the prompt, the store data sent with it, or the answer. Fresh installs get
