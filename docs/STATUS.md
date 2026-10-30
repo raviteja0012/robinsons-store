@@ -4,6 +4,12 @@ Single source for the current state of the build: what is done, what is verified
 
 Last updated: 2026-10-25, on branch claude/architecture-ai-call-ruleset (latest: the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
+Product direction recorded, 2026-10-30 (branch agent-skills-setup):
+- CLAUDE.md, the robinsons-store skill and REQUIREMENTS.md now say the app is being built
+  to sell to other independent stores, with the rules that follow and the single-store
+  spots still in code (store name in five places, the Ontario tax lookup, the department
+  sequence). Docs only; no code changed.
+
 Agent tooling, 2026-10-30 (branch agent-skills-setup):
 - AGENTS.md at the root points Codex and other agents at CLAUDE.md and the robinsons-store
   skill, so every agent follows one set of rules. CLAUDE.md lists the skills, reviewers, MCP

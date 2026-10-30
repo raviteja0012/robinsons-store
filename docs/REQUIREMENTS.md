@@ -20,6 +20,14 @@ voice notes, and annotated Excel workbooks. Roles: owner, manager, lead, staff. 
 leads never see dollar figures (leads do: see canSeeMoney; staff never). One store today,
 multi-store built in.
 
+Product direction, 2026-10-30: Robinsons is the first store of a product meant to be sold to
+other independent stores. Agreed rules: a change works for any store; store-specific facts
+live in store data or settings; one store's request becomes a setting for all or waits;
+onboarding a store needs no code change. Open, to fix when touched: the store name in the
+Ask prompt, app guide, page title, login and AppShell fallback; capture's tax lookup fixed
+to region "Ontario" with HST_RATE as fallback; the department sequence in
+src/lib/departments.ts. Recorded in the robinsons-store skill, "Product direction".
+
 What the world knows about the store (researched 2026-07-27; sources: Discover Muskoka,
 1000 Towns of Canada, Tripadvisor, Yelp, BayToday, dorsetcanada.com):
 - A century-old landmark: family-run from 1921 until the recent sale to the current owner;

@@ -17,6 +17,17 @@ Store facts:
 
 The full plan with evidence, pricing, and citations is in robinsons_store_build_spec.md. Read it for depth. This skill is the working summary plus the rules and the playbooks to apply on every task.
 
+## Product direction (2026-10-30)
+Robinsons General Store is the first store, not the only one. The app is being built to sell to other independent stores. The store facts above are the first store's data, not the app's rules. On every change:
+- It must work for a store that is not Robinsons. Store-specific facts (name, address, branding, departments and their order, vendor and invoice questions, tax region, licences) belong in per-store data or settings, not in code.
+- A request from one store becomes a setting every store can use, or it waits. No per-store forks or branches.
+- Onboarding a store is data: a store row, its settings, its members. If it needs a code change, record the gap in docs/REQUIREMENTS.md.
+- One shared deployment and database; store scoping and RLS are the boundary between stores. The enterprise upgrade path below is still earned by real store count, not planned ahead.
+- Known single-store spots today. Move each into store data when you touch it, never add another:
+  - the store name in the Ask prompt (src/app/api/ask/route.ts), the app guide (src/lib/appGuide.ts), the page title (src/app/layout.tsx), the login plaque (src/app/login/page.tsx) and the AppShell fallback;
+  - the tax region: capture reads tax_rules for region "Ontario" (src/app/capture/page.tsx) and HST_RATE in src/lib/format.ts is the fallback; the store needs a region;
+  - the department sequence in src/lib/departments.ts.
+
 ## Locked architecture (do not re-debate)
 - Frontend and API: Next.js App Router on Vercel, TypeScript. Client components fetch with useEffect; route handlers under src/app/api do the AI calls.
 - Database, auth, storage: Supabase Postgres in a Canadian region (ca-central, Toronto), bundling Auth and Storage. pgvector is available but not used yet.

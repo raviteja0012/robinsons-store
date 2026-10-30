@@ -5,6 +5,12 @@ with Supabase Postgres/Auth/Storage (Toronto region) and the Anthropic API for e
 ask, reorder, and feedback triage. Non-technical owner; treat plain words in the UI as a
 feature.
 
+Product direction: Robinsons General Store is the first store, and the app is being built
+to sell to other independent stores. Every change must work for a store that is not
+Robinsons: store-specific facts go in per-store data or settings, never in code, and a
+request from one store becomes a setting for all or waits. The skill's "Product direction"
+section lists the single-store spots still in code.
+
 Read before building:
 - .claude/skills/robinsons-store/SKILL.md — the invariants; follow them on every change.
 - .claude/skills/robinsons-store/references/standards.md — how every doc, decision record and review is
