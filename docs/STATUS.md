@@ -47,16 +47,14 @@ Docs organized into one entry path, 2026-10-30:
   keep AI-written docs trustworthy. It also lists the Slack app manifest, which was missing.
 - The root README.md and CONTRIBUTING.md are rewritten. Both still described login, signed
   URLs and the confidence gate as to-do; CONTRIBUTING also called integer cents planned, CI
-  lint and build only, and the repository untested. They now route to the current docs, list
-  every CI step, and say that CI does not start by itself on pull requests into `develop`.
+  lint and build only, and the repository untested. They now route to the current docs and
+  list every CI step.
 - docs/LOOP_ENGINEERING.md: the watchdog runs after CI, not after the deploy; the Refine
   section no longer calls the parked Jira board the queue; Costs describes the Slack sweep;
   two improvement items no longer mention a ticket or a dev database still to build.
 - Pointers fixed: the standards path in ARCHITECTURE.md, docs/SOURCES.md in the skill and the
   build spec, the doc count in CLAUDE.md, the invariant count in VERIFICATION.md; a personal
   account name removed from two evidence lines. The build spec carries a history banner.
-- Left until the open pull requests merge, to avoid a conflict: one evidence line in
-  VERIFICATION.md still names the repository's old path.
 - Docs only; no code, schema, policy or workflow change. Tier C, because it edits CLAUDE.md,
   the skill, LOOP_ENGINEERING.md and an ADR: a person merges.
 
