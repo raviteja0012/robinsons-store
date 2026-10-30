@@ -2,7 +2,17 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch architecture-matches-code (latest: the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/ci-module-checks (latest: module checks and automation tests run in CI by convention, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Module checks and automation tests run in CI by convention, 2026-10-30:
+- CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops
+  at the first failure. "Automation rules" now runs every `.github/scripts/*.test.mjs` in a
+  loop instead of a hand-kept list. A new check or test needs no `ci.yml` edit.
+- `scripts/vendorfields-check` (the money-field gate) and `scripts/invoicefields-check` (the
+  department matrix) each gained a `run.sh` and now run on every pull request; before this
+  they ran only by hand. The `run.sh` contract is in the vendorfields-check README.
+- The checks already in CI with their own steps (extraction, Ask grounding, AI evals, AI
+  usage, import and export) are unchanged. Commit 2f4b1ea.
 
 Architecture diagrams corrected against the code, 2026-10-30:
 - An edge-by-edge check of the six diagrams in docs/ARCHITECTURE.md against main found arrows
