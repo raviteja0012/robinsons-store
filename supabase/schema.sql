@@ -233,8 +233,8 @@ create table feedback (
   kind text not null default 'idea' check (kind in ('idea','problem','question','praise')),
   page text,                -- which screen it is about, in the author's words
   body text,
-  screenshot_path text,     -- storage path under feedback/ in the documents bucket
-  audio_path text,          -- voice recording path under feedback/
+  screenshot_path text,     -- storage path under <store_id>/feedback/ in the documents bucket
+  audio_path text,          -- voice recording path under <store_id>/feedback/
   ai_summary text,
   status text not null default 'new' check (status in ('new','planned','done','declined')),
   created_at timestamptz default now(),

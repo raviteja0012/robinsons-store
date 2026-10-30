@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/gracious-mccarthy-lexvp5 (latest: money fenced by role at the database, below; before it the PR #88 promotion follow-up, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/gracious-mccarthy-lexvp5 (latest: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 PR #88 promotion follow-up, 2026-10-30:
 - Promotion records main before CI, fetches it again immediately before the merge, and
@@ -57,6 +57,24 @@ Docs organized into one entry path, 2026-10-30:
   account name removed from two evidence lines. The build spec carries a history banner.
 - Docs only; no code, schema, policy or workflow change. Tier C, because it edits CLAUDE.md,
   the skill, LOOP_ENGINEERING.md and an ADR: a person merges.
+
+Stored files fenced by store and role, 2026-10-25 (branch claude/arch-04-stored-files; ARCH-04,
+docs/adr/ADR-004-stored-files-by-store-and-role.md, see VERIFICATION.md):
+- Ravi Kiran chose who opens which stored file: invoice photos only lead, manager and owner;
+  screenshots and voice notes those three and whoever attached them. The workbook archive
+  opens to owner and manager, the roles that import. Each member sees only their own store's.
+- New files are saved under the store's folder and a kind folder. Staff still save the invoice
+  photo in their hand from Capture but do not open it again, so the home feed shows their
+  captures without a picture; a staff member's own screenshot is still read by AI. Files
+  saved before are recorded once with their store, so nothing in the bucket moves.
+- It applies itself: supabase/documents_by_role.sql runs after money_by_role.sql and matches
+  auth_setup.sql sections 3d and 3f. Demo databases stay open.
+- Proven with Supabase Postgres 17 and the Supabase storage service: documents_by_role_test.sql
+  163 of 163 on a fresh install and on a copy upgraded from main, 5 of 5 on demo copies;
+  through the storage service with the app's own client, 55 of 55 fresh and 108 of 108
+  upgraded, older files included; money_by_role_test.sql still 130 of 130.
+- After the merge: read ADR-004 condition 3 once. A page left open from before the update
+  needs a reload before it can save a file. Open: whether leads open the workbook archive.
 
 Money fenced by role at the database, 2026-10-25 (branch claude/arch-03-money-by-role; ARCH-03,
 docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
@@ -194,7 +212,6 @@ Module checks and automation tests run in CI by convention, 2026-10-30:
   they ran only by hand. The `run.sh` contract is in the vendorfields-check README.
 - The checks already in CI with their own steps (extraction, Ask grounding, AI evals, AI
   usage, import and export) are unchanged. Commit 2f4b1ea.
-
 
 Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
 - The move to the store's accounts is done and the docs now say so: the Vercel project is

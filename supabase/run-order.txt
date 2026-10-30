@@ -25,3 +25,4 @@ vendor_specializes_in.sql
 edit_delete.sql
 ai_call.sql
 money_by_role.sql
+documents_by_role.sql
