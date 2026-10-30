@@ -158,20 +158,19 @@ QUEUED (agreed, not built):
 - Price-check activity list and notification (grocery).
 
 OPEN (waiting on the owner):
-- Move every account to the store (asked 2026-10-18, "prepare for ownership transfer and
-  account set up"). The store already owns its domain; hosting, database, code, AI key and
-  the Slack app still sit on accounts the developer opened. docs/HANDOVER.md is the register
-  and the runbook: a store admin mailbox first, then Supabase to the store and onto Pro
-  (closes PLATFORM.md risk 2; the organization was confirmed on Free 2026-10-18), Vercel to a
-  store team on Pro (closes risk 1), the repository to a store GitHub organization, every key
-  reissued under the store, and the dev environment built straight onto the store's
-  accounts so it never needs moving. About $60 to $95 a month afterwards. Needs the owner
-  for every sign-up and card; the developer does the transfers.
+- DONE 2026-10-25: move every account to the store (asked 2026-10-18). Hosting is on the
+  store's Vercel team and the code at robinsons-store/robinsons-store. Still open, in
+  docs/HANDOVER.md: Supabase and Vercel on Pro (A-01, closes PLATFORM.md risks 1 and 2), the
+  original keys reissued (A-02), and a second owner on GitHub (A-05).
+- Dev environment (asked 2026-07-31). PARTIAL 2026-10-30: the dev database
+  robinsons-store-dev is loaded with the repository seed data, every preview reads it, and develop
+  deploys to its own address. Open, needs admin@: the SUPABASE_DB_URL_DEV secret and the
+  DEV_URL variable (docs/ENVIRONMENTS.md steps 2 and 5), and a way for Ravi to open the dev
+  site (step 6).
 - Confirm the domain renewed. robinsonsgeneralstore.ca was due on 2026-10-16 with auto-renew
-  confirmed on, but the renewal itself has not been seen, and the watchdog may be checking
-  the vercel.app address, which would not notice a lapse. Check the Vianet panel, record the
-  new expiry in docs/DOMAIN_EMAIL.md, and set the GitHub variable PRODUCTION_URL to
-  https://app.robinsonsgeneralstore.ca.
+  confirmed on, but the renewal itself has not been seen. Check the Vianet panel and record
+  the new expiry in docs/DOMAIN_EMAIL.md. The watchdog checks the custom domain since
+  2026-10-25, so a lapse now fails a check.
 - DONE, verified 2026-08-11: run supabase/vendor_ordering_fields.sql. This was recorded as
   failing since 2026-08-06, with the vendor ordering fields unable to save. The live health
   check now answers ok:true with "vendor columns present" passing, so the script has been
