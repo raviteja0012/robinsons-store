@@ -94,7 +94,8 @@ export async function GET(req: NextRequest) {
       } else if (spec.scope === "store" && spec.optional) {
         try {
           rows = await readTable(db, spec.name, (q) => q.eq("store_id", storeId));
-        } catch {
+        } catch (err: any) {
+          if (err?.code !== "42P01" && err?.code !== "PGRST205") throw err;
           XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([[`(${spec.name} is not set up on this database yet)`]]), spec.name.slice(0, 31));
           readme.push({ table: spec.name, rows: 0, what: spec.what, relationships: spec.links, note: "Not set up on this database yet" });
           continue;

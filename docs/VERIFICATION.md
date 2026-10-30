@@ -17,6 +17,7 @@ Where the record lives:
 
 | Area | Verified at | Method | Status |
 |---|---|---|---|
+| Department field export error handling | department-field-settings, 2026-10-30 | scripts/importexport-check: 36 passed, 0 failed, including missing-table codes, a timeout code and no code through readTable. Offline actual export handler: four cases passed; only missing-table codes produce a workbook, other errors return 500. Compiled check modules with the available TypeScript compiler using explicit options; app build, lint and full typecheck deferred because node_modules is absent [V-run, local checks, 2026-10-30] | Verified offline; awaiting preview |
 | Schema, seed, real bookings ledger (125 vendors) | ad89a59 (main) | Generator self-checks against the sheet's printed totals; loaded and used in production | Owner signed off (in production) |
 | Capture, extract, confirm, save; feed; vendors; overdue; inventory; knowledge; ask; price signs; reports; reorder; maintenance; compliance; HR; schedule | main | Machine gates; invariant review; owner has used them on the live site | Owner signed off (in production) |
 | Invoice photo downscale (src/lib/imagePrep.ts) | 56d4af9 | Machine gates, plus scripts/imageprep-check: the real module run in headless Chromium against generated images. 12 of 12 asserts pass, covering the 12 MP reduce, the 3.2 MB and 4.5 MB budgets, the 2576px cap, aspect ratio, small-photo pass-through, transparent-to-white flattening, and both PDF paths | Verified by machine, awaiting a real invoice photo through the deployed app |
