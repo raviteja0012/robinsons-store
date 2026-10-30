@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch dev-copy-of-production (latest: dev holds a copy of production behind login, below; before it develop brought level with main; latest on develop before that: the Slack lifecycle workflow runs its scripts from the base branch, below; latest on main: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch dev-copy-of-production (latest: dev holds a copy of production behind login, below; before it department field export error handling and the Department fields screen, below; before it develop brought level with main; latest on develop before that: the Slack lifecycle workflow runs its scripts from the base branch, below; latest on main: stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Dev holds a copy of production behind login, 2026-10-30:
 - Dev's database (`robinsons-store-dev`) now holds a copy of production taken at 19:47 UTC:
@@ -19,6 +19,39 @@ Dev holds a copy of production behind login, 2026-10-30:
 - docs/ENVIRONMENTS.md and the docs/HANDOVER.md variable register say so. Open: signing in
   to dev with a production login is not yet tried; `/api/health` on dev passes but its row
   checks see no rows without a Preview service-role key; dev goes stale from the copy time.
+- Later the same day `money_by_role.sql` and `documents_by_role.sql` from `develop` were
+  applied to dev by hand, so dev's money and stored-file policies match production's.
+
+Department field export error handling, 2026-10-30:
+- BUILT. Export marks department fields as not set up only for missing-table codes; other read errors return a failed export [R src/app/api/export/route.ts:98]. Paging preserves the error code and table name [R src/lib/exportPaging.ts:59].
+- Verified offline: scripts/importexport-check, 36 passed; export handler with a fake database, four cases passed (two missing-table codes, a timeout code and no code). App gates deferred because node_modules is absent [V-run, local checks, 2026-10-30].
+
+The Department fields screen, 2026-10-25:
+- PARTIAL. Owners and managers pick, per department, which questions the vendor and invoice
+  forms ask, on Admin, Department fields [R src/app/department-fields/page.tsx:172]. It
+  answers the ask relayed on 2026-10-25 for the vendor and invoice profiles. The payment
+  profile is not on it: which payment questions should vary is open [Q: the requester].
+- The ticks live in a new store-scoped table, `department_field`, one row per changed box
+  [R supabase/department_field.sql:15]. No rows means the code lists in vendorFields.ts and
+  invoiceFields.ts apply unchanged, so merging changes no form until somebody saves.
+- Locked, whatever the screen says: a vendor's name and status
+  [R src/lib/vendorFields.ts:89]; an invoice's number, date, amount, tax, freight, filing, due
+  date and status [R src/lib/invoiceFields.ts:80]. Freight keeps its scope (not asked of
+  Payrolls & Taxes) because invoiceTotal adds a saved freight whatever the form shows. Newly
+  selectable: phone, email and notes on the vendor forms and terms on the invoice forms,
+  which the forms used to draw for everyone.
+- Sections take their department's questions on every vendor and invoice form
+  [R src/lib/departments.ts:85]. Until now the vendor page used the section's own name
+  [R src/app/vendors/[id]/page.tsx:144], so a Gifts vendor was asked DryGoods' questions when
+  it was created and every question when it was edited. One visible change follows: Garden
+  Center invoices now ask for a PO number, as Hardware's do.
+- Only owners and managers can write the table. The migration applies those policies itself
+  on a database with login on [R supabase/department_field.sql:43], so it works from the
+  merge without a rerun of auth_setup.sql; auth_setup.sql carries the same block for a fresh
+  cutover. /api/health names the script when the table is missing
+  [R src/app/api/health/route.ts:75].
+- Not yet checked: the screen against the live database and the upsert under the live
+  policies. Both are the first thing to try on the preview after merge [Q: owner].
 
 The Slack lifecycle workflow runs its scripts from the base branch, 2026-10-30:
 - `slack-lifecycle.yml` now checks out `pull_request.base.sha` on a pull request event and

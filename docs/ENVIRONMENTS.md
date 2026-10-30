@@ -34,7 +34,7 @@ store's data, and reaches the live site only when a person runs the promotion wo
 | Data | The store's | A copy of production taken 2026-10-30 at 19:47 UTC: every `public` table and the login accounts (`auth.users`, `auth.identities`), staff, pay rates and shifts included. 1,469 rows, equal to production in count and checksum on all 29 tables [V-run, count and md5 per table on both projects, 2026-10-30]. Invoice photos and voice notes were not copied, so those links do not open on dev. Before the copy dev held seed data (`schema.sql`, `seed.sql`, `seed_dev.sql`, the `run-order.txt` scripts) |
 | Scripts | `supabase/run-order.txt`, on a push to `main` | The same list, on a push to `develop`, via `SUPABASE_DB_URL_DEV` |
 | Daily email cron | Runs | Does not: Vercel runs crons on production deployments only |
-| Login | Enforced (`auth_setup.sql` applied, `NEXT_PUBLIC_REQUIRE_AUTH` on) | Enforced the same way since 2026-10-30: `auth_setup.sql` applied, no `dev_all` policy left, every public table has RLS on and at least one policy, and the dev public key reads no rows; `NEXT_PUBLIC_REQUIRE_AUTH=true` for Preview [V-run, pg_policies and a query as the `anon` role on dev, Vercel env create, 2026-10-30]. Production's logins were copied, so the same email and password should open dev [J-open, kill condition: a production login fails on the dev site]. Columns match production; dev also has `department_field` from PR #71, not yet on production |
+| Login | Enforced (`auth_setup.sql` applied, `NEXT_PUBLIC_REQUIRE_AUTH` on) | Enforced the same way since 2026-10-30: `auth_setup.sql` applied, no `dev_all` policy left, every public table has RLS on and at least one policy, and the dev public key reads no rows; `NEXT_PUBLIC_REQUIRE_AUTH=true` for Preview [V-run, pg_policies and a query as the `anon` role on dev, Vercel env create, 2026-10-30]. Production's logins were copied, so the same email and password should open dev [J-open, kill condition: a production login fails on the dev site]. Policies, the three money-free views and the `app_auth` functions match production since `money_by_role.sql` and `documents_by_role.sql` were applied to dev at 22:50 UTC, apart from `ai_call`'s `owner_read`, which only dev has [V-run, pg_policies and the catalog on both projects, 2026-10-30] |
 | State | BUILT | PARTIAL: steps 2 and 6 below are open |
 
 ## Four decisions, and why
@@ -99,7 +99,7 @@ requests into `develop` merged with no checks unless someone started CI by hand.
 | 4 | Branch `develop` from `main`. The Slack autopilot now targets it, and promotion to `main` is Actions, Promote develop to production | The developer | BUILT 2026-10-30 |
 | 5 | Repository variable `DEV_URL` = `https://robinsons-store-git-develop-robinsons-store1.vercel.app` | The developer | BUILT 2026-10-30 [V-run, `gh variable list`] |
 | 6 | Let Ravi open the dev site. Preview addresses need a Vercel login on the team; or add `dev.robinsonsgeneralstore.ca` to the project for branch `develop` and ask Vianet for its CNAME by phone, since custom domains skip the login | Ravi Kiran | TARGET |
-| 7 | Dev holds a copy of production and requires login: `department_field.sql` then `auth_setup.sql` applied from branch `department-field-settings` at `0269970`, every `public` table and the login accounts copied, `NEXT_PUBLIC_REQUIRE_AUTH=true` for Preview, `develop` redeployed at `cae5104` | The developer | BUILT 2026-10-30 [V-run, script hashes against the branch copies, per-table counts and checksums, Vercel deployment READY on the git-develop alias in `yul1`] |
+| 7 | Dev holds a copy of production and requires login: `department_field.sql` then `auth_setup.sql` applied from branch `department-field-settings` at `0269970`, every `public` table and the login accounts copied, `NEXT_PUBLIC_REQUIRE_AUTH=true` for Preview, `develop` redeployed at `cae5104`; later the same day `money_by_role.sql` and `documents_by_role.sql` from `develop` at `fad4b62` applied by hand, as the dev script workflow would | The developer | BUILT 2026-10-30 [V-run, script hashes against the branch copies, per-table counts and checksums, Vercel deployment READY on the git-develop alias in `yul1`] |
 
 **Keep `develop` level with `main`.** Anything merged straight to `main` (this change, for
 one) must also reach `develop`. Open a `main` to `develop` pull request after any such merge.
@@ -129,7 +129,7 @@ Accounts and every secret: docs/HANDOVER.md. Script order and the connection str
 docs/SUPABASE_SETUP.md. The automation that targets `develop`: docs/LOOP_ENGINEERING.md and
 docs/SLACK_AUTOPILOT.md. Services and plans: docs/PLATFORM.md.
 
-**Basis: 15 claims checked this session (2026-10-30), 15 confirmed, 0 killed, 4 sources.**
+**Basis: 17 claims checked this session (2026-10-30), 17 confirmed, 0 killed, 4 sources.**
 Confirmed: both projects by name, same organization, `ca-central-1`; `department_field.sql`
 and `auth_setup.sql` byte-identical to the branch copies at `0269970` when applied; no
 `dev_all` policy on dev; all 28 public tables on dev have RLS on and at least one policy;
@@ -139,7 +139,10 @@ counts equal on all 29 tables; checksums equal on all 29 tables; the two linked 
 rows point at login accounts that exist on dev; `NEXT_PUBLIC_REQUIRE_AUTH` created for
 Preview; `develop` redeployed READY at `cae5104` on the git-develop alias in `yul1`; the dev
 `/api/health` answered `ok:true` with all eight checks; a signed-out visit to the dev site
-lands on `/login`; without a service-role key the health route uses the signed-out client.
+lands on `/login`; without a service-role key the health route uses the signed-out client;
+`money_by_role.sql` and `documents_by_role.sql` byte-identical to `fad4b62` when applied to
+dev; afterwards dev's policies, views and `app_auth` objects equal production's apart from
+`ai_call`'s `owner_read`.
 Not checked: signing in to dev with a production login, `[J-open]` above.
 Claims from earlier sessions keep their own inline tags. Sources: Supabase API, Vercel API,
 the dev site, this repository.
