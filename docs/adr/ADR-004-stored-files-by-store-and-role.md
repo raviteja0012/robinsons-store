@@ -40,7 +40,7 @@ Two facts shape the fix:
   the download that worked before the rename fails after it]; only the storage service can
   move a file, with the service key, outside the migration workflow.
 
-Not deciding has a specific failure: staff logins wait on this (handover checklist 9.1).
+Not deciding has a specific failure: staff logins wait on this (docs/ARCHITECTURE.md open items, ARCH-04).
 
 ## Decision
 
@@ -140,7 +140,7 @@ Benefits:
 
 docs/ARCHITECTURE.md section 7 and open items (ARCH-04), ADR-003 (money in the tables),
 docs/SUPABASE_SETUP.md (run order), `supabase/documents_by_role_test.sql` (the proof),
-docs/VERIFICATION.md (the sign-off row), docs/owner-notes/handover-checklist.md Task 9.
+docs/VERIFICATION.md (the sign-off row).
 
 ## How this maps to the rest of the docs
 
