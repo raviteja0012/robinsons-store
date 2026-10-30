@@ -9,7 +9,7 @@ written for, and how current it is. Start here.
 |---|---|---|
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Builder | Every ask with its state: shipped, queued, or waiting on the owner. **If it is not here, it is not agreed.** |
 | [STATUS.md](STATUS.md) | Builder | What is built right now, and the before-production checklist |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Builder | The stack, the data flow, the capture loop, the Mermaid diagrams |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Builder | The stack, data and capture flows, and the develop-to-main release diagram |
 | [PLATFORM.md](PLATFORM.md) | Builder | Every service and plan in use, what is adopted, and what is deliberately declined with the reason. **Carries two open risks: the Vercel plan and database backups** |
 | [CAPABILITIES.md](CAPABILITIES.md) | Builder | **The standing answer to "should we use X".** All 477 researched capabilities with a verdict each: 83 adopt now, 65 when needed, 329 declined with reasons. Ends with the sequenced build plan |
 | [research/](research/) | Builder | The 2026-08-12 catalog of what all seven platforms can do, fetched from the vendors' live docs. Raw reference behind CAPABILITIES.md |
@@ -19,7 +19,7 @@ written for, and how current it is. Start here.
 | File | What it answers |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Every AI agent: the four inside the app for staff, and the ones that build and watch it. What each does, its guardrails, and whose key it runs on |
-| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account. ADR-002: words-only changes from the Slack loop merge themselves |
+| [adr/](adr/) | Decision records, one decision each, with the alternatives rejected. ADR-001: the store owns every account. ADR-002: words-only changes from the Slack loop merge themselves. ADR-003: the database keeps dollar figures from staff |
 | [../ONBOARDING.md](../ONBOARDING.md) | For a new team member: what we need from them, what access they get and why, and their first week |
 | [HANDOVER.md](HANDOVER.md) | **What the store owns on each service, every secret and variable the app reads, and what is still open** |
 | [ENVIRONMENTS.md](ENVIRONMENTS.md) | Production and the dev site: what each one is, how a change crosses, and the six steps that turn dev on |

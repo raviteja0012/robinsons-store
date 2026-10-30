@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/lifecycle-scripts-from-base (latest: the Slack lifecycle workflow runs its scripts from the base branch, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/sync-main-into-develop (develop brought level with main; latest on develop: the Slack lifecycle workflow runs its scripts from the base branch, below; latest on main: money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 The Slack lifecycle workflow runs its scripts from the base branch, 2026-10-30:
 - `slack-lifecycle.yml` now checks out `pull_request.base.sha` on a pull request event and
@@ -13,6 +13,109 @@ The Slack lifecycle workflow runs its scripts from the base branch, 2026-10-30:
 - New `.github/scripts/slack-lifecycle.test.mjs` (21 checks) fails if the checkout loses its
   ref, if the ref gives anything but the base for any trigger the workflow listens to, if a
   trigger is added without a matching case, or if a script runs before the checkout.
+
+Money fenced by role at the database, 2026-10-25 (branch claude/arch-03-money-by-role; ARCH-03,
+docs/adr/ADR-003-money-by-role-at-the-database.md, see VERIFICATION.md):
+- A staff login can no longer read a dollar figure straight from the database. The nine tables
+  that carry one (vendor, purchase_order, invoice, credit_note, insurance_policy, payment,
+  payment_allocation, pay_rate, receiving_line) open only to lead, manager and owner, and the
+  payment functions refuse staff. A payment can only be allocated to an invoice in the same
+  store.
+- Staff screens read three views with no dollar column: vendor_directory (Capture's vendor
+  list, Ask), invoice_due (the bell's overdue count, the Due list) and insurance_renewal (the
+  bell's renewals, Compliance). Money roles keep reading the tables. Capture still saves priced
+  lines for staff; staff cannot read them back.
+- It applies itself: supabase/money_by_role.sql is last in run-order.txt, and auth_setup.sql
+  section 3e carries the same block so a rerun keeps money locked. Demo databases stay open.
+  Capture falls back to the vendor table if a deploy lands before the migration.
+- Proven on Supabase Postgres 17: supabase/money_by_role_test.sql passes 130 of 130 on a fresh
+  install and on a copy of main's scripts after the migration, 8 of 8 on demo copies; 48 of 48
+  app read and write paths pass through PostgREST v14.18; the AI evals pass offline, 23 of 23.
+- After the merge: nothing to run on the live database. Read the two checks in ADR-003
+  condition 3 once. The dev database runs in demo mode, so the script only adds the views
+  there. Still open:
+  ARCH-04 (stored files), and item.cost_price is left out while nothing writes it. Staff
+  opening a manager-only screen by its address (Vendors, Payments, Reports, Employees) now see
+  an empty list.
+
+PR #86 documentation corrections, 2026-10-30:
+- BUILT: the docs distinguish the builder's self-check from independent CI; review and ship
+  never execute candidate code [R `.github/workflows/slack-autopilot.yml:193-238,308-427,435-480`].
+- BUILT: section 6 of docs/ARCHITECTURE.md shows a pull request landing on `develop`, the dev
+  preview and a person promoting to `main` [R `docs/ENVIRONMENTS.md:19-27,54-56`].
+- Slack intake is switched on since 2026-10-30 (`SLACK_REQUEST_CHANNEL` set); automatic dev
+  migrations wait for `SUPABASE_DB_URL_DEV` [R `docs/ENVIRONMENTS.md:75`].
+
+The Slack autopilot's build job only produces the commit, 2026-10-30:
+- Four jobs: find, build, review, ship [R `.github/workflows/slack-autopilot.yml:93`, `:170`,
+  `:308`, `:435`]. find reads the channel and posts the first card with the Slack token and
+  no model. build holds `ANTHROPIC_API_KEY` and a read-only token and nothing else
+  [R `:175-176`]; the builder commits, cannot push, and its commit leaves as a git bundle
+  artifact [R `:265-292`]. review and ship start on fresh runners at the workflow's own commit
+  and read the bundle as data with the new `.github/scripts/autopilot-change.mjs`.
+- The Slack token is no longer on the runner the model builds on, before or after the build.
+  The reviewers no longer read the build runner's working tree, so a gitignored file or a
+  `CLAUDE.md` the builder left there cannot reach them.
+- ship now pushes the branch and opens the draft pull request, after the review, and only
+  past the guard: a change touching `.github/` or `.claude/` is never pushed and the card
+  says a person must make it [R `:480-494`]. A file moved out of those folders counts, and
+  so does a commit not built on the base commit find read before the build (a commit on an
+  older base would carry that base's `.github/` while its diff looked clean). A push or pull request that fails says so on
+  the card instead of passing on the builder's paragraph.
+- The build starts from that base commit (`develop`'s tip when it exists), so the diff is
+  only the builder's work.
+- The builder runs the three gates as a self-check in the build job, which holds
+  `ANTHROPIC_API_KEY` [R `.github/workflows/slack-autopilot.yml:193-238`]. Independent CI,
+  started by ship on tiers A and B, repeats them without the autopilot secrets
+  [R `.github/workflows/ci.yml:28-44`]. review and ship never execute candidate code; they
+  read the bundle as data and run scripts from the workflow's own commit.
+- Tests: `autopilot-change.test.mjs` (new, 34, real repositories and bundles),
+  `slack-autopilot.test.mjs` (86, rewritten for four jobs), `autopilot-review.test.mjs` (55).
+  PARTIAL until the first live request runs through all four jobs.
+
+Two read-only reviewers read every Slack pull request, 2026-10-30:
+- The autopilot is built but not running: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are set,
+  `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step. Setting that one
+  variable, with the bot invited to the channel, switches it on (docs/SLACK_AUTOPILOT.md).
+- A new `review` job sits between build and ship, on a fresh runner at the workflow's own
+  commit, with a read-only token. It lays the pull request out as data with agent instruction
+  files removed and runs money-reviewer and invariant-auditor as two read-only model runs
+  without the Slack text. No verdict line counts as not passed.
+- Ship now needs both verdicts to pass, on the same commit, before tier A may merge itself;
+  puts the verdicts on the pull request and the reports in the Slack thread (the repository
+  is public); starts CI on tier A and B pull requests that did not go through the merge step;
+  and sets the card from a tested script, `.github/scripts/autopilot-review.mjs`, which also
+  carries the builder's own closing paragraph to Slack as its prompt promised.
+- `slack-status.mjs` can post one extra thread reply (`DETAIL_FILE`) for the reports.
+- docs/SLACK_AUTOPILOT.md, ARCHITECTURE.md section 6, AGENTS.md, LOOP_ENGINEERING.md,
+  HANDOVER.md (Slack row now PARTIAL) and the skill updated in the same change. The store's
+  Miro board needs section 6 redrawn (ARCH-12).
+
+AI view and standards map in the architecture doc, 2026-10-30:
+- docs/ARCHITECTURE.md has a new section 8, AI: one diagram of how a photo or question reaches
+  the model and what checks its answer, a layer table (model, one door, prompt fence, output
+  contract, grounding, human confirmation, cost cap, logging, evals, residency, retrieval) and
+  the AI risks by their OWASP and NIST names. Old sections 8 to 10 are now 9 to 11.
+- A table at the top names the notation or standard each view follows (C4 levels 1 and 2,
+  UML sequence and state, crow's foot ER, DORA, PIPEDA, OWASP, NIST AI RMF, ISO/IEC/IEEE 42010,
+  arc42). Names only; no conformance claimed.
+- Found: the store name and town are written into the Ask, reorder and alert prompts
+  (ARCH-13, blocks a second store). The AI evals have never run against the model (ARCH-14).
+- Two more views and a colour key: a target context in section 1 (email intake, QuickBooks,
+  point of sale, Google Sheets sync, Slack questions, a search index, a second store, each
+  with its state and what it waits on) and an AI enablement view in section 8 (Suggestions,
+  the requirements ledger, the rules and templates every Claude session loads, the Slack
+  autopilot). Colour means state only: plain BUILT, amber dashed SCAFFOLDED, grey dashed
+  TARGET; planned pieces stay on the diagrams instead of being dropped.
+- The Slack autopilot was switched on 2026-10-30 (`SLACK_REQUEST_CHANNEL` set at 20:57 UTC,
+  read live). Slack questions and automatic filing of asks are the developer's stated
+  direction with no design yet.
+- The store's Miro board now has all nine diagrams, with the colour key, built in Miro from the doc's Mermaid and
+  named "N. Section, 2026-10-30". The six older ones moved to a separate board, "Robinsons
+  store architecture, archive" (ARCH-12 closed).
+- Docs only; no code, schema, policy or workflow change.
+
+
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
@@ -592,7 +695,7 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
 ## Open items (polish, tractable)
 - AI call hardening, 2026-10-24 (branch ai-call-hardening, see VERIFICATION.md): all four AI
   routes go through src/lib/anthropic.ts (25s timeout, 45s on extract, two retries on
-  429/529/5xx, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
+  429, 529 and 500, 502, 503, 504, refusal and cut-off read from stop_reason, maxDuration 60). Screens show plain
   messages only; provider detail goes to the function log as metadata, never content. Reorder
   failures are now 502, not 200. Extract output is value-checked and anything coerced drops to
   confidence 0. Store data, questions and notes are fenced as data in every prompt.
@@ -600,10 +703,10 @@ A payments system (vendor payouts with allocations, partial and post-dated payme
   set for extract and ask, a grounding check on vendor names in Ask answers, and prompt caching
   for the Ask system prompt.
 - Ask grounding and caching, 2026-10-24 (#59, see VERIFICATION.md): two of the left-for-later
-  items above are done. Ask withholds any answer that names a vendor not in the store data or
-  the app guide, and shows "Not confirmed" with a plain message instead
-  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question never vouches
-  for a name: it only excuses one in an answer with no digits ("Costco is not on file"). The
+  items above are done. Ask checks vendor names mentioned in answers against the store data
+  and app guide, withholding an unsupported answer with "Not confirmed" and a plain message
+  (src/lib/askGrounding.ts, scripts/askgrounding-check, in CI). The question excuses unsupported
+  names only if all occur in the question and the answer has no figures (no digits, as in "Costco is not on file"). The
   model wraps vendor names in [[ ]] for the check; the brackets never reach the screen.
   Unwrapped names are caught only with a legal suffix or after "vendor", "supplier", or
   "order from", so an unwrapped made-up vendor with neither still gets through. Ask now

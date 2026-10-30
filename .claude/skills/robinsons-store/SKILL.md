@@ -119,11 +119,11 @@ Storage security: the app reads document thumbnails through docUrls() in src/lib
 ## Invariants to preserve on every change
 Breaking any of these is a regression even if the build passes.
 1. Store scoping: every read filters by the active store_id; every insert stamps it. Child tables scope through their parent.
-2. Money by role: every cost, order amount, invoice amount, payment, premium, and pay figure is behind canSeeMoney(role). Retail customer prices are not.
+2. Money by role: every cost, order amount, invoice amount, payment, premium, and pay figure is behind canSeeMoney(role). Retail customer prices are not. The database holds the same line (ARCH-03, docs/adr/ADR-003-money-by-role-at-the-database.md): with login enforced, the tables that carry a dollar figure return no rows to staff, so a staff screen that needs a vendor, an open invoice or a policy renewal reads vendor_directory, invoice_due or insurance_renewal instead (Capture, Ask, the bell, Due and Compliance do). Money roles keep reading the tables.
 3. Actor integrity: created_by and activity_log.actor_id come from useEffectiveActor(); the actor dropdown is hidden when REQUIRE_AUTH.
 4. Audit: every meaningful write inserts an activity_log row with a non-null entity_id.
 5. Human in the loop on dollars: extracted lines carry confidence; low-confidence dollar fields never auto-post; an order-vs-invoiced discrepancy needs an explicit acknowledgement before save.
-6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth.
+6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth. A table or column that holds a dollar figure goes into section 3e of auth_setup.sql and into supabase/money_by_role.sql, never the open 3a array, and supabase/money_by_role_test.sql gets a check for it.
 7. Build-safe: code must build with blank env. Auth and data helpers degrade to null rather than throwing; never require Supabase env or auth.users to exist at build time.
 8. Payments only through the engine RPCs in src/lib/payments.ts: record_payment (record), edit_payment (fix date/method/reference/notes/filing; re-derives touched invoice statuses), void_payment (undo; invoices go back to owing), reconcile_postdated (editors only, on load). Never update or delete payment rows directly, never hand-set a derived invoice status without a payment behind it (the vendor page auto-opens Record payment when an edit marks an invoice paid with nothing recorded). Post-dated is a future paid_date on a cheque, never a method value.
 9. AI text answers are plain text: prompts forbid markdown, routes strip it with plainText() from src/lib/aiText.ts, default model claude-sonnet-5 with ANTHROPIC_MODEL as the override. DO NOT send a temperature parameter: claude-sonnet-5 rejects non-default sampling and every AI route 400s. This was caught in review once already; do not re-add it.
@@ -184,7 +184,15 @@ break:
 - Two read-only reviewers live in .claude/agents: money-reviewer (knows the specific ways
   this codebase has broken: a select missing tax_mode, an inline total bypassing
   invoiceTotal, SQL and TypeScript changed on one side only) and invariant-auditor. Use them
-  on any diff that touches money or adds a query.
+  on any diff that touches money or adds a query. The Slack autopilot runs both on every
+  change it builds, before the pull request opens, in a read-only review job on a fresh
+  runner with instructions from the workflow's own commit; a finding or a missing verdict
+  stops tier A from merging itself (docs/SLACK_AUTOPILOT.md).
+- The runner the Slack autopilot's model builds on holds the Anthropic key and a read-only
+  token and nothing else, and its only product is the commit, handed over as a bundle. The
+  Slack token, the reviewers, the classifier, the push and the merge all live in other jobs
+  on fresh runners. Never add a step after the build on that runner, or a secret to it;
+  slack-autopilot.test.mjs fails if you do.
 
 ## Operational reality (how this repo is actually run)
 - The build and review work happens in an isolated cloud container with no network route to the owner's Supabase or Vercel. Do not try to connect to the database or the live site. Deliver database changes as SQL the owner runs in the Supabase SQL editor, and deploys happen by pushing to the branch (Vercel auto-deploys main).
