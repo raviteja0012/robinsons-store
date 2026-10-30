@@ -101,7 +101,7 @@ two months.
 7. **The rules are tested.** `classify-change.test.mjs` pins 109 cases across all tiers,
    including every rule above and the parsing of git's output, and runs in CI
    [V-run, `node .github/scripts/classify-change.test.mjs`, 2026-10-30: 109 passed, 0 failed]
-   [R `.github/workflows/ci.yml:82`].
+   [R `.github/workflows/ci.yml:93`].
 
 ## Conditions
 

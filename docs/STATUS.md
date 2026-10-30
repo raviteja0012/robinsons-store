@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/adr-002-tier-a-automerge (latest: tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10):
 - The Slack autopilot now runs the tier classifier on every pull request it opens, labels it
@@ -27,6 +27,17 @@ Tier A self-merge wired into the Slack loop, 2026-10-24 (ADR-002, closes ARCH-10
   whether a dispatched CI run on main wakes the post-deploy watch [J-open, kill conditions in
   ADR-002]. The merge step fails closed either way. The parked Jira loop still merges with
   `--auto`; replace that step before waking it (ADR-002 condition 5).
+
+Module checks and automation tests run in CI by convention, 2026-10-30:
+- CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops
+  at the first failure. "Automation rules" now runs every `.github/scripts/*.test.mjs` in a
+  loop instead of a hand-kept list. A new check or test needs no `ci.yml` edit.
+- `scripts/vendorfields-check` (the money-field gate) and `scripts/invoicefields-check` (the
+  department matrix) each gained a `run.sh` and now run on every pull request; before this
+  they ran only by hand. The `run.sh` contract is in the vendorfields-check README.
+- The checks already in CI with their own steps (extraction, Ask grounding, AI evals, AI
+  usage, import and export) are unchanged. Commit 2f4b1ea.
+
 
 Accounts moved, docs brought up to date, dev environment turned on, 2026-10-30:
 - The move to the store's accounts is done and the docs now say so: the Vercel project is
