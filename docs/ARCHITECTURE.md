@@ -345,7 +345,7 @@ which is how a single cheque settles several invoices and how a deposit waits wi
   outgrows one prompt [R docs/PLATFORM.md:176].
 
 The store-scoping rule. BUILT: every read filters by the active `store_id` and every insert
-stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:122].
+stamps it; child tables scope through their parent [R .claude/skills/robinsons-store/SKILL.md:121].
 PARTIAL in the code: a few reads leave scoping to row-level security alone, for example the
 capture screen's list of people (`app_user`) and the shared tax rules
 [R src/app/capture/page.tsx:61, 77].
@@ -360,7 +360,7 @@ block: the owner reads it, and nobody writes it except through its two functions
 [R supabase/auth_setup.sql:135-157]. It runs just before `money_by_role.sql`, the last script
 in the run order [R supabase/run-order.txt:26-27]. A new table needs a policy in `schema.sql`, in
 `auth_setup.sql` (3a, or 3e if it holds a dollar figure), and in a migration for live
-databases [R CLAUDE.md:31-32].
+databases [R CLAUDE.md:33-35].
 
 Soft voids only: `voided_at` and `voided_by` sit on 13 tables from one loop plus `credit_note`
 and `feedback`; shifts are the one hard delete [R supabase/schema.sql:220-221, 241-242, 666-681].
@@ -415,7 +415,7 @@ and tells Slack when that changes. It does not confirm which deploy it is lookin
 Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
 `.claude/skills/`; a Stop hook refuses to end a turn while TypeScript is broken
 [R .claude/settings.json:14-19]; update docs/STATUS.md and docs/VERIFICATION.md in the same
-pull request as the work [R CLAUDE.md:21-22]. Human review of every dollar field stays
+pull request as the work [R CLAUDE.md:23-24]. Human review of every dollar field stays
 non-negotiable.
 
 ## 7. Security and privacy
@@ -515,13 +515,13 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-02 | `NEXT_PUBLIC_REQUIRE_AUTH` production value not read this session | The developer | No |
 | ARCH-03 | BUILT 2026-10-25: money is fenced by role at the database as well as in the UI and API (ADR-003; `supabase/money_by_role.sql`), 130 of 130 checks on fresh and upgraded copies. Closes when the merge applies it and ADR-003 condition 3 reads clean | The developer | Yes, until it closes: before staff logins are made |
 | ARCH-04 | `documents` bucket open to any signed-in member, not scoped by store or by role. Follow-up from ARCH-03, not fixed there: the bucket holds Capture's invoice photos and Suggestions' screenshots [R src/app/capture/page.tsx:212] [R src/app/suggestions/page.tsx:130-138]. Next: storage policies that scope each path by store and keep invoice photos and suggestion files to money roles | The developer | Decide before staff logins which stored files staff may open [Q: Ravi Kiran] |
-| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER Step 2) | Ravi Kiran | Yes |
-| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER Step 3) | Ravi Kiran | Yes |
+| ARCH-05 | Supabase Free takes no backups (docs/PLATFORM.md risk 2; HANDOVER A-01) | Ravi Kiran | Yes |
+| ARCH-06 | Vercel Hobby does not license commercial use (risk 1; HANDOVER A-01) | Ravi Kiran | Yes |
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
 | ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
-| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HO-01) | Ravi Kiran | Yes, for the domain |
+| ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
 | ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
 
 ## 10. How this maps to the rest of the docs
