@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/handover-miro-board (latest: the nine-diagram Miro board and separate archive, below; before it stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/handover-miro-board (latest: the nine-diagram Miro board and separate archive, below; before it product direction and skill precedence, below; before it stored files fenced by store and role, below; before it money fenced by role at the database, below; before it PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the AI view and the standards map in the architecture doc, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 The architecture board on the store's Miro account, 2026-10-30:
 - BUILT: "Robinsons store architecture" shows the nine diagrams of docs/ARCHITECTURE.md,
@@ -13,6 +13,26 @@ The architecture board on the store's Miro account, 2026-10-30:
 - docs/ARCHITECTURE.md stays the source. When its Mermaid changes, redraw the matching
   diagram on the board [R pr/81:docs/ARCHITECTURE.md:695]. docs/HANDOVER.md lists both boards.
 - Docs only; no code, schema, policy or workflow change.
+
+Product direction recorded, 2026-10-30 (branch agent-skills-setup):
+- REQUIREMENTS.md is the canonical home for product direction; CLAUDE.md and the
+  robinsons-store skill point there. Multi-store support is PARTIAL, and onboarding a
+  second store without code changes is TARGET. The configuration list includes the reorder
+  prompt and alert email branding. Docs only; no app code changed.
+
+Agent tooling, 2026-10-30 (branch agent-skills-setup):
+- AGENTS.md at the root points Codex and other agents at CLAUDE.md and the robinsons-store
+  skill, so every agent follows one set of rules. CLAUDE.md lists the skills, reviewers, MCP
+  server and Stop hook the repo carries.
+- vercel-react-best-practices is vendored from vercel-labs/agent-skills into .claude/skills
+  and .agents/skills and pinned in skills-lock.json. web-design-guidelines from the same
+  source was not taken: it downloads its rules from the network on every run.
+- The robinsons-store skill description is cut to 915 characters; the Agent Skills limit
+  is 1,024 and the old one was 1,244. The skill body now points to REQUIREMENTS.md for
+  product direction, delivery states and configuration gaps.
+- Root AGENTS.md defines skill precedence, with a pointer in CLAUDE.md. The React skill is
+  registered in docs/AGENTS.md and LOOP_ENGINEERING.md; its vendored files are unchanged.
+- Instructions and skills only; no code, schema, policy or workflow change.
 
 PR #88 promotion follow-up, 2026-10-30:
 - Promotion records main before CI, fetches it again immediately before the merge, and
