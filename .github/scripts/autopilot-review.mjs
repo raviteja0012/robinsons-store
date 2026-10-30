@@ -1,35 +1,44 @@
-// What happens to a Slack-built change between "the model says it is done" and "a person
-// looks at it".
+// The review between "the builder opened a pull request" and "anyone is told it is ready".
 //
-// The builder model writes the code and commits it. It does not push and it does not open
-// the pull request. The workflow then re-runs the three gates itself, has the tier
-// classifier read the diff, and has two read-only reviewers (money-reviewer and
-// invariant-auditor, their instructions taken from the BASE branch) read the change. This
-// file turns those results into three things:
+// The Slack autopilot runs in three jobs (.github/workflows/slack-autopilot.yml):
 //
-//   - whether a pull request opens at all,
-//   - the status card in the Slack thread, and a second thread message carrying the
-//     reviewers' reports,
-//   - the pull request body, which carries verdicts but NOT the reports.
+//   autopilot  the model builds, pushes and opens a draft pull request.
+//   review     a FRESH runner that checks out the workflow's own commit, lays the pull
+//              request's files out as data in a subfolder, and has money-reviewer and
+//              invariant-auditor read them. Read, Grep and Glob only; nothing from the pull
+//              request is executed. `weigh` below turns their answers into verdicts.
+//   ship       classifies, labels, merges tier A only if both reviewers passed the commit
+//              it is merging, and updates the Slack card. `say` below decides the card.
+//
+// WHY A FRESH RUNNER. The builder had a shell on the build runner. Anything it left there (a
+// line in $GITHUB_ENV, a program earlier on the PATH, an edited script in the working tree)
+// would run with every later step on that runner, reviewers included. ADR-002 moved the
+// classifier off that runner for the same reason.
 //
 // WHY THE REPORTS GO TO SLACK AND NOT THE PULL REQUEST. The repository is public. A report
-// that says "staff can see invoice totals on this screen" is a description of a weakness,
-// and a public pull request is the wrong place for it. The Slack workspace is the store's
-// own. The pull request says which reviewer flagged something and where to read it.
+// that says "staff can see invoice totals on this screen" describes a weakness, and a public
+// pull request is the wrong place for it. The Slack workspace is the store's own. The pull
+// request gets the verdicts and a pointer to the thread.
 //
 // WHY A MODEL REVIEWING A MODEL IS NOT THE GATE. A model asked "is this right?" usually says
-// yes, which is why docs/LOOP_ENGINEERING.md keeps the decisions in scripts. The reviewers
-// are a second look that names concrete lines for the person who merges. The gate is still
-// that person, plus the classifier, which reads the diff and not the request.
+// yes, which is why docs/LOOP_ENGINEERING.md keeps decisions in scripts. The reviewers are a
+// second look that names lines for the person who merges. A person still merges tier B and
+// C, and the classifier, not the reviewers, decides the tier.
 //
 // FAILING CLOSED. A reviewer that errors, runs out of turns, or ends without a verdict line
-// counts as "did not finish", which reads to the person exactly like a finding: look before
-// merging. Silence is never a pass.
+// counts as "did not finish", which blocks a tier A merge and turns the card red exactly
+// like a finding. Silence is never a pass.
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 
 export const PASS_LINE = "VERDICT: PASS";
 export const FINDINGS_LINE = "VERDICT: FINDINGS";
+
+export const REVIEWERS = [
+  { key: "money", name: "Money reviewer" },
+  { key: "invariant", name: "Invariant auditor" }
+];
 
 /**
  * The final answer from a claude-code-action execution file, or null.
@@ -77,113 +86,95 @@ export function verdict(result) {
   return "unclear";
 }
 
-/** Stops an @word in model-written text from notifying a real GitHub user. */
-export function quiet(text) {
-  return String(text || "").replace(/@(?=[A-Za-z0-9])/g, "@​");
-}
+const READS = { pass: "No findings", findings: "Flagged something", unclear: "Did not finish", missing: "Did not finish" };
+const reads = (v) => READS[v] || READS.missing;
 
 function oneLine(text, max) {
   const flat = String(text || "").replace(/\s+/g, " ").trim();
   return flat.length > max ? flat.slice(0, max - 1) + "…" : flat;
 }
 
-const READS = { pass: "No findings", findings: "Flagged something", unclear: "Did not finish", missing: "Did not finish" };
+/** The thread message for the person who merges: each reviewer's report. */
+export function reportsMessage(reviews = []) {
+  return reviews
+    .map((r) => {
+      const body = r.verdict === "missing" ? "It returned nothing. Read the change yourself." : (r.text || "").trim();
+      return `*${r.name}: ${reads(r.verdict)}*\n${body.length > 1800 ? body.slice(0, 1799) + "…" : body}`;
+    })
+    .join("\n\n");
+}
+
+/** The public pull request comment: verdicts only, never report text. */
+export function prComment(verdicts = {}) {
+  const lines = REVIEWERS.map((r) => `- ${r.name}: ${reads(verdicts[r.key])}`);
+  return ["Read-only review before anyone is asked to look:", ...lines, "", "The reports are in the Slack thread under the request."].join("\n");
+}
 
 /**
- * Whether a pull request opens, and what the Slack card says.
+ * The status card once ship is done. Pure, so what the person in Slack reads is tested.
  *
- * Pure, so the decision the person in Slack actually sees is tested without a run.
+ * `reviewed` is whether the review job found the pull request and laid it out; `money` and
+ * `invariant` are verdicts. `says` is the builder's own closing paragraph, which its prompt
+ * promises goes back to Slack.
  */
-export function decide({ buildOutcome, changed, guard, gatesOutcome, reviews = [], tier, builderSays }) {
-  if (buildOutcome !== "success") {
+export function cardFor({ built, tier, automerge, reviewed, money, invariant, says }) {
+  const said = oneLine(says, 600);
+  if (automerge === "merged") {
     return {
-      openPr: false,
-      stage: "stopped",
-      note: "I could not finish this one, so nothing has changed. It needs a person to look."
+      stage: "merged",
+      note: "Only wording changed, both reviewers passed it, and it merged itself once the checks passed. It goes out to the store's site in a few minutes."
     };
   }
-  if (!changed) {
+  if (automerge === "checks_failed") {
     return {
-      openPr: false,
-      stage: "stopped",
-      note: oneLine(builderSays, 600) || "I stopped without changing anything. The reason is in the run log."
+      stage: "checks_failed",
+      note: "Only wording changed, but the automatic checks did not pass, so it is waiting for a person."
     };
   }
-  if (guard === "automation") {
-    return {
-      openPr: false,
-      stage: "stopped",
-      note:
-        "This change would edit the automation's own files, which only a person may change. " +
-        "Nothing was pushed."
-    };
+  if (!built) {
+    return { stage: "stopped", note: "I could not finish this one, so nothing has changed. It needs a person to look." };
   }
-  if (guard !== "ok") {
-    // The step that prepares the review died partway. Nothing was reviewed, so nothing opens.
-    return {
-      openPr: false,
-      stage: "stopped",
-      note: "The change was built but could not be prepared for review, so nothing was pushed. It needs a person to look."
-    };
+  if (!tier || tier === "none") {
+    // The build finished but no pull request exists: the builder stopped on purpose.
+    return { stage: "stopped", note: said || "I stopped without opening a pull request. The reason is in the run log." };
   }
 
   const problems = [];
-  if (gatesOutcome !== "success") problems.push("the build checks failed when the workflow ran them again");
-  for (const r of reviews) {
-    if (r.verdict === "findings") problems.push(`the ${r.name.toLowerCase()} flagged something`);
-    else if (r.verdict !== "pass") problems.push(`the ${r.name.toLowerCase()} did not finish`);
+  if (!reviewed) problems.push("the reviewers could not read the change");
+  else {
+    for (const r of REVIEWERS) {
+      const v = r.key === "money" ? money : invariant;
+      if (v === "findings") problems.push(`the ${r.name.toLowerCase()} flagged something`);
+      else if (v !== "pass") problems.push(`the ${r.name.toLowerCase()} did not finish`);
+    }
   }
-  const parts = [oneLine(builderSays, 600)];
+  const parts = [said || "Finished building."];
+  if (problems.length) {
+    parts.push(`Before anyone merges it: ${problems.join("; ")}. The reviewers' reports are in this thread.`);
+  } else {
+    parts.push("Both reviewers found nothing wrong.");
+  }
   parts.push(
-    problems.length
-      ? `Before anyone merges this: ${problems.join("; ")}. The reviewers' reports are in this thread.`
-      : "The build checks passed and both reviewers found nothing wrong. A person still decides whether to merge it."
+    tier === "C"
+      ? "This touches money, logins, the database or the automation itself, so a person has to look before anything changes."
+      : "It is waiting for a person to look and merge."
   );
-  if (tier === "C") parts.push("It touches money, logins, the database or the automation, so read it closely.");
-  return { openPr: true, stage: problems.length ? "checks_failed" : "built", note: parts.filter(Boolean).join(" ") };
-}
-
-/** The pull request body: what changed and what was checked. No report text; see the top. */
-export function prBody({ builderSays, tier, tierReason, gatesOutcome, reviews = [], runUrl }) {
-  const rows = [
-    `| Type check, lint, build, run again by the workflow | ${gatesOutcome === "success" ? "Passed" : "**Failed**"} |`,
-    `| Change tier (\`.github/scripts/classify-change.mjs\`) | ${tier || "unknown"}: ${quiet(oneLine(tierReason, 200))} |`,
-    ...reviews.map((r) => `| ${r.name} | ${r.verdict === "pass" ? READS.pass : `**${READS[r.verdict] || READS.missing}**`} |`)
-  ];
-  return [
-    "Built from a request in the store's Slack requests channel.",
-    "",
-    "## What changed",
-    "",
-    quiet(builderSays) || "The builder gave no summary; read the diff.",
-    "",
-    "## Checks run before this opened",
-    "",
-    "| Check | Result |",
-    "|---|---|",
-    ...rows,
-    "",
-    "The reviewers read the change with read-only tools and instructions taken from the base branch. " +
-      "Their reports are in the Slack thread under the request.",
-    "",
-    `Run: ${runUrl || "unknown"}`
-  ].join("\n");
-}
-
-/** The second thread message: each reviewer's report, for the person who merges. */
-export function reportsMessage(reviews = []) {
-  const blocks = reviews.map((r) => {
-    const head = `${r.name}: ${READS[r.verdict] || READS.missing}`;
-    const body = r.verdict === "missing" ? "It returned nothing. Read the change yourself." : (r.text || "").trim();
-    return `*${head}*\n${body.length > 1800 ? body.slice(0, 1799) + "…" : body}`;
-  });
-  return blocks.join("\n\n");
+  return { stage: problems.length ? "checks_failed" : "built", note: parts.join(" ") };
 }
 
 function out(key, value) {
   const f = process.env.GITHUB_OUTPUT;
-  console.log(`${key}: ${value}`);
-  if (f) appendFileSync(f, `${key}=${String(value).replace(/\n/g, " ")}\n`);
+  const text = String(value);
+  console.log(`${key}: ${text.includes("\n") ? "(multi-line)" : text}`);
+  if (!f) return;
+  if (text.includes("\n")) {
+    // A random delimiter, so report text that happens to contain it cannot end the value
+    // early and write outputs of its own.
+    const end = `END_${randomBytes(12).toString("hex")}`;
+    appendFileSync(f, `${key}<<${end}\n${text}\n${end}\n`);
+  } else {
+    appendFileSync(f, `${key}=${text}\n`);
+  }
 }
 
 function readResult(path) {
@@ -191,47 +182,40 @@ function readResult(path) {
   return finalResult(readFileSync(path, "utf8"));
 }
 
-function main() {
-  const env = process.env;
-  const builder = readResult(env.BUILD_FILE);
-  const builderSays = builder && !builder.isError ? builder.text.trim() : "";
-  const reviews = [
-    { name: "Money reviewer", file: env.MONEY_FILE },
-    { name: "Invariant auditor", file: env.INVARIANT_FILE }
-  ].map((r) => {
-    const result = readResult(r.file);
-    return { name: r.name, verdict: verdict(result), text: result ? result.text : "" };
+// In the review job: the two execution files in, verdicts and the reports out.
+function weigh(env) {
+  const reviews = REVIEWERS.map((r) => {
+    const result = readResult(env[`${r.key.toUpperCase()}_FILE`]);
+    return { ...r, verdict: verdict(result), text: result ? result.text : "" };
   });
+  for (const r of reviews) out(r.key, r.verdict);
+  out("passed", reviews.every((r) => r.verdict === "pass"));
+  out("reports", reportsMessage(reviews));
+}
 
-  const d = decide({
-    buildOutcome: env.BUILD_OUTCOME,
-    changed: env.CHANGED === "true",
-    guard: env.GUARD,
-    gatesOutcome: env.GATES_OUTCOME,
-    reviews,
+// In the ship job: everything known about the run in, the card and the comment out.
+function say(env) {
+  const card = cardFor({
+    built: env.BUILT === "true",
     tier: env.TIER,
-    builderSays
+    automerge: env.AUTOMERGE,
+    reviewed: env.REVIEWED === "true",
+    money: env.MONEY,
+    invariant: env.INVARIANT,
+    says: env.SAYS
   });
-  out("open_pr", d.openPr);
-  out("stage", d.stage);
-  out("note", d.note);
-
-  if (d.openPr && env.BODY_OUT) {
-    writeFileSync(
-      env.BODY_OUT,
-      prBody({
-        builderSays,
-        tier: env.TIER,
-        tierReason: env.TIER_REASON,
-        gatesOutcome: env.GATES_OUTCOME,
-        reviews,
-        runUrl: env.RUN_URL
-      })
-    );
-  }
-  if (d.openPr && env.REPORTS_OUT) writeFileSync(env.REPORTS_OUT, reportsMessage(reviews));
+  out("stage", card.stage);
+  out("note", card.note);
+  if (env.COMMENT_OUT) writeFileSync(env.COMMENT_OUT, prComment({ money: env.MONEY, invariant: env.INVARIANT }));
+  if (env.REPORTS_OUT && env.REPORTS) writeFileSync(env.REPORTS_OUT, env.REPORTS);
 }
 
 if (process.argv[1] && process.argv[1].endsWith("autopilot-review.mjs")) {
-  main();
+  const mode = process.argv[2];
+  if (mode === "weigh") weigh(process.env);
+  else if (mode === "say") say(process.env);
+  else {
+    console.log("Usage: node autopilot-review.mjs weigh|say");
+    process.exit(1);
+  }
 }

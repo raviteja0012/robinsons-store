@@ -77,7 +77,7 @@ Facts behind the picture:
 - Slack carries build requests in and watchdog and migration messages out, through a bot app
   and an incoming webhook. BUILT [R docs/PLATFORM.md:80].
 - The Slack build runs Claude Code in GitHub Actions on the app's Anthropic key
-  [R .github/workflows/slack-autopilot.yml:145-150]. Migrations and the RLS audit connect to the
+  [R .github/workflows/slack-autopilot.yml:138-140]. Migrations and the RLS audit connect to the
   database with `psql` [R .github/workflows/migrate.yml:150] [R .github/workflows/rls-audit.yml:43];
   the health watchdog calls the app, not the database [R .github/scripts/health-check.mjs:33].
   BUILT.
@@ -369,21 +369,23 @@ Question: how does a change travel from a request to the live store?
 ```mermaid
 flowchart LR
   REQ["Slack request<br/>or developer"]
-  AP["slack-autopilot<br/>builds and commits"]
-  CHK["Checked before it opens:<br/>gates again, tier classifier,<br/>money-reviewer, invariant-auditor"]
-  PR["Draft pull request"]
+  AP["slack-autopilot<br/>builds on a branch"]
+  PR["Draft pull request<br/>labelled tier A, B or C"]
+  REV["review job, fresh runner:<br/>money-reviewer,<br/>invariant-auditor"]
   CI["CI: lint, tsc,<br/>blank-env build"]
-  HUM["A person merges"]
+  HUM["A person merges<br/>(tier A may merge itself)"]
   VD["Vercel deploys main"]
   MIG["migrate: run-order.txt<br/>to production"]
   WD["post-deploy-watch<br/>GET /api/health"]
   SLK["Slack thread<br/>and alerts"]
   REQ -- "mention in channel" --> AP
-  AP -- "commits on a branch" --> CHK
-  CHK -- "workflow opens" --> PR
-  CHK -- "card and reviewers' reports" --> SLK
-  PR -- "runs (see ARCH-13)" --> CI
+  AP -- "opens" --> PR
+  PR -- "read-only review" --> REV
+  REV -- "verdicts on the pull request" --> PR
+  REV -- "reports in the thread" --> SLK
+  PR -- "ship starts it (tier A, B)" --> CI
   CI -- "green" --> HUM
+  REV -- "both pass: tier A may merge" --> HUM
   HUM -- "merges the pull request" --> VD
   HUM -- "if supabase/ changed" --> MIG
   CI -- "completes on main; also every 2 hours" --> WD
@@ -392,22 +394,25 @@ flowchart LR
   PR -- "slack-lifecycle updates card" --> SLK
 ```
 
-Plain flow: a request in Slack is built and committed by the autopilot; before any pull
-request opens, the workflow runs the three gates again, the tier classifier reads the diff,
-and two read-only reviewers read the change; the workflow then opens a draft pull request and
-posts the reviewers' reports in the Slack thread; CI runs the three gates; a person merges; Vercel deploys main and, separately, migrate applies any merged database scripts, asks
-the site whether it is healthy and tells Slack. The watchdog runs when CI finishes on main
-(and every two hours, or by hand), waits 90 seconds after a CI run, asks the live site whether it is healthy
-and tells Slack when that changes. It does not confirm which deploy it is looking at.
+Plain flow: a request in Slack becomes a draft pull request labelled with its tier; on a fresh
+runner, two read-only reviewers read it, their verdicts go on the pull request and their
+reports into the Slack thread; CI runs the three gates; a person merges, or a words-only change
+that both reviewers passed merges itself once switched on; Vercel
+deploys main and, separately, migrate applies any merged database scripts, asks the site
+whether it is healthy and tells Slack. The watchdog runs when CI finishes on main (and every
+two hours, or by hand), waits 90 seconds after a CI run, asks the live site whether it is
+healthy and tells Slack when that changes. It does not confirm which deploy it is looking at.
 
 | Step | What happens | State | Evidence |
 |---|---|---|---|
-| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS, deletes or the automation's own files; commits but does not push or open the pull request; never merges. Not running yet: the variable `SLACK_REQUEST_CHANNEL` is not set, so every sweep stops at its first step | PARTIAL | [R .github/workflows/slack-autopilot.yml:54, 145-195] [V-run, `gh variable list` and the 2026-10-30 runs' logs: "Slack autopilot is not configured yet"] |
-| Review before it opens | Runs the three gates again; runs the classifier, the decision script and the Slack card from the base branch's copy and reads both reviewers' instructions from it, not the working tree; the push checks the guard itself; refuses to push a change under `.github/` or `.claude/`; runs money-reviewer and invariant-auditor as two separate `claude-sonnet-5` runs with Read, Grep and Glob only and without the Slack request in their prompts; a reviewer that errors or gives no verdict counts as a finding. The pull request carries verdicts; the reports go to the Slack thread, because the repository is public | BUILT, not yet run against a real request | [R .github/workflows/slack-autopilot.yml:197-399] [R .github/scripts/autopilot-review.mjs] [V-run, `autopilot-review.test.mjs` 39/39, `slack-autopilot.test.mjs` 29/29 and a dry run of the "What changed" step on four branches, 2026-10-30] |
-| Status card | Updates the Slack thread through review, checks and merge, for `claude/slack-*` branches only. The autopilot moves the card to ready or checks failed itself when it opens the pull request (see ARCH-13). "Live" is posted only when someone runs the workflow by hand with that stage; nothing posts it automatically | PARTIAL | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] [R .github/scripts/slack-lifecycle-stage.mjs:22-26, 32, 57] [R .github/workflows/slack-autopilot.yml:395-415] |
-| Tier classifier | Script that sorts a diff into A (words, may self-merge), B (app, person merges), C (money, access, database, automation; never merges). The live Slack loop now calls it to label each pull request, but that loop never merges, so nothing self-merges today; self-merge lives only in the parked Jira autopilot | PARTIAL | [R .github/scripts/classify-change.mjs:8-12] [R .github/workflows/slack-autopilot.yml:258] [R .github/workflows/jira-autopilot.yml:184-199] |
+| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; always opens a DRAFT pull request; merges only tier A (see below). Not running yet: `SLACK_REQUEST_CHANNEL` is not set, so every sweep stops at its first step | PARTIAL | [R .github/workflows/slack-autopilot.yml:79-231] [V-run, `gh variable list` and the 2026-10-30 run logs: "Slack autopilot is not configured yet"] |
+| Review | A separate job on a fresh runner, checked out at the workflow's own commit: lays the pull request's files out as data with agent instruction files removed, runs money-reviewer and invariant-auditor as two `claude-sonnet-5` runs with Read, Grep and Glob only and no Slack text; no verdict line counts as not passed. Verdicts go on the pull request, reports to the Slack thread; tier A merges only if both passed the same commit | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:220-363, 456-462, 523-569] [R .github/scripts/autopilot-review.mjs] [V-run, `autopilot-review.test.mjs` 42/42 and a dry run of the layout step, 2026-10-30] |
+| Status card | Updates the Slack thread through review, checks and merge, for `claude/slack-*` branches only. "Live" is posted only when someone runs the workflow by hand with that stage; nothing posts it automatically | PARTIAL | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] [R .github/scripts/slack-lifecycle-stage.mjs:22-26, 32, 57] |
+| Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-79] [R .github/workflows/slack-autopilot.yml:197-282] [R .github/workflows/ci.yml:93] |
+| Tier A self-merge | Requires both reviewers to have passed the head commit; starts CI on it, waits, reads the pull request again (open, same commit, same base), merges with the commit pinned; fails closed (ADR-002) | SCAFFOLDED, switch is `AUTOMERGE_TIER_A` = `true` | [R .github/workflows/slack-autopilot.yml:458-509] |
+| CI on autopilot pull requests | A pull request opened with the workflow's token starts no workflow, so ship starts CI on tier A and B pull requests that did not go through the merge step; not tier C, because a dispatched run uses the branch's workflow files | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:508-521] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
-| Merge | A person merges. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-87] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
+| Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
 | Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
 | Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose; then asks `/api/health` and tells Slack the result | BUILT | [R .github/workflows/migrate.yml:33-39, 131, 150, 154-159, 166-185] [R supabase/run-order.txt:10-16] |
 | Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
@@ -506,10 +511,9 @@ Also TARGET or declined, with the reasons in docs/PLATFORM.md:
 | ARCH-07 | Capture writes four separate requests; a failure part way leaves a stored file with no event, or an event with no lines | The developer | No |
 | ARCH-08 | Credit notes do not reduce what the engine says is owed or change status. Intended? [Q: Ravi Kiran] | Ravi Kiran | No |
 | ARCH-09 | CLOSED 2026-10-24: money stays `numeric` dollars and integer cents is not planned, decided by the developer; `schema.sql:3` now says so | The developer | No |
-| ARCH-10 | Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop | The developer | No |
+| ARCH-10 | ~~Tier A self-merge described in docs/LOOP_ENGINEERING.md section 3 is not wired into the live Slack loop~~ Closed 2026-10-24 by ADR-002: wired, off until `AUTOMERGE_TIER_A` is set | The developer | No |
 | ARCH-11 | Domain renewal due 2026-10-16 not yet seen (HANDOVER A-04) | Ravi Kiran | Yes, for the domain |
 | ARCH-12 | The store's Miro board still shows the six diagrams as they were before the 2026-10-30 correction; redraw it from this file once this change and the open pull requests that edit this file have merged | The developer | No |
-| ARCH-13 | The autopilot opens its pull request with the workflow's own token, and GitHub starts no other workflow from events that token causes, so CI does not run when the pull request opens; it first runs when a person marks it ready or pushes to it [J-open, GitHub Actions documentation on `GITHUB_TOKEN`; kill condition: the first autopilot pull request shows a CI run on opening]. The autopilot runs the gates itself before opening, which covers the gap; the full fix is opening the pull request with a GitHub App token | The developer | No |
 
 ## 10. How this maps to the rest of the docs
 
@@ -532,6 +536,8 @@ the eight killed are the six stale statements this rewrite replaces, the old dia
 after the database writes, and tier A self-merge in the live Slack loop. Added the same day
 by a later session: 1 claim checked, 1 confirmed, the Montreal region (ARCH-01), from a live
 curl of the health route.
+Amended 2026-10-24 by ADR-002: section 6 and ARCH-10 re-read against the changed workflow and
+script, 6 claims checked, 6 confirmed. Source: this repository.
 
 **Basis, 2026-10-30 correction: 43 claims checked against main 4dfc97c, 32 confirmed, 11
 killed, 26 sources.** An edge-by-edge audit of the six diagrams found arrows the code does not
@@ -549,18 +555,12 @@ docs, auth and anthropic; the capture and vendor pages; `supabase/` schema, paym
 `src/lib/importBookingsV2.ts`. All six diagrams rendered without error in Mermaid 10.9.1
 [V-run, mermaid.render on each block in a browser, 2026-10-30].
 
-**Basis, 2026-10-30 review step: 7 claims checked, 6 confirmed, 1 left open, 4 sources.**
-Section 6 redrawn for the autopilot's review step on branch claude/slack-autopilot-review.
-Confirmed: the request channel variable is unset and every sweep that day stopped at the gate
-(`gh variable list`, `gh secret list`, run logs); the bot token and Anthropic key are set; the
-new step order, trusted copies and guard (workflow read at the cited lines); the decision
-rules (39 script tests); the "What changed" step's four outcomes (dry run on throwaway clones);
-the classifier is now called by the live loop. Left open: ARCH-13, from GitHub's
-documentation, not yet seen on a real run. Sources: this repository, GitHub CLI, Actions run
-logs, a local dry run.
-
-**Basis, 2026-10-30 scripts from the base branch: 2 claims checked, both confirmed, 1 source.**
-Branch claude/autopilot-scripts-from-base. Every script the autopilot runs after the build is
-the base branch's copy, and the push checks the guard itself (workflow read at the cited lines;
-`.github/scripts/slack-autopilot.test.mjs` 29/29). The workflow line references in this file
-were re-pointed in the same change. Source: this repository.
+**Basis, 2026-10-30 review job: 7 claims checked, 7 confirmed, 0 killed, 4 sources.** Section
+6 redrawn on branch claude/slack-autopilot-review. Confirmed: the request channel variable is
+unset and every sweep that day stopped at the gate (`gh variable list`, `gh secret list`, run
+logs); the bot token and Anthropic key are set; the review job's checkout, permissions, layout
+and reviewer tools, and the merge condition (workflow read at the cited lines); the decision
+rules (42 script tests); the layout step on this branch's own diff (agent files removed, file
+list written, git ignores the folder); the CI start limited to tiers A and B. Killed earlier
+the same day: the Slack request row's BUILT, now PARTIAL. Sources: this repository, GitHub
+CLI, Actions run logs, a local dry run.

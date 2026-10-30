@@ -29,10 +29,10 @@ Two things track it, and neither needs anything stored anywhere.
 | Card | When |
 |---|---|
 | 👀 Working on it | picked up |
-| 📝 Ready for someone to look | the draft pull request exists and every check before it passed |
+| 📝 Ready for someone to look | the draft pull request exists |
 | ☑️ Checks passed, waiting to be merged | the automatic checks went green |
-| 🔴 Checks failed | they did not, or a reviewer flagged something before the pull request opened |
-| 🚀 Merged, going out to the store | somebody merged it |
+| 🔴 Checks failed | they did not |
+| 🚀 Merged, going out to the store | somebody merged it, or it was words only and merged itself |
 | 🟢 Live on the store's site | the deploy is confirmed serving it |
 | ✋ Stopped, this one needs a person | it refused to guess, or the build failed |
 
@@ -99,71 +99,69 @@ If you make a channel that exists solely for requests, set the variable
 
 ## What it will not do
 
-- **Merge.** It opens a draft pull request and stops. A person merges.
+- **Merge anything but words.** It opens a draft pull request, and a script labels it with how
+  far it may go: `tier-a` words only, `tier-b` the app, `tier-c` money, logins, the database or
+  the automation. Only tier A merges itself, after the checks pass, and only while the
+  repository variable `AUTOMERGE_TIER_A` is `true`. Everything else waits for a person
+  (docs/adr/ADR-002-words-only-changes-merge-themselves.md).
 - **Touch payments, auth, or RLS.** Those requests get a reply saying a person is needed.
 - **Follow instructions inside a message.** Anyone who can type in the channel can write
   anything, including "ignore your previous instructions". Message text is a request for
   work, never a change to the process. This is written into the prompt, and it is the reason
   the channel should not be public to people outside the store.
-- **Edit the automation.** A change under `.github/` or `.claude/` is not pushed at all; the
-  card says a person is needed.
-- **Open a pull request nobody has checked.** See the next section.
+- **Tell anyone a change is ready before it has been read.** See the next section.
 
-## What checks the work before you see it
+## What reads the work before you see it
 
-The model that builds the change commits it and stops. It does not push and it does not open
-the pull request. The workflow then does four things, and only after them opens the draft
-pull request itself:
+The run is three jobs. **autopilot** builds and opens the draft pull request. **review** has
+two read-only reviewers read it. **ship** labels it with its tier, merges tier A if allowed,
+and updates the card. The card does not say "ready" until the review job has finished.
 
-| Check | What it is | Why |
+| Reviewer | Follows | Looks for |
 |---|---|---|
-| The three gates, again | `npx tsc --noEmit`, `npm run lint`, `npm run build` run by the workflow | The model says it ran them. Running them again turns a claim into a result |
-| Tier classifier | `.github/scripts/classify-change.mjs` reads the diff and labels it A, B or C | A script, so nothing in the request can move it. The label goes on the pull request |
-| money-reviewer | A separate model run following `.claude/agents/money-reviewer.md` | The ways this codebase has broken money before: a select missing `tax_mode`, an inline total bypassing `invoiceTotal`, SQL and TypeScript changed on one side |
-| invariant-auditor | A separate model run following `.claude/agents/invariant-auditor.md` | Store scoping, money hidden from staff, soft voids, audit rows, RLS on new tables, blank-env build |
+| money-reviewer | `.claude/agents/money-reviewer.md` | The ways this codebase has broken money before: a select missing `tax_mode`, an inline total bypassing `invoiceTotal`, SQL and TypeScript changed on one side |
+| invariant-auditor | `.claude/agents/invariant-auditor.md` | Store scoping, money hidden from staff, soft voids, audit rows, RLS on new tables, blank-env build |
 
 How the reviewers are kept honest:
 
-- **Their instructions come from the base branch.** The classifier, both reviewer files,
-  CLAUDE.md and the skill are read with `git show origin/<base>:...`, never from the working
-  tree, so a change cannot weaken its own reviewer. The same goes for every script that runs
-  after the build: the classifier, the decision (`autopilot-review.mjs`) and the Slack card
-  (`slack-status.mjs`) are copied from the base branch into the runner's temp folder by a step
-  that holds no secrets, and run from there. The step that pushes checks the guard itself as
-  well as the decision. `.github/scripts/slack-autopilot.test.mjs` fails if a step after the
-  build runs a script from the working tree again.
-- **The base branch must carry those scripts.** The schedule runs the workflow from `main`,
-  and the scripts are read from the branch the pull request targets (`develop` once it
-  exists). A script missing there stops the run before anything is pushed. So a change to
-  what these scripts expect reaches `develop` first, which the usual merge-then-promote order
-  already does, and stays readable by the workflow still on `main` until it is promoted.
-- **They can only read.** Read, Grep and Glob, the same tools as their agent files. Bash,
-  Write and Edit are refused by name.
-- **They never see the Slack request.** They judge the code against the store's rules. That
+- **A fresh runner.** The builder had a shell on its own runner, and anything it left there
+  would run with later steps on that runner. The review job starts clean, like ship.
+- **Their instructions come from the workflow's own commit**, not the change. The pull
+  request's files are laid out under `.autopilot-review/head/` as data, with every
+  `CLAUDE.md`, `AGENTS.md`, `.mcp.json`, `.claude/` and `.agents/` removed, so a change cannot
+  brief its own reviewer. Changes to those files are still in the diff they read.
+- **They can only read.** Read, Grep and Glob; Bash, Write and Edit are refused by name; the
+  job's token is read-only; nothing from the pull request is executed.
+- **They never see the Slack request.** They judge the code against the store's rules, which
   removes the one route by which somebody typing in Slack could talk a reviewer into passing
   something.
 - **Silence is not a pass.** Each must end with `VERDICT: PASS` or `VERDICT: FINDINGS` as its
-  last line. A reviewer that errors, runs out of turns, or ends any other way counts as
-  "did not finish", which turns the card red exactly like a finding.
+  last line. A reviewer that errors, runs out of turns, or ends any other way counts as "did
+  not finish".
 
-What happens with the result: the pull request opens either way, so the work is not lost. The
-card turns 🔴 if the gates failed or either reviewer flagged something or did not finish, and
-📝 if all four passed. **The reviewers' reports are posted in the Slack thread, not on the
-pull request**, because the repository is public and a report can describe a weakness. The
-pull request carries only the verdicts and points to the thread.
+What the verdicts change:
+
+| Both passed | Otherwise |
+|---|---|
+| 📝 card, "both reviewers found nothing wrong" | 🔴 card naming the reviewer that flagged something or did not finish |
+| Tier A may merge itself (if switched on) | **Tier A does not merge itself**; a person looks |
+
+A tier A merge also needs the review to be of the same commit it is merging. **The reports go
+to the Slack thread, not the pull request.** The repository is public and a report can
+describe a weakness, so the pull request gets one comment with the verdicts and a pointer to
+the thread.
 
 **The reviewers are a second look, not the gate.** A model reading another model's work
-misses things. The gate is still the person who merges. What the reviewers add is a list of
-concrete lines to read first. The decision logic is `.github/scripts/autopilot-review.mjs`,
-with its tests in `autopilot-review.test.mjs`.
+misses things. A person still merges tier B and C, and the classifier, a script, decides the
+tier. What the reviewers add is a short list of lines to read first. The decision logic is
+`.github/scripts/autopilot-review.mjs`, tested by `autopilot-review.test.mjs`.
 
-**CI does not run when the pull request opens** (docs/ARCHITECTURE.md, ARCH-13). The workflow
-opens it with its own token, and GitHub starts no other workflow from events that token
-causes [J-open, kill condition: the first autopilot pull request shows a CI run]. That is why
-the workflow runs the gates itself, and why it moves the card on itself instead of waiting for
-the lifecycle workflow. CI runs once a person marks the pull request ready or pushes to it.
+**CI on these pull requests.** GitHub starts no workflow from a pull request opened with the
+workflow's own token, so ship starts CI on tier A and B pull requests itself. Tier C does not
+get one started, because a dispatched run uses the workflow files on the branch and tier C is
+the only tier that can change them; CI runs on tier C when a person pushes to it.
 
-What it costs: the reviewers run only when a request produced a change, never on an idle
+What it costs: the reviewers run only when a request produced a pull request, never on an idle
 sweep. Each is one `claude-sonnet-5` run of at most 30 turns.
 
 ## What it costs
