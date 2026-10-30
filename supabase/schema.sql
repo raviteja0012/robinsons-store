@@ -233,8 +233,8 @@ create table feedback (
   kind text not null default 'idea' check (kind in ('idea','problem','question','praise')),
   page text,                -- which screen it is about, in the author's words
   body text,
-  screenshot_path text,     -- storage path under feedback/ in the documents bucket
-  audio_path text,          -- voice recording path under feedback/
+  screenshot_path text,     -- storage path under <store_id>/feedback/ in the documents bucket
+  audio_path text,          -- voice recording path under <store_id>/feedback/
   ai_summary text,
   status text not null default 'new' check (status in ('new','planned','done','declined')),
   created_at timestamptz default now(),
@@ -795,6 +795,30 @@ begin
     execute format('alter table public.%I add column if not exists voided_by uuid references public.app_user(id);', t);
   end loop;
 end $$;
+
+-- Money-free views (ARCH-03). Staff screens read these instead of the tables that carry a dollar
+-- figure: vendor_directory has every vendor column but the minimum order, invoice_due says which
+-- invoices are open and when they fall due, insurance_renewal has policy names and dates. In the
+-- demo they read the tables directly and the open policies apply. auth_setup.sql section 3e
+-- replaces them, at the login cutover, with versions that return only the member's own store
+-- while the tables themselves close to staff.
+create or replace view public.vendor_directory with (security_invoker = true) as
+  select v.id, v.store_id, v.department_id, v.name, v.rep_name, v.phone, v.email,
+         v.products_we_carry, v.default_terms, v.status, v.notes, v.summer_order_timeline,
+         v.order_location, v.order_location_other, v.reorder_status, v.reorder_comments,
+         v.specializes_in, v.created_at, v.voided_at
+  from public.vendor v;
+
+create or replace view public.invoice_due with (security_invoker = true) as
+  select i.id, i.store_id, i.vendor_id, i.invoice_number, i.terms, i.due_date, i.status, i.voided_at
+  from public.invoice i;
+
+create or replace view public.insurance_renewal with (security_invoker = true) as
+  select p.id, p.store_id, p.name, p.renewal_date, p.voided_at
+  from public.insurance_policy p;
+
+grant select on public.vendor_directory, public.invoice_due, public.insurance_renewal
+  to anon, authenticated;
 
 -- DEV ONLY row-level security.
 -- These policies allow the anon key to read and write so the demo runs without login.
