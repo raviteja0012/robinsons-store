@@ -368,44 +368,39 @@ Question: how does a change travel from a request to the live store?
 
 ```mermaid
 flowchart LR
-  REQ["Slack request<br/>or developer"]
-  AP["slack-autopilot build job<br/>commits, cannot push"]
-  REV["review job, fresh runner:<br/>money-reviewer,<br/>invariant-auditor"]
-  PR["Draft pull request<br/>labelled tier A, B or C"]
-  CI["CI: lint, tsc,<br/>blank-env build"]
-  HUM["A person merges<br/>(tier A may merge itself)"]
-  VD["Vercel deploys main"]
-  MIG["migrate: run-order.txt<br/>to production"]
-  WD["post-deploy-watch<br/>GET /api/health"]
-  SLK["Slack thread<br/>and alerts"]
-  REQ -- "mention in channel" --> AP
+  REQ["Slack request"]
+  AP["Slack autopilot build job<br/>commits, cannot push"]
+  REV["Review on a fresh runner<br/>ship opens the pull request"]
+  PR["Draft pull request<br/>target: develop"]
+  CI["Independent CI<br/>lint, tsc, blank-env build"]
+  DEV["develop branch"]
+  PRE["Vercel dev preview<br/>separate dev database"]
+  HUM["Person runs promotion<br/>develop to main pull request"]
+  LIVE["main: Vercel production deploy<br/>production migrations and watchdog"]
+  REQ -- "mention in the request channel" --> AP
   AP -- "commit as a bundle" --> REV
-  REV -- "ship pushes it, opens it, adds verdicts" --> PR
-  REV -- "reports in the thread" --> SLK
-  PR -- "ship starts it (tier A, B)" --> CI
-  CI -- "green" --> HUM
-  REV -- "both pass: tier A may merge" --> HUM
-  HUM -- "merges the pull request" --> VD
-  HUM -- "if supabase/ changed" --> MIG
-  CI -- "completes on main; also every 2 hours" --> WD
-  MIG -- "result, after a health check" --> SLK
-  WD -- "on change of health" --> SLK
-  PR -- "slack-lifecycle updates card" --> SLK
+  REV -- "ship pushes, opens and labels" --> PR
+  PR -- "ship starts CI for tiers A and B" --> CI
+  CI -- "passes; person merges, or tier A if enabled" --> DEV
+  DEV -- "deploys against dev data" --> PRE
+  PRE -- "person verifies the change" --> HUM
+  DEV -- "supplies the promotion commits" --> HUM
+  HUM -- "checks pass, merges to main" --> LIVE
 ```
 
-Plain flow: a request in Slack is built into a commit on a runner that cannot push; on a fresh
-runner, two read-only reviewers read that commit; on another, ship pushes it and opens a draft
-pull request labelled with its tier, with the verdicts on it and the reports in the Slack
-thread; CI runs the three gates; a person merges, or a words-only change
-that both reviewers passed merges itself once switched on; Vercel
-deploys main and, separately, migrate applies any merged database scripts, asks the site
-whether it is healthy and tells Slack. The watchdog runs when CI finishes on main (and every
-two hours, or by hand), waits 90 seconds after a CI run, asks the live site whether it is
-healthy and tells Slack when that changes. It does not confirm which deploy it is looking at.
+Plain flow: Slack intake builds a commit, review and ship open its pull request, independent CI checks it, the change lands on `develop` for a dev preview, and a person promotes `develop` to `main` for the live deployment.
+
+BUILT: Slack intake is switched on since 2026-10-30, when the repository variable
+`SLACK_REQUEST_CHANNEL` was set [R .github/workflows/slack-autopilot.yml:105-121].
+BUILT: `develop` and its dev preview exist; a person starts `promote.yml` to open and merge
+a `develop` to `main` pull request after checks pass [R docs/ENVIRONMENTS.md:19-27,54-56]
+[R .github/workflows/promote.yml:24-25,84-113]. Automatic dev migrations wait for the
+`SUPABASE_DB_URL_DEV` secret [R docs/ENVIRONMENTS.md:75]. Production migrations and
+the health watchdog remain separate workflows, detailed below.
 
 | Step | What happens | State | Evidence |
 |---|---|---|---|
-| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; the job it builds in holds no Slack token, can only read the repository and hands its commit over as a bundle; a change to `.github/` or `.claude/`, including a file moved out of them, or a change not built on the base commit the run started from, is never pushed; anything else becomes a DRAFT pull request, opened by ship after the review; merges only tier A (see below). Switched on 2026-10-30: the first request was found and carded, and its build stopped because the Anthropic account behind the key is out of credit | PARTIAL | [R .github/workflows/slack-autopilot.yml:93-292] [V-run, `gh variable list` and Actions run 41127237310, 2026-10-30] |
+| Slack request | Sweeps every 30 minutes; an idle sweep spends no model tokens; builds with `claude-sonnet-5`, at most 60 turns; stops and explains on payments, RPCs, auth, RLS or deletes; the job it builds in holds no Slack token, can only read the repository and hands its commit over as a bundle; a change to `.github/` or `.claude/`, including a file moved out of them, or a change not built on the base commit the run started from, is never pushed; anything else becomes a DRAFT pull request, opened by ship after the review; merges only tier A (see below). Switched on 2026-10-30 when the repository variable `SLACK_REQUEST_CHANNEL` was set | BUILT | [R .github/workflows/slack-autopilot.yml:93-292] |
 | Review | A separate job on a fresh runner, checked out at the workflow's own commit: reads the build's commit from its bundle and lays its files out as data with agent instruction files removed, runs money-reviewer and invariant-auditor as two `claude-sonnet-5` runs with Read, Grep and Glob only and no Slack text; no verdict line counts as not passed. Verdicts go on the pull request, reports to the Slack thread; tier A merges only if both passed the same commit | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:308-427, 536-540, 601-650] [R .github/scripts/autopilot-review.mjs] [V-run, `autopilot-review.test.mjs` 42/42 and a dry run of the layout step, 2026-10-30] |
 | Status card | Updates the Slack thread through review, checks and merge, for `claude/slack-*` branches only. "Live" is posted only when someone runs the workflow by hand with that stage; nothing posts it automatically | PARTIAL | [R .github/workflows/slack-lifecycle.yml:3-16, 18-25] [R .github/scripts/slack-lifecycle-stage.mjs:22-26, 32, 57] |
 | Tier classifier | Script that sorts a diff into A (prose files only, may self-merge), B (app, person merges), C (money, access, database, configuration, automation, and every agent instruction file at any depth; never merges). The Slack loop runs it in a separate job, on a fresh runner, on every pull request it opens and labels the pull request with the tier | PARTIAL: rules tested, not yet run on a live request | [R .github/scripts/classify-change.mjs:25-79] [R .github/workflows/slack-autopilot.yml:462-519] [R .github/workflows/ci.yml:93] |
@@ -413,11 +408,11 @@ healthy and tells Slack when that changes. It does not confirm which deploy it i
 | CI on autopilot pull requests | A pull request opened with the workflow's token starts no workflow, so ship starts CI on tier A and B pull requests that did not go through the merge step; not tier C, because a dispatched run uses the branch's workflow files | BUILT, not yet run on a live request | [R .github/workflows/slack-autopilot.yml:586-597] |
 | CI gates | `npm run lint`, `npx tsc --noEmit`, `npm run build` with blank Supabase env, plus the automation's own tests | BUILT | [R .github/workflows/ci.yml:3-13, 36-55] |
 | Merge | A person merges, except tier A once switched on. Changes under `.github/` and `.claude/` never merge on their own. Main accepts changes only through a pull request: no direct push, force-push or deletion | BUILT | [R docs/LOOP_ENGINEERING.md:65-110] [V-run, `gh api repos/raviteja0012/robinsons-store/rulesets/25802611`, ruleset "main: pull requests only", active on refs/heads/main, 2026-10-25] |
-| Deploy | Vercel deploys on push to main; every PR gets a preview | BUILT | [R docs/PLATFORM.md:74, 86-87] |
-| Migrate | On push to main touching `supabase/**`, applies `supabase/run-order.txt` in order; `schema.sql`, `seed.sql` and `auth_setup.sql` are excluded on purpose; then asks `/api/health` and tells Slack the result | BUILT | [R .github/workflows/migrate.yml:33-39, 131, 150, 154-159, 166-185] [R supabase/run-order.txt:10-16] |
+| Deploy | Vercel deploys `develop` and pull requests as dev previews; promotion to `main` deploys production | BUILT | [R docs/ENVIRONMENTS.md:19-39] |
+| Migrate | On pushes to `main` or `develop` touching `supabase/**`, applies `supabase/run-order.txt` to the corresponding environment; rebuild and seed scripts are excluded. Automatic dev migrations wait for `SUPABASE_DB_URL_DEV` | BUILT for production; SCAFFOLDED for automatic dev migrations | [R .github/workflows/migrate.yml:33-39,66-96] [R docs/ENVIRONMENTS.md:75] |
 | Watchdog | After CI completes on main (waiting 90 seconds), every two hours and by hand, calls `/api/health` and posts to Slack only when the answer changes; checks `PRODUCTION_URL` or falls back to the vercel.app address. It does not check which commit is live | BUILT | [R .github/workflows/post-deploy-watch.yml:16-22, 47-49, 54] |
 | RLS audit | Weekly, Monday 12:23 UTC: lists public tables with RLS off or empty, tells Slack, goes red | BUILT | [R .github/workflows/rls-audit.yml:1-17] |
-| Dev site and promotion | `promote.yml` merges `develop` into `main` when a person runs it; inert because no `develop` branch exists | SCAFFOLDED, switch is creating `develop` and the dev Supabase project | [R .github/workflows/promote.yml:16-24, 47-53] [V-run, git ls-remote --heads origin, 2026-10-24: main and two claude/ branches, no develop] |
+| Dev site and promotion | `develop` exists and deploys a dev preview; a person runs `promote.yml` to open and merge a `develop` to `main` pull request after checks pass | BUILT | [R docs/ENVIRONMENTS.md:19-39,54-56] [R .github/workflows/promote.yml:24-25,84-113] |
 | Manual tools | `vercel-diagnose`, `vercel-protect`, `slack-announce` run by hand | BUILT | [R docs/PLATFORM.md:79, 153] |
 
 Working in Claude Code: the `robinsons-store` and `store-standards` skills load from
@@ -573,3 +568,9 @@ round trip and the guard, including renames and a commit built on an older base 
 and the pull request in ship only, past the guard (`slack-autopilot.test.mjs`); every `[R]`
 in this section opened at its line. Sources: this repository, local test runs. Not verified:
 a real run.
+
+**Basis, 2026-10-30 PR #86: 5 claims checked, 5 confirmed, 0 killed, 4 sources.**
+Confirmed: the Slack intake configuration gate; the separate CI gates; promotion only when
+a person starts it; the recorded dev preview and pending automatic dev migrations. Sources:
+`.github/workflows/slack-autopilot.yml:105-121`, `.github/workflows/ci.yml:28-44`,
+`.github/workflows/promote.yml:24-25,84-113`, and `docs/ENVIRONMENTS.md:19-39,54-56,75`.

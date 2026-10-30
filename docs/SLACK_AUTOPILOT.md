@@ -178,10 +178,14 @@ tier. What the reviewers add is a short list of lines to read first. The decisio
 `.github/scripts/autopilot-review.mjs`, tested by `autopilot-review.test.mjs`.
 
 **CI on these pull requests.** GitHub starts no workflow from a pull request opened with the
-workflow's own token, so ship starts CI on tier A and B pull requests itself. That is where
-the three gates run again: in CI, on a runner that holds none of the autopilot's secrets,
-never in a job that does, because running them means running the change. Tier C does not get
-one started; CI runs on tier C when a person pushes to it.
+workflow's own token, so ship starts CI on tier A and B pull requests itself. The builder runs
+`tsc`, lint and the blank-env build as a self-check in the build job, which holds
+`ANTHROPIC_API_KEY` [R .github/workflows/slack-autopilot.yml:193-238]. Independent CI runs
+the gates again on a separate runner without the autopilot secrets
+[R .github/workflows/ci.yml:28-44]. The review and ship jobs never execute candidate code;
+they read the bundle as data and run scripts from the workflow's own commit
+[R .github/workflows/slack-autopilot.yml:308-427,435-480]. Tier C does not get CI started by
+ship; CI runs on tier C when a person pushes to it.
 
 What it costs: the reviewers run only when a request produced a commit, never on an idle
 sweep. Each is one `claude-sonnet-5` run of at most 30 turns.

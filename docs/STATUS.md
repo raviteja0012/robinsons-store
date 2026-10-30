@@ -2,7 +2,15 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/autopilot-build-job-commit-only (latest: the Slack autopilot's build job only produces the commit, below; before it two read-only reviewers read every Slack pull request, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/autopilot-build-job-commit-only (latest: PR #86 documents builder self-checks and the develop-to-main release flow, below; before it the Slack autopilot's build job only produces the commit, below; before it two read-only reviewers read every Slack pull request, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+PR #86 documentation corrections, 2026-10-30:
+- BUILT: the docs distinguish the builder's self-check from independent CI; review and ship
+  never execute candidate code [R `.github/workflows/slack-autopilot.yml:193-238,308-427,435-480`].
+- BUILT: section 6 of docs/ARCHITECTURE.md shows a pull request landing on `develop`, the dev
+  preview and a person promoting to `main` [R `docs/ENVIRONMENTS.md:19-27,54-56`].
+- Slack intake is switched on since 2026-10-30 (`SLACK_REQUEST_CHANNEL` set); automatic dev
+  migrations wait for `SUPABASE_DB_URL_DEV` [R `docs/ENVIRONMENTS.md:75`].
 
 The Slack autopilot's build job only produces the commit, 2026-10-30:
 - Four jobs: find, build, review, ship [R `.github/workflows/slack-autopilot.yml:93`, `:170`,
@@ -22,14 +30,11 @@ The Slack autopilot's build job only produces the commit, 2026-10-30:
   the card instead of passing on the builder's paragraph.
 - The build starts from that base commit (`develop`'s tip when it exists), so the diff is
   only the builder's work.
-- The three gates run again in CI, which ship starts on tier A and B and which holds no
-  secrets [R `.github/workflows/ci.yml:3-18`]; never in a job that holds one, because
-  running them runs the change.
-- Switched on 2026-10-30: `SLACK_REQUEST_CHANNEL` set to the workspace's general channel,
-  where the bot is a member. The first request, run on this branch, was found, claimed and
-  carded, and ship set the card to stopped. The build's model call was refused with "Credit
-  balance is too low" [V-run, Actions run 41127237310]. Blocked on credit for the Anthropic
-  account behind `ANTHROPIC_API_KEY`; nothing else is missing.
+- The builder runs the three gates as a self-check in the build job, which holds
+  `ANTHROPIC_API_KEY` [R `.github/workflows/slack-autopilot.yml:193-238`]. Independent CI,
+  started by ship on tiers A and B, repeats them without the autopilot secrets
+  [R `.github/workflows/ci.yml:28-44`]. review and ship never execute candidate code; they
+  read the bundle as data and run scripts from the workflow's own commit.
 - Tests: `autopilot-change.test.mjs` (new, 34, real repositories and bundles),
   `slack-autopilot.test.mjs` (86, rewritten for four jobs), `autopilot-review.test.mjs` (55).
   PARTIAL until the first live request runs through all four jobs.
