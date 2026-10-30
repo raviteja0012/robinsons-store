@@ -123,7 +123,14 @@ Run in this order; skip nothing (each is safe to re-run):
    the two functions that reserve and finish each call. The cap and the log work as soon as
    this runs. Only the owner can read the rows once login is on; with enforced login, rerun
    `auth_setup.sql` after it to give the owner that read.
-10. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
+10. `money_by_role.sql`: staff never see a dollar figure, enforced by the database (ARCH-03,
+   docs/adr/ADR-003-money-by-role-at-the-database.md). With enforced login it closes the nine
+   tables that carry an amount to everyone but lead, manager and owner, and adds three views
+   with no dollar column that the staff screens read (vendor_directory, invoice_due,
+   insurance_renewal). On a demo database it only adds the views. It is the same block as
+   `auth_setup.sql` section 3e, so either order ends the same. `money_by_role_test.sql` is
+   its proof, for a disposable database only; it is never in the run order.
+11. `auth_setup.sql` — ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 
 ## What each remaining file is
