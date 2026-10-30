@@ -2,7 +2,22 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/slack-autopilot-review (latest: the Slack autopilot checks its work before the pull request opens, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/autopilot-scripts-from-base (latest: the Slack autopilot runs its post-build scripts from the base branch, below; before it the Slack autopilot checks its work before the pull request opens, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+The Slack autopilot runs its post-build scripts from the base branch, 2026-10-30:
+- A new step after "Build it" copies `classify-change.mjs`, `autopilot-review.mjs` and
+  `slack-status.mjs` from the base branch into the runner's temp folder. "What changed",
+  "Weigh the checks" and "Say what happened" run those copies, not the working tree's. The
+  copy step holds no secrets and runs even when the build failed, so the card still updates.
+- "Open the pull request" now requires the guard to be `ok` as well as the decision to say
+  open. "Decide where this should land" moved before `npm ci`, so the base is known when the
+  install fails.
+- New `.github/scripts/slack-autopilot.test.mjs` (29 checks) reads the workflow and fails if a
+  step after the build runs a script from the working tree, runs one the copy step does not
+  take, or pushes without the guard; it also runs each copied script from a temp folder.
+- Rollout: the scripts are read from `develop`, so this branch must reach `develop` before the
+  workflow on `main` uses it. Until `autopilot-review.mjs` is on `develop`, a run stops before
+  pushing and the card says it could not finish.
 
 The Slack autopilot checks its work before the pull request opens, 2026-10-30:
 - The autopilot is built but not running: `SLACK_BOT_TOKEN` and `ANTHROPIC_API_KEY` are set,

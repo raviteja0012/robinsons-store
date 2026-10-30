@@ -106,6 +106,10 @@ jobs:
 
       # The first draw of the status card. Everything after this point, including workflows
       # that run hours later, edits this same card rather than adding messages.
+      #
+      # This one runs the script from the working tree because nothing has touched it yet: it
+      # is still the commit the workflow checked out. Every script after "Build it" runs from
+      # a copy taken from the base branch instead (see "Take the scripts from the base branch").
       - name: Say it has been picked up
         if: steps.find.outputs.found == 'true'
         env:
@@ -117,15 +121,8 @@ jobs:
           NOTE: "I am working on this now. This message will keep itself up to date."
         run: node .github/scripts/slack-status.mjs
 
-      - uses: actions/setup-node@v4
-        if: steps.find.outputs.found == 'true'
-        with:
-          node-version: "20"
-          cache: npm
-
-      - run: npm ci
-        if: steps.find.outputs.found == 'true'
-
+      # Before setup-node and npm ci, so the base is known even when the install fails: the
+      # scripts that report the failure are read from it.
       - name: Decide where this should land
         id: base
         if: steps.find.outputs.found == 'true'
@@ -135,6 +132,15 @@ jobs:
           else
             echo "branch=main" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: actions/setup-node@v4
+        if: steps.find.outputs.found == 'true'
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+        if: steps.find.outputs.found == 'true'
 
       - name: Build it
         id: build
@@ -190,11 +196,36 @@ jobs:
       # From here on the model's word is checked, not taken. Everything up to "Open the pull
       # request" decides what the person in Slack and the person who merges get told.
       #
-      # TRUSTED COPIES. The classifier and the reviewers' instructions are read from the BASE
-      # branch with `git show`, never from the working tree. The builder could have edited
-      # its own reviewer or the classifier, and a loop that can edit its reviewer has no
-      # reviewer (docs/LOOP_ENGINEERING.md). For the same reason a change that touches
-      # .github/ or .claude/ is not pushed at all.
+      # TRUSTED COPIES. Every script that runs after the build (the classifier, the decision
+      # in "Weigh the checks", and the Slack card) and the reviewers' instructions are read
+      # from the BASE branch with `git show`, never from the working tree. The builder could
+      # have edited any of them, and a loop that can edit its reviewer has no reviewer
+      # (docs/LOOP_ENGINEERING.md). For the same reason a change that touches .github/ or
+      # .claude/ is not pushed at all.
+      #
+      # This step holds no secrets, because git reads its settings from a checkout the
+      # builder worked in. It runs even when the build failed, since the card still has to
+      # say so. A script missing from the base is left out rather than left empty, so the
+      # step that needs it fails instead of running nothing; the others still run.
+      - name: Take the scripts from the base branch
+        id: scripts
+        if: always() && steps.base.outputs.branch != ''
+        env:
+          BASE: ${{ steps.base.outputs.branch }}
+        run: |
+          git fetch --no-tags --quiet origin "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+          dir="$RUNNER_TEMP/from-base"
+          rm -rf "$dir"
+          mkdir "$dir"
+          missing=""
+          for f in classify-change.mjs autopilot-review.mjs slack-status.mjs; do
+            git show "origin/$BASE:.github/scripts/$f" > "$dir/$f" || { rm -f "$dir/$f"; missing="$missing $f"; }
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Not on $BASE:$missing. Nothing will be pushed."
+            exit 1
+          fi
+
       - name: What changed
         id: change
         if: steps.find.outputs.found == 'true' && steps.build.outcome == 'success'
@@ -224,8 +255,7 @@ jobs:
             echo "guard=automation" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git show "origin/$BASE:.github/scripts/classify-change.mjs" > "$RUNNER_TEMP/classify-change.mjs"
-          node "$RUNNER_TEMP/classify-change.mjs" "origin/$BASE"
+          node "$RUNNER_TEMP/from-base/classify-change.mjs" "origin/$BASE"
           # What the reviewers read. Excluded from git so nothing here can be committed.
           mkdir -p .autopilot-review
           echo ".autopilot-review/" >> .git/info/exclude
@@ -315,9 +345,9 @@ jobs:
             VERDICT: PASS        if every invariant holds
             VERDICT: FINDINGS    if at least one is broken
 
-      # The decision, made by a tested script (.github/scripts/autopilot-review.mjs): open
-      # a pull request or not, what the card says, and the pull request body. A reviewer
-      # that crashed or gave no verdict counts the same as a finding.
+      # The decision, made by a tested script (.github/scripts/autopilot-review.mjs, the base
+      # branch's copy): open a pull request or not, what the card says, and the pull request
+      # body. A reviewer that crashed or gave no verdict counts the same as a finding.
       - name: Weigh the checks
         id: review
         if: always() && steps.find.outputs.found == 'true'
@@ -334,13 +364,16 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           BODY_OUT: ${{ runner.temp }}/pr-body.md
           REPORTS_OUT: ${{ runner.temp }}/reports.txt
-        run: node .github/scripts/autopilot-review.mjs
+        run: node "$RUNNER_TEMP/from-base/autopilot-review.mjs"
 
       # Opened here, by the workflow, so it cannot open before the review has run. If the
       # builder opened one anyway, its body is replaced with the checked one.
+      #
+      # The guard is checked here as well as in the decision above, so nothing a script
+      # answers can push a change the guard did not clear.
       - name: Open the pull request
         id: pr
-        if: steps.review.outputs.open_pr == 'true'
+        if: steps.change.outputs.guard == 'ok' && steps.review.outputs.open_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE: ${{ steps.base.outputs.branch }}
@@ -379,4 +412,4 @@ jobs:
             || 'I could not finish this one, so nothing has changed. It needs a person to look.' }}
           LINK: ${{ steps.pr.outputs.url || format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
           DETAIL_FILE: ${{ steps.pr.outputs.url && format('{0}/reports.txt', runner.temp) || '' }}
-        run: node .github/scripts/slack-status.mjs
+        run: node "$RUNNER_TEMP/from-base/slack-status.mjs"

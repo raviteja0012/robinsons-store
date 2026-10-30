@@ -126,7 +126,17 @@ How the reviewers are kept honest:
 
 - **Their instructions come from the base branch.** The classifier, both reviewer files,
   CLAUDE.md and the skill are read with `git show origin/<base>:...`, never from the working
-  tree, so a change cannot weaken its own reviewer.
+  tree, so a change cannot weaken its own reviewer. The same goes for every script that runs
+  after the build: the classifier, the decision (`autopilot-review.mjs`) and the Slack card
+  (`slack-status.mjs`) are copied from the base branch into the runner's temp folder by a step
+  that holds no secrets, and run from there. The step that pushes checks the guard itself as
+  well as the decision. `.github/scripts/slack-autopilot.test.mjs` fails if a step after the
+  build runs a script from the working tree again.
+- **The base branch must carry those scripts.** The schedule runs the workflow from `main`,
+  and the scripts are read from the branch the pull request targets (`develop` once it
+  exists). A script missing there stops the run before anything is pushed. So a change to
+  what these scripts expect reaches `develop` first, which the usual merge-then-promote order
+  already does, and stays readable by the workflow still on `main` until it is promoted.
 - **They can only read.** Read, Grep and Glob, the same tools as their agent files. Bash,
   Write and Edit are refused by name.
 - **They never see the Slack request.** They judge the code against the store's rules. That
