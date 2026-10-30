@@ -2,7 +2,30 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/gracious-mccarthy-lexvp5 (latest: the docs organized into one entry path, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/practical-cannon-n3tnva (latest: CI on `develop` and a promotion that merges only on green CI, below; before it the docs organized into one entry path, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+CI on `develop`; promotion merges only on green CI, 2026-10-30:
+- CI now starts by itself on every pull request into `develop` and every push to it, as on
+  `main`. Before, the documented path for app changes ran no checks unless someone started CI
+  by hand; #71, #83 and #85 target `develop`. They get a run on their next push or update from
+  `develop` once this reaches `develop`. The leftover `claude/great-johnson-CFSbi` trigger is
+  gone; that branch no longer exists on origin.
+- `promote.yml` no longer merges with `--auto`, which with no required checks on `main` could
+  merge at once. It now does what the Slack loop's tier A step does: requires `develop` to
+  hold everything on `main`, starts CI on the pull request's head commit, waits, reads the
+  pull request again, and merges with `--match-head-commit`. Anything unexpected leaves the
+  pull request open and fails the run. After the merge it starts CI on `main` and, when
+  `supabase/` changed, Apply database scripts, since a merge made with the workflow's token
+  may start neither.
+- Docs: ENVIRONMENTS.md, LOOP_ENGINEERING.md section 3, CONTRIBUTING.md, the ARCHITECTURE.md
+  promotion row (was SCAFFOLDED with no `develop`; now PARTIAL), CAPABILITIES.md item 40
+  (auto-merge no longer used), two ONBOARDING.md line references.
+- Open: the promotion has not run end to end on GitHub. First run after this merges: expect a
+  hold until `develop` is brought level with `main` (it lacks #56 today). Whether GitHub
+  starts no push workflow for a merge made with `GITHUB_TOKEN` stays `[J-open]` (ADR-002
+  context item 3); the dispatches are safe either way.
+- Tier C (`.github/`): a person merges. Then bring `develop` level with `main`, which is the
+  step that makes pull requests into `develop` show CI.
 
 Docs organized into one entry path, 2026-10-30:
 - docs/README.md now routes by reader (new member, builder or AI session, owner, checker),

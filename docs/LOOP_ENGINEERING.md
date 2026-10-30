@@ -97,6 +97,19 @@ and an event made with that token starts no workflow. Anything unexpected leaves
 request open for a person; the step fails closed and never fails the run. Rules tested in
 `.github/scripts/classify-change.test.mjs`, which CI runs.
 
+**Promotion to `main` merges the same way** (since 2026-10-30). `promote.yml` opens the
+`develop` to `main` pull request with `GITHUB_TOKEN` too, so it starts CI on that pull
+request's head commit itself, waits, reads the pull request again, and merges with the head
+commit pinned. It first requires `develop` to hold everything on `main`, so the commit CI
+checked is exactly the code that lands. Anything unexpected leaves the pull request open and
+fails the run, because a person started it and is waiting to see production change. After the
+merge it starts CI on `main`, for the watchdog, and Apply database scripts when `supabase/`
+changed, since a merge made with that token may start neither. It used `gh pr merge --auto`
+before, which with no required checks on `main` could merge before any check ran
+[R `.github/workflows/promote.yml:107-194`]. CI itself starts on pull requests into
+`develop` and pushes to it exactly as on `main` [R `.github/workflows/ci.yml:3-7`]; until
+2026-10-30 it did not, so the documented path for app changes ran unchecked.
+
 That last exclusion is the one people forget. **A loop that can edit its own limits does not
 have limits, and a loop that can edit its own reviewer has no reviewer.** The automation is
 not allowed to modify the automation. Changing what the autopilot may do requires a human
