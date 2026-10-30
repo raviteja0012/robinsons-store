@@ -4,7 +4,7 @@ Status: ACCEPTED, 2026-10-30. Owner: the developer. Approver: Ravi Kiran.
 
 **Both environments exist. Production is the live site on the store's database; dev is the
 `develop` branch, deployed by the same Vercel project to its own address, on a separate
-database holding only invented data [V-run, Supabase list_projects, Vercel
+database holding the repository's seed data, never the live ledger [V-run, Supabase list_projects, Vercel
 create_project_env and create_deployment, GitHub create_branch, 2026-10-30].** Two GitHub
 settings are still missing, so a database script merged to `develop` is not yet applied to dev
 by itself, and the ticket comment cannot link the dev site (step 2 and step 5 below). Asked
@@ -30,7 +30,7 @@ reaches the live site only when a person runs the promotion workflow.
 | Site | `app.robinsonsgeneralstore.ca` | `robinsons-store-git-develop-robinsons-store1.vercel.app`, or `dev.robinsonsgeneralstore.ca` once its DNS record exists |
 | Vercel | Project `robinsons-store`, Production environment | **The same project**, Preview environment |
 | Database | Supabase project `robinsons-store` (ref `mhcjreqvvhnrtgwtuwvr`) | Supabase project `robinsons-store-dev` (ref `wqxcmchxkdhigacvxgad`), Canada Central, same organization |
-| Data | The store's | Invented: `schema.sql`, `seed.sql`, `seed_dev.sql`, then every script in `run-order.txt`. 2 stores, 46 vendors, 37 invoices on 2026-10-30 |
+| Data | The store's | Seed data, never the live ledger: `schema.sql`, `seed.sql` (its vendors, orders, invoices and payments are curated from the store's 2026 bookings sheet [R `supabase/seed.sql:4`]), `seed_dev.sql` (invented cases), then every script in `run-order.txt`. 2 stores, 46 vendors, 37 invoices on 2026-10-30 |
 | Scripts | `supabase/run-order.txt`, on a push to `main` | The same list, on a push to `develop`, via `SUPABASE_DB_URL_DEV` |
 | Daily email cron | Runs | Does not: Vercel runs crons on production deployments only |
 | Login | Enforced (`auth_setup.sql` applied, `NEXT_PUBLIC_REQUIRE_AUTH` on) | Open demo mode: `auth_setup.sql` not run, the flag not set for Preview. Every column matches production except `app_user.auth_id`, which that script adds [V-run, information_schema on both, 2026-10-30] |
@@ -82,7 +82,8 @@ since 2026-08-12.
 one) must also reach `develop`, or the next promotion pull request will try to undo it. Open
 a `main` to `develop` pull request after any such merge.
 
-**Check it worked:** the dev site lists the invented vendors, not the store's. After step 2,
+**Check it worked:** the dev site lists the `DEV` vendors from `seed_dev.sql`, and nothing
+entered on the live site since the seed. After step 2,
 Actions, Apply database scripts, on `develop`: the gate prints a non-zero length for the dev
 secret and the guard passes.
 

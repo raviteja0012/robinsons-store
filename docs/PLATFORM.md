@@ -75,7 +75,7 @@ carry the storage bucket, and nobody will remember to run it every week in seaso
 | Service | Does what | Plan | Notes |
 |---|---|---|---|
 | **Vercel** | Hosts the app, deploys on push, runs the daily cron | **Hobby unless confirmed otherwise, see risk 1** | Team `robinsons-store1`, project `robinsons-store`. Preview deploys per PR, all on the dev database (ENVIRONMENTS.md) |
-| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free as of 2026-10-30, see risk 2** | ca-central Toronto. RLS per store per role. Second project `robinsons-store-dev` holds invented data for dev (ENVIRONMENTS.md) |
+| **Supabase** | Postgres, Auth, Storage (`documents` bucket) | **Free as of 2026-10-30, see risk 2** | ca-central Toronto. RLS per store per role. Second project `robinsons-store-dev` holds the repository seed data for dev, never the live ledger (ENVIRONMENTS.md) |
 | **Anthropic API** | Capture extraction, Ask-the-store, reorder summary, feedback triage | Pay as you go | Stores in the US; what each route sends is in "What leaves Canada" below. Default model claude-sonnet-5. $5 to $40 a month by volume |
 | **Resend** | The daily due-date email | Free tier is adequate | Optional. Off unless the keys are set. No Canadian region, see "What leaves Canada" |
 | **Vianet** | Domain robinsonsgeneralstore.ca, 5 of 10 mailboxes, store internet | About $10/mo | Domain expires 2026-10-16, auto-renew on. No self-serve DNS editor, changes are a phone call |
@@ -156,7 +156,7 @@ Ordered by value. None of these is adopted yet.
 | **Vercel WAF rate limit on `/login`** | Auth is enforced and the app is now on a public domain | ADOPTED 2026-08-17: `.github/workflows/vercel-protect.yml` reads and writes the firewall by API (preview and apply modes, idempotent by rule name). Run apply once after any token change |
 | **GitHub secret scanning with push protection** | "Keep secrets out of the repo and out of chat" (skill) | Still open, and it is a repo setting no API in this session can flip: GitHub, repo Settings, Advanced Security, enable secret scanning and push protection. Two clicks by the developer |
 | **Supabase Advisors** | Invariant 6: a new table needs RLS in schema.sql AND auth_setup.sql | The RLS half is COVERED 2026-08-17 by `.github/workflows/rls-audit.yml`: weekly and on demand, lists public tables with RLS off or empty, tells Slack and goes red. The hosted Advisors page (performance lints and the rest) stays a dashboard visit |
-| **Deployment protection on the dev site** | ENVIRONMENTS.md: dev holds invented data | Already on: preview addresses require a Vercel login [V-run, get_project `ssoProtection`, 2026-10-30]. A custom `dev.` domain skips it, which is fine while dev data is invented |
+| **Deployment protection on the dev site** | ENVIRONMENTS.md: dev holds seed data, including the curated 2026 bookings rows | Already on: preview addresses require a Vercel login [V-run, get_project `ssoProtection`, 2026-10-30]. A custom `dev.` domain skips it, which is fine while dev data is invented |
 
 ## Available, deliberately not adopted
 

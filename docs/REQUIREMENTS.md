@@ -163,7 +163,7 @@ OPEN (waiting on the owner):
   docs/HANDOVER.md: Supabase and Vercel on Pro (A-01, closes PLATFORM.md risks 1 and 2), the
   original keys reissued (A-02), and a second owner on GitHub (A-05).
 - Dev environment (asked 2026-07-31). PARTIAL 2026-10-30: the dev database
-  robinsons-store-dev is loaded with invented data, every preview reads it, and develop
+  robinsons-store-dev is loaded with the repository seed data, every preview reads it, and develop
   deploys to its own address. Open, needs admin@: the SUPABASE_DB_URL_DEV secret and the
   DEV_URL variable (docs/ENVIRONMENTS.md steps 2 and 5), and a way for Ravi to open the dev
   site (step 6).
