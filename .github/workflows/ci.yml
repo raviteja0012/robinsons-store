@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, claude/great-johnson-CFSbi]
+    branches: [main, develop]  # develop is where app changes land first (docs/ENVIRONMENTS.md)
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   # On demand, for any branch. Added 2026-08-06 after a push landed (Vercel deployed it)
   # without GitHub creating a CI run at all, and there was no way to ask for one: the gates
   # could only be re-run by pushing another commit. A pull request with no CI result looks
