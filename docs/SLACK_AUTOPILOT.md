@@ -3,10 +3,13 @@
 Type what you want in the store's requests channel. Within half an hour it comes back as a
 draft pull request, with a reply in the thread under your own message saying what happened.
 
-**State, 2026-10-30: built, not running.** The bot token and the Anthropic key are in GitHub,
-but the variable `SLACK_REQUEST_CHANNEL` is not, so every sweep stops at its first step with
-"Slack autopilot is not configured yet" [V-run, `gh variable list`, `gh secret list` and that
-day's run logs]. No request has been built yet. To switch it on, see Setting it up below.
+**State, 2026-10-30: switched on; the first request stopped at the model.** `SLACK_REQUEST_CHANNEL`
+was set that day to the workspace's general channel, where the bot is a member [V-run, `gh
+variable list`, 2026-10-30]. The first request, built from this branch's four-job workflow,
+was found, claimed and given its card in the thread, but the Anthropic API refused the build
+with "Credit balance is too low", so the card says stopped [V-run, Actions run 41127237310]. Nothing
+was pushed. Next: credit on the Anthropic account behind `ANTHROPIC_API_KEY`, then a new
+request (the stopped one carries ⚠️ and is skipped).
 
 This is the intake loop the Jira board used to be, moved to where the work is actually asked
 for. Nobody was writing to the board; people do write in Slack.
@@ -213,7 +216,7 @@ In **Settings, Secrets and variables, Actions**:
 |---|---|---|
 | `ANTHROPIC_API_KEY` | secret | Already set; the same key the app's AI features use |
 | `SLACK_BOT_TOKEN` | secret | A bot token, starting `xoxb-`. Set 2026-08-13 |
-| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch. **Not set as of 2026-10-30**; this is the one thing stopping it |
+| `SLACK_REQUEST_CHANNEL` | **variable** | The channel ID to watch. Set 2026-10-30 to the workspace's general channel, where the bot is a member |
 | `SLACK_REQUIRE_MENTION` | **variable**, optional | Defaults to requiring the bot to be named. `false` only for a requests-only channel |
 
 **The bot token is not the incoming webhook, and it is not a refresh token.** Two different
