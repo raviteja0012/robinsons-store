@@ -41,18 +41,18 @@ run remotely without them.
    member whose role sees money, in their own store: vendor (minimum order), purchase_order,
    invoice, credit_note, insurance_policy, payment, payment_allocation, pay_rate,
    receiving_line (unit cost). One policy per table, `money_store_rw`, adds
-   `app_auth.can_see_money()` to the store fence [R `supabase/auth_setup.sql:310-422`]. Staff,
+   `app_auth.can_see_money()` to the store fence [R `supabase/auth_setup.sql:300-412`]. Staff,
    an unlinked account and anyone signed out get no rows and cannot write. A payment may only
    be allocated to an invoice in the member's own store.
 2. **Capture still saves.** Any member of the store may add a receiving line, unit cost
    included, through `member_store_insert`; only a money role reads it back
-   [R `supabase/auth_setup.sql:417-422`].
+   [R `supabase/auth_setup.sql:407-412`].
 3. **Staff read three views with no dollar column.** `vendor_directory` (every vendor column
    but the minimum order), `invoice_due` (which invoices are open, their number, terms and due
    date) and `insurance_renewal` (policy names and renewal dates). Each view runs as the caller
    and reads through a definer function in `app_auth` that returns only the caller's store;
    both are rebuilt on every run so a column can be added later
-   [R `supabase/auth_setup.sql:424-500`]. Money roles keep reading the tables. Capture and Ask
+   [R `supabase/auth_setup.sql:414-490`]. Money roles keep reading the tables. Capture and Ask
    read `vendor_directory`; the bell, Due and Compliance read the other two when the table
    gives a role nothing.
 4. **One rule in three places.** `canSeeMoney` in the browser, `memberSeesMoney` in the API and
