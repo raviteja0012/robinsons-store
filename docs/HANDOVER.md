@@ -55,7 +55,7 @@ Every name the code and workflows read. Values are never written here.
 |---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase | Production: the live project. Preview: the dev project | Public by design. Two separate entries since 2026-10-30, so a preview cannot reach the live database. Production ends `mhcjreqvvhnrtgwtuwvr`, Preview `wqxcmchxkdhigacvxgad` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase | Production: live. Preview: dev | Public by design; the database policies protect the data |
-| `NEXT_PUBLIC_REQUIRE_AUTH` | Set by hand | Production | `true` once login is enforced |
+| `NEXT_PUBLIC_REQUIRE_AUTH` | Set by hand | Production, Preview | `true` once login is enforced. Preview since 2026-10-30, when dev took a copy of production (docs/ENVIRONMENTS.md) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase | Production | Server only, bypasses the policies. Rotate if the developer leaves |
 | `ANTHROPIC_API_KEY` | Anthropic | Production, Preview | Also a GitHub secret. A-02 |
 | `ANTHROPIC_MODEL` | Set by hand | Production, Preview | Optional; the code defaults to `claude-sonnet-5` [R `src/app/api/extract/route.ts:80`] |

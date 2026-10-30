@@ -2,7 +2,23 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/ci-module-checks (latest: module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch dev-copy-of-production (latest: dev holds a copy of production behind login, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+
+Dev holds a copy of production behind login, 2026-10-30:
+- Dev's database (`robinsons-store-dev`) now holds a copy of production taken at 19:47 UTC:
+  every `public` table and the login accounts, staff, pay rates and shifts included. 1,469
+  rows, equal to production in count and checksum on all 29 tables. Invoice photos and voice
+  notes were not copied. Production was only read.
+- Login is on in dev the same way as production: `department_field.sql` then
+  `auth_setup.sql` applied from `department-field-settings` at `0269970`, no `dev_all`
+  policy left, every public table with RLS and a policy, and the dev public key reads no
+  rows. `NEXT_PUBLIC_REQUIRE_AUTH=true` is set for Preview, so every preview requires login,
+  and `develop` was redeployed at `cae5104`.
+- PR #71's `department_field` table and its three policies exist on dev, so its preview can
+  be checked against the store's real departments once rebuilt.
+- docs/ENVIRONMENTS.md and the docs/HANDOVER.md variable register say so. Open: signing in
+  to dev with a production login is not yet tried; `/api/health` on dev passes but its row
+  checks see no rows without a Preview service-role key; dev goes stale from the copy time.
 
 Module checks and automation tests run in CI by convention, 2026-10-30:
 - CI's new "Module checks" step runs every `scripts/*-check/run.sh` in name order and stops
