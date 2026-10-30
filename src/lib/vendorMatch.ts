@@ -1,0 +1,39 @@
+// Matches the vendor name the invoice reader returned to a vendor on file, for the capture
+// screen. No imports, so scripts/extractvalidate-check can run it.
+//
+// The paper says "Northbay Hardware Supply Ltd." and the vendor list says "Northbay Hardware
+// Supply": the same vendor. Names are compared with case, accents, punctuation and a trailing
+// company suffix ignored, and "&" read as "and". A suffix is only dropped from the end, so
+// "Co-op Feed" keeps its "co".
+
+const SUFFIXES = new Set(["inc", "incorporated", "ltd", "limited", "ltee", "co", "corp", "corporation"]);
+
+export function vendorKey(name: string): string {
+  const words = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  while (words.length > 1 && SUFFIXES.has(words[words.length - 1])) words.pop();
+  return words.join(" ");
+}
+
+// An exact name (case and outer spaces aside) wins. Otherwise the one vendor in the department
+// whose key matches; two that match leave the vendor unmatched rather than picking one, so an
+// order check never runs against the wrong vendor's order.
+export function matchVendor<V extends { name: string; department_id: string | null }>(
+  vendors: V[],
+  departmentId: string,
+  typed: string
+): V | undefined {
+  if (!typed.trim()) return undefined;
+  const inDept = vendors.filter((v) => v.department_id === departmentId);
+  const exact = inDept.find((v) => v.name.trim().toLowerCase() === typed.trim().toLowerCase());
+  if (exact) return exact;
+  const key = vendorKey(typed);
+  if (!key) return undefined;
+  const hits = inDept.filter((v) => vendorKey(v.name) === key);
+  return hits.length === 1 ? hits[0] : undefined;
+}
