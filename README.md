@@ -47,9 +47,9 @@ the live database; use the dev project (docs/ENVIRONMENTS.md).
 ## How a change ships
 
 Branch, draft pull request, checks (lint, `tsc --noEmit`, a blank-env build, the module checks
-and the automation tests), a person merges. CI starts by itself only for pull requests into
-`main`; a pull request into `develop` needs the gates run by hand or CI started from the
-Actions tab (CONTRIBUTING.md). `main` accepts changes only through a pull request;
+and the automation tests), a person merges. CI starts by itself for pull requests into
+`main` or `develop` and for pushes to either branch [R `.github/workflows/ci.yml:3-7`].
+`main` accepts changes only through a pull request;
 Vercel deploys `main`; merged database scripts apply themselves from `supabase/run-order.txt`.
 The details, and why the automation may never merge money, access, database or automation
 changes on its own, are in [CONTRIBUTING.md](CONTRIBUTING.md) and

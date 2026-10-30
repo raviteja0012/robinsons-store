@@ -54,11 +54,12 @@ for every branch, so the live database is reachable only from the live site.
 Approval is a person running **Actions, Promote develop to production**
 [R `.github/workflows/promote.yml:1-24`]. It opens a `develop` to `main` pull request, starts
 CI on that pull request's head commit, waits for it, and merges with that commit pinned, only
-if CI passed and `develop` already holds everything on `main`. Anything else leaves the pull
+if CI passed, `develop` already holds everything on `main`, and `main` is unchanged since CI
+started. Anything else leaves the pull
 request open and turns the run red, so production has not changed
-[R `.github/workflows/promote.yml:107-175`]. After the merge it starts CI on `main`, and Apply
+[R `.github/workflows/promote.yml:119-168`]. After the merge it starts CI on `main`, and Apply
 database scripts when the promotion touched `supabase/`, because a merge made with the
-workflow's own token may start neither [R `.github/workflows/promote.yml:177-194`] [J-open:
+workflow's own token may start neither [R `.github/workflows/promote.yml:170-187`] [J-open:
 kill condition in ADR-002 context item 3]. Nothing on a schedule can start it. Jira, which once
 carried QA and Approved statuses, is off since 2026-08-12.
 
@@ -69,8 +70,9 @@ requests into `develop` merged with no checks unless someone started CI by hand.
 ## What crosses, and what does not
 
 - **Code crosses** from `develop` to `main` by the promotion pull request.
-- **Schema crosses as scripts.** The same `run-order.txt` runs on dev first and production
-  second, so every migration is exercised on dev before it touches the ledger.
+- **Schema crosses as scripts.** Once `SUPABASE_DB_URL_DEV` is set, the same `run-order.txt`
+  runs on dev first and production second [R `.github/workflows/migrate.yml:66-106`].
+  Before promoting any SQL, a person confirms that the dev script run succeeded.
 - **Data never crosses.** Nothing copies either way. If dev needs to look more like
   production, extend `seed_dev.sql`. `run-order.txt` may never name a seed file, and CI
   enforces that, so dummy data cannot reach any database through the pipeline.

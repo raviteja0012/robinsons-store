@@ -183,7 +183,7 @@ Cost is stated as a fact and left there. Effort uses the same units as the rest 
 
 **39. Workflow trigger events.** Two things to act on. Scheduled workflows auto-disable after 60 days of repository inactivity, which would quietly stop the autopilot, the promote loop and the health watchdog over a slow winter and be discovered in the August rush; keep a calendar note or a monthly manual dispatch. And never use `pull_request_target` on this repo, which is public: that trigger hands secrets to code from a stranger's fork.
 
-**40. Auto-merge.** Not used since 2026-10-30. `promote.yml` called `gh pr merge --auto`; with no required checks on `main` that could merge before any check ran. It now starts CI on the exact commit, waits for it, and merges with that commit pinned, so the repository setting is not needed (docs/LOOP_ENGINEERING.md section 3).
+**40. Promotion merge.** BUILT: `promote.yml` starts CI on the exact head commit, waits for it, confirms that `main` is still at the commit recorded before CI, and merges with the head commit pinned [R `.github/workflows/promote.yml:119-168`]. A person starts the workflow (docs/LOOP_ENGINEERING.md section 3).
 
 **41. Instant Rollback.** Write two lines into `RUNBOOK.md`: environment variables are not re-applied on rollback, and cron jobs revert to the rolled-back deployment's state. Note the Hobby limit too, which is one step back only; with a 15-minute autopilot cadence that may not reach past the bad change.
 

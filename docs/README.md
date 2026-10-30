@@ -138,7 +138,7 @@ each one is in a file or a script rather than in anyone's memory:
 ## How this maps to the rest of the docs
 
 This index gives the reading order. [STATUS.md](STATUS.md) holds the release checklist
-[R `docs/STATUS.md:567`]; [VERIFICATION.md](VERIFICATION.md) records per-area sign-off
+[R `docs/STATUS.md:597`]; [VERIFICATION.md](VERIFICATION.md) records per-area sign-off
 [R `docs/VERIFICATION.md:16`]. The document format comes from the skill's
 [standards](../.claude/skills/robinsons-store/references/standards.md)
 [R `.claude/skills/robinsons-store/references/standards.md:10`].
