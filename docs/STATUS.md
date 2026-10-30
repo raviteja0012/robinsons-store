@@ -25,8 +25,8 @@ The Slack autopilot's build job only produces the commit, 2026-10-30:
 - The three gates run again in CI, which ship starts on tier A and B and which holds no
   secrets [R `.github/workflows/ci.yml:3-18`]; never in a job that holds one, because
   running them runs the change.
-- Tests: `autopilot-change.test.mjs` (new, 33, real repositories and bundles),
-  `slack-autopilot.test.mjs` (85, rewritten for four jobs), `autopilot-review.test.mjs` (55).
+- Tests: `autopilot-change.test.mjs` (new, 34, real repositories and bundles),
+  `slack-autopilot.test.mjs` (86, rewritten for four jobs), `autopilot-review.test.mjs` (55).
   PARTIAL until the first live request runs through all four jobs.
 
 Two read-only reviewers read every Slack pull request, 2026-10-30:

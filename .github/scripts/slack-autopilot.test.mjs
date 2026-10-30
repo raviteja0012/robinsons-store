@@ -141,6 +141,8 @@ t("review: holds no Slack token", !/SLACK/.test(review.text));
 const layout = review.steps.find((s) => /\.autopilot-review\/head/.test(s.text));
 t("review: lays out only a change the guard cleared", (layout?.if || "").includes("steps.change.outputs.guard == 'ok'"), layout?.if);
 t("review: lays out the commit the bundle carried", /SHA: \$\{\{ steps\.change\.outputs\.sha \}\}/.test(layout?.text || ""));
+t("review: the file list and the diff name both sides of a move",
+  /git -c core\.quotePath=false diff --no-renames --name-only/.test(layout?.text || "") && /git diff --no-renames "origin\/\$BASE\.\.\.\$SHA" >/.test(layout?.text || ""));
 t("review: reports the sha it laid out", /^ {6}sha: \$\{\{ steps\.layout\.outputs\.sha \}\}$/m.test(review.headerText) && layout?.id === "layout");
 for (const f of ["CLAUDE.md", "AGENTS.md", ".mcp.json"]) {
   t(`review: ${f} is removed from the change before the reviewers read it`, (layout?.text || "").includes(`-name ${f}`));

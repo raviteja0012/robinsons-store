@@ -351,8 +351,8 @@ jobs:
           find .autopilot-review/head -type f \( -name CLAUDE.md -o -name CLAUDE.local.md \
                  -o -name AGENTS.md -o -name .mcp.json \) -delete
           find .autopilot-review/head -type d \( -name .claude -o -name .agents \) -prune -exec rm -rf {} +
-          git diff "origin/$BASE...$SHA" > .autopilot-review/change.diff
-          git -c core.quotePath=false diff --name-only "origin/$BASE...$SHA" > .autopilot-review/files.txt
+          git diff --no-renames "origin/$BASE...$SHA" > .autopilot-review/change.diff
+          git -c core.quotePath=false diff --no-renames --name-only "origin/$BASE...$SHA" > .autopilot-review/files.txt
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
