@@ -16,7 +16,7 @@ import route:
 | Kind | Saved by | What it can show |
 |---|---|---|
 | Invoice photos | Capture, any member, the photo of the invoice in their hand [R `src/app/capture/page.tsx:209-215`] | Prices |
-| Screenshots and voice notes | Suggestions, any member [R `src/app/suggestions/page.tsx:133-147`] | Any screen, money screens included |
+| Screenshots and voice notes | Suggestions, any member [R `src/app/suggestions/page.tsx:145-159`] | Any screen, money screens included |
 | Imported workbooks | `/api/import`, owner or manager only [R `src/app/api/import/route.ts:415-420`] | Vendor ledgers, schedules, stock |
 
 ADR-003 keeps dollar figures from staff in the tables; it does not cover files. A file's rule
@@ -24,9 +24,9 @@ needs three facts: its store, its kind, and who saved it. The storage service re
 saved a file (`owner_id`, the signed-in account) [V-run, `storage.objects` columns on
 supabase/storage-api v1.79.5, 2026-10-25]; the store and the kind have to come from the path.
 
-Ravi Kiran chose on 2026-10-25 who opens what: invoice photos only lead, manager and owner;
+Who opens what: invoice photos only lead, manager and owner;
 screenshots and voice notes those three and the member who attached them
-[D: the owner's answer as relayed to the developer, 2026-10-25, confirm with Ravi Kiran].
+[D: the owner's requirement, 2026-10-25].
 
 Two facts shape the fix:
 
@@ -47,7 +47,7 @@ Not deciding has a specific failure: staff logins wait on this (docs/ARCHITECTUR
 1. **Store folders.** Every file is saved under `<store_id>/<kind>/`, with kind `invoices`,
    `feedback` or `imports`, built by one helper [R `src/lib/documentPath.ts:7-11`] that
    Capture, Suggestions and the import route use [R `src/app/capture/page.tsx:213`]
-   [R `src/app/suggestions/page.tsx:137`] [R `src/app/api/import/route.ts:26`].
+   [R `src/app/suggestions/page.tsx:149`] [R `src/app/api/import/route.ts:26`].
 2. **Who opens a file.** Only members of its store, and by kind: invoice photos lead, manager
    and owner; screenshots and voice notes those three and the account that saved the file;
    workbooks owner and manager, the roles that may import. One policy, `documents_open`,
@@ -87,7 +87,7 @@ Not deciding has a specific failure: staff logins wait on this (docs/ARCHITECTUR
 3. After the merge, two read-only checks on the live database:
    `select policyname, cmd from pg_policies where schemaname = 'storage' and tablename = 'objects'`
    returns exactly `documents_open SELECT` and `documents_save INSERT` (policies add up, so
-   any other one there could open these files again); and
+   these must be the only two); and
    `select kind, store_id is null as no_store, count(*) from app_auth.legacy_document group by 1, 2`
    says how many older files were recorded and how many have no store.
 4. A staff smoke test once the first staff login exists: Capture saves a photo, the home feed

@@ -3,9 +3,9 @@
 // The owner suggestion box. Ravi's feedback used to arrive as WhatsApp screenshots and
 // voice notes; this gives those a home INSIDE the app, structured so the developer (and
 // the store's AI) can act on them: a note, the screen it is about, an optional screenshot
-// (read into text automatically with the store's Anthropic key), and an optional voice
-// recording. "Copy developer digest" turns everything still open into one markdown block
-// to paste into a chat with the developer.
+// (read into text automatically with the store's Anthropic key; the text opens to the same
+// people as the screenshot), and an optional voice recording. "Copy developer digest" turns
+// everything still open into one markdown block to paste into a chat with the developer.
 
 import { useEffect, useRef, useState } from "react";
 import { supabase, DOCUMENTS_BUCKET } from "@/lib/supabaseClient";
@@ -14,7 +14,7 @@ import { authHeader, currentActorId, useCurrentRole, useMember } from "@/lib/aut
 import { canEdit, voidRow } from "@/lib/edit";
 import { docUrls } from "@/lib/docs";
 import { documentPath } from "@/lib/documentPath";
-import type { Feedback } from "@/lib/types";
+import type { Feedback, FeedbackSummary } from "@/lib/types";
 
 const KINDS: { value: Feedback["kind"]; label: string }[] = [
   { value: "idea", label: "Idea" },
@@ -38,6 +38,7 @@ export default function Suggestions() {
 
   const [items, setItems] = useState<Feedback[]>([]);
   const [urls, setUrls] = useState<Map<string, string>>(new Map());
+  const [summaries, setSummaries] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
@@ -59,7 +60,7 @@ export default function Suggestions() {
   async function load() {
     let q = supabase
       .from("feedback")
-      .select("id, store_id, author_id, kind, page, body, screenshot_path, audio_path, ai_summary, status, created_at, author:author_id(full_name)")
+      .select("id, store_id, author_id, kind, page, body, screenshot_path, audio_path, status, created_at, author:author_id(full_name)")
       .is("voided_at", null)
       .order("created_at", { ascending: false });
     if (storeId) q = q.eq("store_id", storeId);
@@ -70,6 +71,17 @@ export default function Suggestions() {
     }
     const list = (data as unknown as Feedback[]) || [];
     setItems(list);
+    // What the AI read off each screenshot. With login enforced only the descriptions this
+    // member may read come back: lead, manager, owner, and the member who attached the
+    // screenshot (supabase/auth_setup.sql 3g). Best-effort, like the thumbnails.
+    try {
+      let sq = supabase.from("feedback_summary").select("feedback_id, summary");
+      if (storeId) sq = sq.eq("store_id", storeId);
+      const { data: read } = await sq;
+      setSummaries(new Map(((read as FeedbackSummary[] | null) || []).map((r) => [r.feedback_id, r.summary])));
+    } catch {
+      setSummaries(new Map());
+    }
     try {
       setUrls(await docUrls(list.flatMap((f) => [f.screenshot_path, f.audio_path])));
     } catch {
@@ -222,8 +234,9 @@ export default function Suggestions() {
     for (const f of open) {
       lines.push(`## ${KINDS.find((k) => k.value === f.kind)?.label || f.kind} from ${f.author?.full_name || "someone"} on ${f.created_at?.slice(0, 10) || "?"}${f.page ? ` (screen: ${f.page})` : ""} [${STATUS_LABEL[f.status]}]`);
       if (f.body) lines.push(f.body);
-      if (f.ai_summary) lines.push(`What the attached screenshot shows (AI-read): ${f.ai_summary}`);
-      if (f.screenshot_path && !f.ai_summary) lines.push(`Screenshot attached: ${f.screenshot_path}`);
+      const summary = summaries.get(f.id);
+      if (summary) lines.push(`What the attached screenshot shows (AI-read): ${summary}`);
+      if (f.screenshot_path && !summary) lines.push(`Screenshot attached: ${f.screenshot_path}`);
       if (f.audio_path) lines.push(`Voice recording attached: ${f.audio_path} (download from the app and share it to be heard)`);
       lines.push("");
     }
@@ -315,6 +328,7 @@ export default function Suggestions() {
             {g.items.map((f) => {
               const shotUrl = f.screenshot_path ? urls.get(f.screenshot_path) : undefined;
               const audioUrl = f.audio_path ? urls.get(f.audio_path) : undefined;
+              const summary = summaries.get(f.id);
               return (
                 <div key={f.id} className="card" style={{ padding: 12, display: "grid", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
@@ -325,10 +339,10 @@ export default function Suggestions() {
                         <span className="help">{f.author?.full_name || ""} . {f.created_at?.slice(0, 10)}</span>
                       </div>
                       {f.body && <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap" }}>{f.body}</p>}
-                      {f.ai_summary && (
+                      {summary && (
                         <p className="help" style={{ margin: "6px 0 0" }}>
                           <span className="chip chip-neutral" style={{ marginRight: 6 }}>Screenshot, read by AI</span>
-                          {f.ai_summary}
+                          {summary}
                         </p>
                       )}
                     </div>

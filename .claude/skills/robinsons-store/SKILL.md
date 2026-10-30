@@ -1,6 +1,6 @@
 ---
 name: robinsons-store
-description: Build, extend, debug, and operate the entire Robinsons General Store platform, a capture-first store operations app for a Canadian general store. This covers the whole build, not just one area: the receiving and capture loop, inventory and counts, the vendor and order ledger, invoices and payments and due-date alerts, retail pricing and price signs, property maintenance, HR, the Ontario pesticide licence and its expiry, the tribal-knowledge base, the document-extraction and reorder and ask-your-store AI agents, the Postgres schema and its row-level security, Supabase Auth and login, the color and form design system, Canadian tax and privacy rules, the Vercel deploy, and the common runtime errors and how to fix them. Use it whenever the work touches the Robinsons app, Ravikiran's store, the receiving screen, the login or auth, the Supabase schema, or any store feature, even without naming this skill. Also use it for writing or reviewing anything in docs/ (handover, decision records, onboarding, the agents register) and for reviewing any change before merge: references/standards.md holds the documentation and review standard. Apply the locked architecture, the invariants, the standards, and the output rules here on every task.
+description: Build, extend, debug, and operate the Robinsons General Store platform, a capture-first store operations app for a Canadian general store: receiving and capture, inventory and counts, the vendor and order ledger, invoices, payments and due dates, retail pricing and price signs, property, HR, the Ontario pesticide licence, the tribal-knowledge base, the extraction, reorder and ask-your-store AI agents, the Postgres schema and row-level security, Supabase Auth, the design system, Canadian tax and privacy rules, the Vercel deploy, and common runtime errors. Use it whenever the work touches the Robinsons app, the receiving screen, login, the Supabase schema, or any store feature, even without naming this skill. Also use it to write or review anything in docs/ and to review any change before merge (references/standards.md). Apply the locked architecture, invariants, standards and output rules on every task.
 ---
 
 # Robinsons General Store, Store Operations Platform
@@ -16,6 +16,8 @@ Store facts:
 - The 2026 bookings spreadsheet is the schema and the seed data. About 120 vendors with order amount, ship date, delivery status, invoiced amount, terms, due date, payment status.
 
 The full plan with evidence, pricing, and citations is in robinsons_store_build_spec.md. Read it for depth. This skill is the working summary plus the rules and the playbooks to apply on every task.
+
+Product direction, delivery states and configuration gaps: docs/REQUIREMENTS.md, "Product direction".
 
 ## Locked architecture (do not re-debate)
 - Frontend and API: Next.js App Router on Vercel, TypeScript. Client components fetch with useEffect; route handlers under src/app/api do the AI calls.
@@ -45,8 +47,7 @@ robinsons-store/
     importSchedule, nav (grouped sidebar model), view (View-as preview),
     edit (canEdit, soft-delete voidRow, hard deleteRow), notify (bell items)
   vercel.json                the daily /api/alerts cron
-  docs/  STATUS, VERIFICATION (per-feature sign-off record), ARCHITECTURE, DATA_SOURCES,
-    DATA_INVENTORY, SOURCES
+  docs/  every doc, indexed with a learning path in docs/README.md; decision records in docs/adr/
   RUNBOOK.md, CONTRIBUTING.md
   .claude/skills/robinsons-store/  this skill, so it travels with the code
 ```
@@ -123,19 +124,19 @@ Breaking any of these is a regression even if the build passes.
 3. Actor integrity: created_by and activity_log.actor_id come from useEffectiveActor(); the actor dropdown is hidden when REQUIRE_AUTH.
 4. Audit: every meaningful write inserts an activity_log row with a non-null entity_id.
 5. Human in the loop on dollars: extracted lines carry confidence; low-confidence dollar fields never auto-post; an order-vs-invoiced discrepancy needs an explicit acknowledgement before save.
-6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth. A table or column that holds a dollar figure goes into section 3e of auth_setup.sql and into supabase/money_by_role.sql, never the open 3a array, and supabase/money_by_role_test.sql gets a check for it. A new kind of stored file goes into src/lib/documentPath.ts, auth_setup.sql section 3f, supabase/documents_by_role.sql and supabase/documents_by_role_test.sql together.
+6. New table, two places: a new table added to schema.sql is covered by the dev_all loop automatically, but under enforced auth it has RLS on and NO policy, which denies everyone. You MUST add it to auth_setup.sql (the store-scoped array, or a child-table policy that scopes through its parent) or production breaks silently. This is the most common way a new feature regresses auth. A table or column that holds a dollar figure goes into section 3e of auth_setup.sql and into supabase/money_by_role.sql, never the open 3a array, and supabase/money_by_role_test.sql gets a check for it. A new kind of stored file goes into src/lib/documentPath.ts, auth_setup.sql section 3f, supabase/documents_by_role.sql and supabase/documents_by_role_test.sql together. New text the AI writes from a stored file lives beside that file's name and follows the file's rule, like feedback_summary (auth_setup.sql 3g, supabase/feedback_summary.sql, ADR-005).
 7. Build-safe: code must build with blank env. Auth and data helpers degrade to null rather than throwing; never require Supabase env or auth.users to exist at build time.
 8. Payments only through the engine RPCs in src/lib/payments.ts: record_payment (record), edit_payment (fix date/method/reference/notes/filing; re-derives touched invoice statuses), void_payment (undo; invoices go back to owing), reconcile_postdated (editors only, on load). Never update or delete payment rows directly, never hand-set a derived invoice status without a payment behind it (the vendor page auto-opens Record payment when an edit marks an invoice paid with nothing recorded). Post-dated is a future paid_date on a cheque, never a method value.
 9. AI text answers are plain text: prompts forbid markdown, routes strip it with plainText() from src/lib/aiText.ts, default model claude-sonnet-5 with ANTHROPIC_MODEL as the override. DO NOT send a temperature parameter: claude-sonnet-5 rejects non-default sampling and every AI route 400s. This was caught in review once already; do not re-add it.
 10. One rule for what an invoice OWES, in two places that must agree to the cent: invoiceTotal() in src/lib/payments.ts and public.invoice_owed_total in SQL. Amount plus freight, plus HST UNLESS tax_mode is "included", where the tax is already inside the amount and adding it again overstates the bill. Any select feeding a money figure must fetch tax_mode, or a tax-included invoice silently reads back as tax-added. invoiceGoods() is the pre-tax figure for comparing against order amounts, never what is owed.
 11. Comments are required on invoices, orders, and payments, with "N/A" as the accepted answer. A blank box and a deliberate nothing-to-note must not look alike months later. Filing asks WHERE as well as how: Digital or Physical/Digital requires a digital_file_location.
-12. Owner feedback lives in the feedback table (Suggestions page): note + screenshot + voice recording, screenshot auto-read into ai_summary via /api/feedback-triage, statuses new/planned/done/declined, soft-voided like everything else. New rounds of WhatsApp feedback still get recorded verbatim in docs/OWNER_NOTES.md and triaged into docs/REQUIREMENTS.md.
+12. Owner feedback lives in the feedback table (Suggestions page): note + screenshot + voice recording, screenshot auto-read via /api/feedback-triage into feedback_summary, which opens only to the people who may open the screenshot, statuses new/planned/done/declined, soft-voided like everything else. New rounds of WhatsApp feedback still get recorded verbatim in docs/OWNER_NOTES.md and triaged into docs/REQUIREMENTS.md.
 
 ## AI agents (all shipped)
 1. Document extraction (/api/extract). Sends the image or PDF to Claude vision with a strict JSON-only contract (vendor, invoice_date, notes, line_items each with description, qty, unit_cost, retail_price_note, confidence), validates it, and shows a confirm screen that flags low-confidence fields and an order-vs-invoiced warning a human acknowledges. Never auto-post low-confidence amounts.
 2. Reorder suggestions (/reorder and /api/reorder). Formula-based from the order ledger, the counts, and the reorder knowledge notes, with an optional Claude summary. Dual-season demand and ML are deferred until a clean season of sales data exists. The human decides.
 3. Ask-your-store (/ask and /api/ask). Answers from the store's own notes, vendors, and invoices passed as context, naming the source. pgvector is the deferred upgrade at scale. This is the remote-oversight tool for departments the owner is not expert in. It also logs "log this issue: ..." into Suggestions, deterministically and attributed.
-4. Suggestion screenshot reader (/api/feedback-triage). Describes a screenshot attached to an owner suggestion in under 120 words of plain text, so the developer digest carries it.
+4. Suggestion screenshot reader (/api/feedback-triage). Describes a screenshot attached to an owner suggestion in under 120 words of plain text, without copying dollar amounts, pay or personal details, so the developer digest carries it. Saves to feedback_summary as the caller.
 
 docs/AGENTS.md is the register of every agent, these four and the build-side ones (Slack autopilot, the reviewer agents, the tier classifier, the watchdog), with their guardrails and whose key each runs on. Update it in the same change as any agent.
 
@@ -242,4 +243,4 @@ Keep this as one skill for now. Split only if a piece grows past what fits clean
 - docs/HANDOVER.md and docs/adr/ADR-001-the-store-owns-every-account.md, what the store owns on each service, every secret, and what is still open.
 - ONBOARDING.md, the intake form, access and first week for a new team member.
 - docs/DATA_SOURCES.md and docs/DATA_INVENTORY.md, the Google Drive source files, each file's metadata and sample data, and how each maps to the app.
-- robinsons_store_build_spec.md, the original plan kept for history. docs/SOURCES.md, the Drive links.
+- robinsons_store_build_spec.md, the original plan kept for history. The Drive links are in docs/DATA_SOURCES.md.

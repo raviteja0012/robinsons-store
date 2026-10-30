@@ -100,6 +100,19 @@ and an event made with that token starts no workflow. Anything unexpected leaves
 request open for a person; the step fails closed and never fails the run. Rules tested in
 `.github/scripts/classify-change.test.mjs`, which CI runs.
 
+**Promotion to `main` merges the same way** (since 2026-10-30). `promote.yml` opens the
+`develop` to `main` pull request with `GITHUB_TOKEN` too, so it starts CI on that pull
+request's head commit itself, waits, reads the pull request again, and merges with the head
+commit pinned. It first requires `develop` to hold everything on `main`, then confirms that
+`main` is still at its recorded commit immediately before merging. Anything unexpected leaves
+the pull request open and fails the run, because a person started it and is waiting to see
+production change. After the
+merge it starts CI on `main`, for the watchdog, and Apply database scripts when `supabase/`
+changed, since a merge made with that token may start neither. Promotion merges immediately
+after these checks pass
+[R `.github/workflows/promote.yml:119-187`]. CI itself starts on pull requests into
+`develop` and pushes to it exactly as on `main` [R `.github/workflows/ci.yml:3-7`].
+
 **The runner the model builds on holds nothing worth taking.** The builder has a shell, and
 on GitHub's runners that shell has `sudo`. Anything it leaves behind (a background process,
 a line in `$GITHUB_ENV` or `$GITHUB_PATH`, a git hook, a gitignored settings file) runs with
@@ -123,9 +136,11 @@ approvals and no status checks: the tier classifier decides what may merge, and
 
 ### 4. Watch: catching what we broke
 
-`.github/workflows/post-deploy-watch.yml` runs after every deploy to main and every two
-hours. It asks the live site `/api/health`, which is answered by the app itself and checks
-the things a green build cannot see:
+`.github/workflows/post-deploy-watch.yml` runs when CI completes on main, every two hours,
+and by hand [R `.github/workflows/post-deploy-watch.yml:16-28`]. It runs after CI, not after
+the deploy, so it does not confirm which commit is live (docs/ARCHITECTURE.md section 6). It
+asks the live site `/api/health`, which is answered by the app itself and checks the things a
+green build cannot see:
 
 - The deployed app and the deployed **database agree on what an invoice owes**. It asks the
   database what a tax-included invoice of 113 with 13 of embedded HST owes, and compares
@@ -158,19 +173,22 @@ It never reports a dollar figure, so the endpoint is safe to call from anywhere.
 
 ### 5. Refine
 
-The board is the queue for everything: the owner's asks, the health watchdog's bugs, and
-anything the Suggestions screen collects in the app. There is one place to look and one way
-in.
+Since the board was parked on 2026-08-12 there is no single queue, and this section says
+where each kind of input lands instead. The owner's asks arrive by phone and WhatsApp, are
+recorded verbatim in docs/OWNER_NOTES.md and triaged into docs/REQUIREMENTS.md, which is the
+list of what is agreed. Feedback typed in the app lands on the Suggestions screen (the
+`feedback` table). Watchdog, migration and RLS audit results land in Slack. Work is asked for
+in the Slack requests channel. A person reads all four; nothing joins them automatically.
 
 ## Why not just let it merge everything
 
 Because of the exposure, not the capability. The useful frame is: **private data, external
-action, untrusted input — pick at most two without a human.**
+action, untrusted input: pick at most two without a human.**
 
 This system has private data (the store's vendors and payments) and untrusted input (Slack
 request text, which anyone in the channel can write, and before it ticket text, both of which
-the model reads as instructions). That is two. Adding unrestricted external action — merging and deploying
-whatever it likes — makes three, and three is where an instruction hidden in a ticket
+the model reads as instructions). That is two. Adding unrestricted external action (merging and deploying
+whatever it likes) makes three, and three is where an instruction hidden in a ticket
 becomes a deployed change to how the store pays people.
 
 So external action is not off, it is **bounded to a tier where the blast radius is words**.
@@ -224,7 +242,11 @@ run already allow, and a person still merges tier B and C.
 
 ## Borrowed skills
 
-`.agents/skills/` holds two skills installed from Supabase's official `supabase/agent-skills`
+`vercel-react-best-practices` from `vercel-labs/agent-skills` supplies general React and
+Next.js performance guidance. It is vendored in `.claude/skills/` and `.agents/skills/`,
+pinned in `skills-lock.json` [R skills-lock.json:16,20]. Follow root AGENTS.md for precedence.
+
+`.agents/skills/` also holds two skills installed from Supabase's official `supabase/agent-skills`
 repository on 2026-08-09, pinned by content hash in `skills-lock.json` and symlinked into
 `.claude/skills/` so Claude Code picks them up:
 
@@ -286,22 +308,33 @@ and check it loads before trusting it.
 
 ## Costs
 
-A run with an empty board stops before any model call. A real ticket costs roughly what one
-build conversation costs. Fifteen minutes is the polling interval, not the run rate.
+A Slack sweep with no new request stops after a checkout and before `npm ci` and any model
+call [R `.github/workflows/slack-autopilot.yml:9-10, 101-137`]. A real request costs roughly what one build conversation
+costs. The sweep runs twice an hour, at minutes 13 and 43
+[R `.github/workflows/slack-autopilot.yml:56-57`]; that is the polling interval, not the run
+rate.
 
 ## What would make this better
 
 Honest list, in the order I would do them:
 
 1. **A revert path for tier A.** If a words-only change ever does break something, the
-   watchdog currently raises a ticket. For tier A specifically, an automatic revert is
+   watchdog currently posts to Slack. For tier A specifically, an automatic revert is
    defensible, because the change was words.
 2. **Runtime error signal.** The health endpoint checks correctness, not crashes. Wiring the
    Vercel runtime errors API in would catch the class of bug that only appears under real
    use.
 3. **A staging database.** Today a migration is verified by running it on production and
    watching the health check. That works because the store is small and the scripts are
-   idempotent, but it is the weakest link in the chain. The dev database that closes it is
-   designed in docs/ENVIRONMENTS.md and waits on its first step.
+   idempotent, but it is the weakest link in the chain. The dev database that closes it
+   exists since 2026-10-30 (docs/ENVIRONMENTS.md); scripts run there first only once the
+   `SUPABASE_DB_URL_DEV` secret is set, so this stays open until then.
 4. **Screenshot verification.** The gates prove it compiles, not that it looks right. A
    Playwright pass over the key screens would close that gap.
+
+## How this maps to the rest of the docs
+
+docs/AGENTS.md registers the skills used by each agent. Root AGENTS.md defines precedence.
+
+**Basis (React skill): 3 claims checked this session (2026-10-30), 3 confirmed, 0 killed,
+4 sources.** The skill's two copies, skills-lock.json and root AGENTS.md were read locally.
