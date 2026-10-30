@@ -139,7 +139,13 @@ Run in this order; skip nothing (each is safe to re-run):
    `money_by_role.sql`, and it is the same block as `auth_setup.sql` sections 3d and 3f.
    `documents_by_role_test.sql` is its proof, for a disposable database with Supabase's
    storage schema only; it is never in the run order.
-12. `auth_setup.sql`: ONLY if enforced login is on. Always re-run it LAST after any script
+12. `department_field.sql`: the table behind the Department fields screen. One row per box
+   somebody changed: this department, this form (vendor or invoice), this question, asked or
+   not. An empty table means every form asks its usual questions, so running it changes no
+   screen. With enforced login it applies its own policies (every member reads, only owners
+   and managers write, nobody deletes), so the screen works without rerunning
+   `auth_setup.sql`.
+13. `auth_setup.sql`: ONLY if enforced login is on. Always re-run it LAST after any script
    above, because it (re)applies the per-store policies to every table including new ones.
 
 ## What each remaining file is
