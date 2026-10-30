@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-30, on branch claude/practical-cannon-n3tnva (latest: CI on `develop` and a promotion that merges only on green CI, below; before it the docs organized into one entry path, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/practical-cannon-n3tnva (latest: CI on `develop` and a promotion that merges only on green CI, below; before it the PR #87 documentation follow-up, below; before it the docs organized into one entry path, below; before it tier A self-merge wired into the Slack loop, below; before it module checks and automation tests run in CI by convention, below; before it accounts moved, docs brought up to date and the dev environment turned on, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 CI on `develop`; promotion merges only on green CI, 2026-10-30:
 - CI now starts by itself on every pull request into `develop` and every push to it, as on
@@ -26,6 +26,12 @@ CI on `develop`; promotion merges only on green CI, 2026-10-30:
   context item 3); the dispatches are safe either way.
 - Tier C (`.github/`): a person merges. Then bring `develop` level with `main`, which is the
   step that makes pull requests into `develop` show CI.
+
+PR #87 documentation follow-up, 2026-10-30:
+- Added the status line, related-docs paragraph and basis footer to docs/README.md, and
+  expanded the architecture catalogue entry for PR #81.
+- CONTRIBUTING.md points to the release checklist before real staff use.
+- Verification: local link and format checks; app gates skipped because dependencies are absent.
 
 Docs organized into one entry path, 2026-10-30:
 - docs/README.md now routes by reader (new member, builder or AI session, owner, checker),

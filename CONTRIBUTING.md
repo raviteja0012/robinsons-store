@@ -95,10 +95,8 @@ hand: `npm run eval:ai`.
 
 ## Before real staff use
 
-The live list is docs/STATUS.md (what is left) and docs/HANDOVER.md, "Still open" (accounts,
-plans and keys). Marked blocking today: the database fence on money (ARCH-03 in
-docs/ARCHITECTURE.md), the paid plans (A-01) and the domain renewal (A-04), both in
-docs/HANDOVER.md.
+Follow the release checklist in [docs/STATUS.md](docs/STATUS.md#gates-before-the-product-is-real-in-order)
+before real staff use. Related release items are tracked privately.
 
 ## How this maps to the rest of the docs
 

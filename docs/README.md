@@ -1,5 +1,7 @@
 # The docs, and which one to open
 
+Status: PROPOSED, 2026-10-30. Owner: the developer. Approver: the store owner.
+
 There are too many files to guess at. This is the index: what each one is for, who it is
 written for, and how current it is. Start here.
 
@@ -30,7 +32,7 @@ written for, and how current it is. Start here.
 |---|---|---|
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Builder | Every ask with its state: shipped, queued, or waiting on the owner. **If it is not here, it is not agreed.** |
 | [STATUS.md](STATUS.md) | Builder | What is built right now, and the before-production checklist |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Builder | The stack, the data flow, the capture loop, the Mermaid diagrams |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Builder | The stack, the data flow, the capture loop, the Mermaid diagrams, the AI enablement view, the target context with planned pieces in colour, and the colour key (PR #81) |
 | [PLATFORM.md](PLATFORM.md) | Builder | Every service and plan in use, what is adopted, and what is deliberately declined with the reason. **Carries two open risks: the Vercel plan and database backups** |
 | [CAPABILITIES.md](CAPABILITIES.md) | Builder | **The standing answer to "should we use X".** All 477 researched capabilities with a verdict each: 83 adopt now, 65 when needed, 329 declined with reasons. Ends with the sequenced build plan |
 | [research/](research/) | Builder | The 2026-08-12 catalog of what all seven platforms can do, fetched from the vendors' live docs. Raw reference behind CAPABILITIES.md |
@@ -132,3 +134,16 @@ each one is in a file or a script rather than in anyone's memory:
 6. **Instructions are not words.** CLAUDE.md, the skill, AGENTS.md, the decision records and
    LOOP_ENGINEERING.md steer the automation, so the tier classifier treats them as tier C and
    only a person merges them (ADR-002).
+
+## How this maps to the rest of the docs
+
+This index gives the reading order. [STATUS.md](STATUS.md) holds the release checklist
+[R `docs/STATUS.md:567`]; [VERIFICATION.md](VERIFICATION.md) records per-area sign-off
+[R `docs/VERIFICATION.md:16`]. The document format comes from the skill's
+[standards](../.claude/skills/robinsons-store/references/standards.md)
+[R `.claude/skills/robinsons-store/references/standards.md:10`].
+
+**Basis: 3 claims checked this session (2026-10-30), 3 confirmed, 0 killed, 1 source.**
+Checked the release checklist, sign-off table and document format in the repository files
+named above. The PR #81 catalogue description follows the review brief; that branch was
+not inspected this session. Source: this repository.
