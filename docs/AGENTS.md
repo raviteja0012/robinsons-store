@@ -42,7 +42,7 @@ builds and the capture screen still offers Enter manually.
 | **money-reviewer** | Read-only reviewer for anything touching amounts, HST, freight, payments or invoice status | `.claude/agents/money-reviewer.md` | Claude Code sessions; tools Read, Grep, Glob only | BUILT |
 | **invariant-auditor** | Read-only check against store scoping, money visibility, soft voids, audit rows, RLS on new tables, blank-env build | `.claude/agents/invariant-auditor.md` | Claude Code sessions; tools Read, Grep, Glob only | BUILT |
 | **Typecheck stop hook** | Refuses to end a Claude Code turn while TypeScript is broken; fails open if it cannot run | `.claude/hooks/gate-typecheck.sh` [R `:2`], wired in `.claude/settings.json` | Claude Code sessions | BUILT |
-| **Skills** | `robinsons-store` (domain, invariants, playbooks, and the documentation and review standard in `references/standards.md`), `supabase` and `supabase-postgres-best-practices` (vendor guidance) | `.claude/skills/` | Claude Code sessions | BUILT |
+| **Skills** | `robinsons-store` (domain, invariants, playbooks, and the documentation and review standard in `references/standards.md`), `supabase` and `supabase-postgres-best-practices` (vendor guidance), `vercel-react-best-practices` (React and Next.js performance guidance, pinned in `skills-lock.json` [R skills-lock.json:16,20]) | `.claude/skills/` and `.agents/skills/`; `robinsons-store` lives only in `.claude/skills/` | Claude Code, Codex and other agents; precedence follows root AGENTS.md | BUILT |
 | **Jira autopilot** | The board-driven version of the Slack autopilot | `.github/workflows/jira-autopilot.yml` | Parked since 2026-08-12; tests still run in CI | SCAFFOLDED |
 | **Golden-case evals** | Sends 24 made-up invoices and questions through the real invoice reader and Ask routes and scores the answers by fixed rules, with a pass rate per case | `scripts/aievals-check`, run with `npm run eval:ai` [R `package.json:11`] | The developer's machine, on whatever `ANTHROPIC_API_KEY` is in `.env.local` or the shell; exits at once in CI [R `scripts/aievals-check/live.ts:55`]. Its scorer tests use no model and are a step in `.github/workflows/ci.yml` | PARTIAL (built and checked offline; not yet run against the model) |
 
@@ -77,3 +77,7 @@ the subagent and settings files read whole. One stale rule found and corrected (
 Source: this repository.
 The Golden-case evals row was added on branch ai-golden-evals (2026-10-24): 2 claims, both
 read at the named lines that session.
+
+**Basis (skills row): 3 claims checked this session (2026-10-30), 3 confirmed, 0 killed,
+4 sources.** The React skill exists in both skill directories, its source is pinned in
+skills-lock.json, and precedence is defined in root AGENTS.md.

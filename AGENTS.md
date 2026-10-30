@@ -12,3 +12,10 @@ Both follow the same rules, kept in one place:
 4. Gates before any pull request: npx tsc --noEmit, npm run build with a blank env,
    npm run lint. Update docs/STATUS.md and docs/VERIFICATION.md in the same pull request.
 5. docs/AGENTS.md is the register of AI agents in the app and the build loop, not this file.
+
+## Skill precedence
+
+Vendored third-party skills in .claude/skills/vercel-react-best-practices and
+.agents/skills/vercel-react-best-practices give general advice. Wherever they differ,
+CLAUDE.md and the robinsons-store skill, including its locked architecture, take precedence.
+For example, client components keep fetching with useEffect as the locked architecture says.

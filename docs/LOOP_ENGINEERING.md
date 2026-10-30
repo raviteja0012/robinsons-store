@@ -136,12 +136,12 @@ in.
 ## Why not just let it merge everything
 
 Because of the exposure, not the capability. The useful frame is: **private data, external
-action, untrusted input — pick at most two without a human.**
+action, untrusted input - pick at most two without a human.**
 
 This system has private data (the store's vendors and payments) and untrusted input (ticket
 text, which anyone who can comment on the board can write, and which the model reads as
-instructions). That is two. Adding unrestricted external action — merging and deploying
-whatever it likes — makes three, and three is where an instruction hidden in a ticket
+instructions). That is two. Adding unrestricted external action - merging and deploying
+whatever it likes - makes three, and three is where an instruction hidden in a ticket
 becomes a deployed change to how the store pays people.
 
 So external action is not off, it is **bounded to a tier where the blast radius is words**.
@@ -184,7 +184,11 @@ instruction: they cannot edit even if asked to.
 
 ## Borrowed skills
 
-`.agents/skills/` holds two skills installed from Supabase's official `supabase/agent-skills`
+`vercel-react-best-practices` from `vercel-labs/agent-skills` supplies general React and
+Next.js performance guidance. It is vendored in `.claude/skills/` and `.agents/skills/`,
+pinned in `skills-lock.json` [R skills-lock.json:16,20]. Follow root AGENTS.md for precedence.
+
+`.agents/skills/` also holds two skills installed from Supabase's official `supabase/agent-skills`
 repository on 2026-08-09, pinned by content hash in `skills-lock.json` and symlinked into
 `.claude/skills/` so Claude Code picks them up:
 
@@ -264,3 +268,10 @@ Honest list, in the order I would do them:
    idempotent, but it is the weakest link in the chain.
 4. **Screenshot verification.** The gates prove it compiles, not that it looks right. A
    Playwright pass over the key screens would close that gap.
+
+## How this maps to the rest of the docs
+
+docs/AGENTS.md registers the skills used by each agent. Root AGENTS.md defines precedence.
+
+**Basis (React skill): 3 claims checked this session (2026-10-30), 3 confirmed, 0 killed,
+4 sources.** The skill's two copies, skills-lock.json and root AGENTS.md were read locally.

@@ -2,13 +2,13 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-25, on branch claude/architecture-ai-call-ruleset (latest: the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch agent-skills-setup (latest: product direction and skill precedence, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Product direction recorded, 2026-10-30 (branch agent-skills-setup):
-- CLAUDE.md, the robinsons-store skill and REQUIREMENTS.md now say the app is being built
-  to sell to other independent stores, with the rules that follow and the single-store
-  spots still in code (store name in five places, the Ontario tax lookup, the department
-  sequence). Docs only; no code changed.
+- REQUIREMENTS.md is the canonical home for product direction; CLAUDE.md and the
+  robinsons-store skill point there. Multi-store support is PARTIAL, and onboarding a
+  second store without code changes is TARGET. The configuration list includes the reorder
+  prompt and alert email branding. Docs only; no app code changed.
 
 Agent tooling, 2026-10-30 (branch agent-skills-setup):
 - AGENTS.md at the root points Codex and other agents at CLAUDE.md and the robinsons-store
@@ -18,7 +18,10 @@ Agent tooling, 2026-10-30 (branch agent-skills-setup):
   and .agents/skills and pinned in skills-lock.json. web-design-guidelines from the same
   source was not taken: it downloads its rules from the network on every run.
 - The robinsons-store skill description is cut to 915 characters; the Agent Skills limit
-  is 1,024 and the old one was 1,244. The skill body is unchanged.
+  is 1,024 and the old one was 1,244. The skill body now points to REQUIREMENTS.md for
+  product direction, delivery states and configuration gaps.
+- Root AGENTS.md defines skill precedence, with a pointer in CLAUDE.md. The React skill is
+  registered in docs/AGENTS.md and LOOP_ENGINEERING.md; its vendored files are unchanged.
 - Instructions and skills only; no code, schema, policy or workflow change.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
