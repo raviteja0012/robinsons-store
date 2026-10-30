@@ -2,7 +2,7 @@
 
 Single source for the current state of the build: what is done, what is verified, and what remains. The full vision is in robinsons_store_build_spec.md, setup is in RUNBOOK.md, and the per-feature sign-off record is in docs/VERIFICATION.md. Update this file and VERIFICATION.md in the same pull request as the work itself; if it is not recorded there, it is not done.
 
-Last updated: 2026-10-25, on branch claude/vercel-team-id-variable (latest: the Vercel team id read from a repository variable, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
+Last updated: 2026-10-30, on branch claude/vercel-team-id-variable (latest: the Vercel team id read from a repository variable, below; before it the architecture diagrams corrected against the code, below; before it the architecture record of the AI usage log and the main ruleset, below; before it the money-type and region record round, below; before it the handover written to the standard, with the agents register and onboarding, below; before it the handover is prepared, below; before it the dev guard of 2026-09-01, recorded late; before it the deploy scare, corrected the same day, below; before it the invoice field registry and the first automated migration, below; before it the owner's answer on the vendor question map; before it Jira switched off with its autopilot parked and the watchdog moved to Slack, below; before it the vendor field registry; before it the platform capability round, the health check naming its own fix, owner round 6, owner round 5, the domain and email integration round in docs/DOMAIN_EMAIL.md, the vetting round, the Jira backlog round, the live-demo round, and owner feedback round 3).
 
 Vercel team id read from a repository variable, 2026-10-25:
 - `vercel-diagnose.yml` and `vercel-protect.yml` take the team id from the GitHub variable
@@ -10,6 +10,19 @@ Vercel team id read from a repository variable, 2026-10-25:
   moves to the store's Vercel team. Nothing changes until the variable is set.
 - docs/HANDOVER.md lists the variable; the handover checklist gains 6.5a (set it) and 6.11
   (read the firewall and deploys with the new token).
+
+Architecture diagrams corrected against the code, 2026-10-30:
+- An edge-by-edge check of the six diagrams in docs/ARCHITECTURE.md against main found arrows
+  the code does not back. Corrected: the watchdog calls the app, not the database; the build
+  calls Anthropic from GitHub Actions; admin users, alerts, health and import use the service
+  role; the capture loop has a manual branch and the AI usage cap; `edit_payment` can move a
+  paid invoice to post-dated; store and vendor links are nullable; the watchdog runs when CI
+  finishes, not on deploy; the Slack card reaches "live" only by hand.
+- Section 7 now names the two routes that take no session (health, alerts) and that extract
+  returns line costs to any signed-in member. Five stale line references fixed.
+- The store's Miro board still shows the old diagrams (ARCH-12): redraw it from the doc after
+  this and the open pull requests that edit the doc have merged.
+- Docs only; no code, schema, policy or workflow change.
 
 Architecture record of the AI usage log and the main ruleset, 2026-10-25:
 - docs/ARCHITECTURE.md section 2 now shows the API writing the `ai_call` log and describes
