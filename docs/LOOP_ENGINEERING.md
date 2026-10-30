@@ -242,7 +242,11 @@ run already allow, and a person still merges tier B and C.
 
 ## Borrowed skills
 
-`.agents/skills/` holds two skills installed from Supabase's official `supabase/agent-skills`
+`vercel-react-best-practices` from `vercel-labs/agent-skills` supplies general React and
+Next.js performance guidance. It is vendored in `.claude/skills/` and `.agents/skills/`,
+pinned in `skills-lock.json` [R skills-lock.json:16,20]. Follow root AGENTS.md for precedence.
+
+`.agents/skills/` also holds two skills installed from Supabase's official `supabase/agent-skills`
 repository on 2026-08-09, pinned by content hash in `skills-lock.json` and symlinked into
 `.claude/skills/` so Claude Code picks them up:
 
@@ -327,3 +331,10 @@ Honest list, in the order I would do them:
    `SUPABASE_DB_URL_DEV` secret is set, so this stays open until then.
 4. **Screenshot verification.** The gates prove it compiles, not that it looks right. A
    Playwright pass over the key screens would close that gap.
+
+## How this maps to the rest of the docs
+
+docs/AGENTS.md registers the skills used by each agent. Root AGENTS.md defines precedence.
+
+**Basis (React skill): 3 claims checked this session (2026-10-30), 3 confirmed, 0 killed,
+4 sources.** The skill's two copies, skills-lock.json and root AGENTS.md were read locally.
